@@ -99,10 +99,10 @@ object CellAnalyzer {
         return CellAnalysis(digit, discarded, normalised, largestBlob = largest)
     }
 
-    /** The largest non-line blob height in each cell, for choosing a threshold. */
-    fun blobHeights(cells: List<GrayImage>): List<Double> = cells.map { cell ->
+    /** The largest non-line blob in each cell, or null where there is none. */
+    fun largestBlobs(cells: List<GrayImage>): List<Blob?> = cells.map { cell ->
         val gray = Mat(cell.height, cell.width, CvType.CV_8UC1).also { it.put(0, 0, cell.pixels) }
-        findBlobs(gray, cell).maxByOrNull { it.area }?.heightRatio ?: 0.0
+        findBlobs(gray, cell).maxByOrNull { it.area }
     }
 
     private fun findBlobs(gray: Mat, cell: GrayImage): List<Blob> {

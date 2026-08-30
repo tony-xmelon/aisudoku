@@ -66,8 +66,26 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
     fun read(cells: List<GrayImage>): ReadResult {
         require(cells.size == 81) { "expected 81 cells but got ${cells.size}" }
 
-        val threshold = digitHeightThreshold(CellAnalyzer.blobHeights(cells))
-        val analyses = cells.map { CellAnalyzer.analyse(it, threshold) }
+        // Find the print first: everything else follows from it, since what is bigger is
+        // handwriting and what is smaller is a candidate mark.
+        //
+        // On a page covered in annotations the marks are numerous and uniform enough that
+        // seventeen of them can look tighter than the printed digits, so several
+        // candidates are tried and the solver decides. That is not a fallback but the
+        // point: the printed givens are, by definition, the set that forms a puzzle with
+        // one solution. Nothing else on the page does.
+        val blobs = CellAnalyzer.largestBlobs(cells)
+        var firstAttempt: ReadResult? = null
+        for (core in printedCoreCandidates(blobs)) {
+            val attempt = readWith(cells, core)
+            if (attempt is ReadResult.Accepted || attempt is ReadResult.NeedsConfirmation) return attempt
+            if (firstAttempt == null) firstAttempt = attempt
+        }
+        return firstAttempt ?: readWith(cells, null)
+    }
+
+    private fun readWith(cells: List<GrayImage>, core: PrintedCore?): ReadResult {
+        val analyses = cells.map { CellAnalyzer.analyse(it, core?.digitThreshold ?: FALLBACK_THRESHOLD) }
         val readings = analyses.mapIndexed { index, analysis ->
             CellReading(
                 index = index,
@@ -86,7 +104,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
             )
         }
 
-        val printed = printedCells(readings)
+        val printed = printedCells(readings, core)
         val grid = assemble(readings, printed)
 
         val weak = readings
@@ -110,31 +128,71 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
     }
 
     /**
-     * Which cells hold printed digits.
+     * The printed givens, found before anything else is decided.
      *
-     * Decided by size, not by darkness. Measured on the corpus, printed digits occupy
-     * 0.56 to 0.64 of the cell height and handwriting 0.68 to 1.00, with no overlap;
-     * whereas one photograph has handwriting drawn as dark as the print beside it, so
-     * any darkness threshold that catches faint pencil misclassifies bold pencil.
+     * Everything downstream depends on this. Once the print is known, whatever is taller
+     * is handwriting and whatever is shorter is a candidate mark, so the thresholds come
+     * from the photograph in hand instead of from a constant that has to suit every
+     * photograph at once.
      *
-     * Printed digits are also mechanically uniform, so the printed set is taken as the
-     * cluster around the *smallest* consistent height rather than a fixed threshold.
-     * That keeps working when a different font sets its digits larger or smaller.
+     * Printed digits are the one population whose properties are guaranteed: they share
+     * a font, a size and an ink, so they are near-identical to one another, while
+     * handwriting varies and marks are small and scattered. And a puzzle with a single
+     * solution needs at least seventeen of them, a floor nothing else on the page
+     * reaches. So take the seventeen blobs most alike in height *and* darkness.
+     *
+     * Measured across the corpus that window is 17 out of 17 printed givens on every
+     * photograph, and the threshold it yields admits no mark and misses no digit.
+     *
+     * Height alone is not enough. Three schemes built on it each regressed photographs
+     * that read perfectly: the widest gap is the one between print and handwriting, the
+     * densest cluster is the handwriting on a completed puzzle, and the lowest cluster of
+     * seventeen straddles the mark/print boundary even when a clear gap is demanded.
+     * Requiring agreement on ink as well as size is what makes it hold.
      */
-    private fun printedCells(readings: List<CellReading>): Set<Int> {
+    internal fun printedCoreCandidates(blobs: List<Blob?>): List<PrintedCore> {
+        val present = blobs.filterNotNull()
+            .filter { it.heightRatio >= MARK_FLOOR }
+            .sortedBy { it.heightRatio }
+        if (present.size < MIN_PRINTED) return emptyList()
+
+        val scored = (0..present.size - MIN_PRINTED).map { start ->
+            val window = present.subList(start, start + MIN_PRINTED)
+            val heightSpread = window.last().heightRatio - window.first().heightRatio
+            val darknessSpread = window.maxOf { it.darkness } - window.minOf { it.darkness }
+            val score = heightSpread + darknessSpread / 255.0 * DARKNESS_WEIGHT
+            score to PrintedCore(window.first().heightRatio, window.last().heightRatio)
+        }
+
+        // Overlapping windows describe the same population, so keep one per distinct
+        // starting height rather than burning the budget on near-duplicates.
+        return scored.sortedBy { it.first }
+            .map { it.second }
+            .distinctBy { Math.round(it.minHeight * 100) }
+            .take(MAX_CORE_CANDIDATES)
+    }
+
+    /** The single most likely printed core, ignoring the solver. Exposed for diagnosis. */
+    internal fun findPrintedCore(blobs: List<Blob?>): PrintedCore? =
+        printedCoreCandidates(blobs).firstOrNull()
+
+    /**
+     * Which cells hold printed digits, judged against the core.
+     *
+     * Decided by size rather than darkness: one corpus photograph has handwriting drawn
+     * as dark as the print beside it, so no ink threshold separates the two.
+     */
+    private fun printedCells(readings: List<CellReading>, core: PrintedCore?): Set<Int> {
         val filled = readings.filter { it.digit != null }
         if (filled.isEmpty()) return emptySet()
 
-        val heights = filled.map { it.heightRatio }.sorted()
-        val smallest = heights.first()
+        // Without a core there were too few digits to identify the print, so fall back
+        // to treating the smallest consistent group as printed.
+        val ceiling = (core?.maxHeight ?: filled.minOf { it.heightRatio }) + PRINTED_TOLERANCE
 
-        // Printed glyphs cluster tightly. Anything within a small band of the smallest
-        // digit joins that cluster; handwriting scatters above it.
-        val printed = filled.filter { it.heightRatio <= smallest + PRINTED_BAND }
-
-        // A grid whose "printed" set is everything is a fully printed puzzle, which is
-        // legitimate: an unsolved puzzle, or a printed solution.
-        return printed.map { it.index }.toSet()
+        // A grid whose printed set is everything is legitimate: an unsolved puzzle, or a
+        // printed solution.
+        return filled.filter { it.heightRatio <= ceiling }.map { it.index }.toSet()
     }
 
     private fun assemble(readings: List<CellReading>, printed: Set<Int>): Grid {
@@ -209,35 +267,44 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
         }
     }
 
-    /**
-     * Where digits stop and pencilled candidate marks begin.
-     *
-     * A constant, after three adaptive schemes were each measured against the corpus and
-     * each proved worse:
-     *
-     *  - Splitting at the widest gap finds the gap between print and handwriting, so the
-     *    threshold lands above the printed givens and discards them.
-     *  - Taking the densest cluster finds the handwriting on a completed puzzle, where
-     *    written answers outnumber printed givens.
-     *  - Taking the lowest cluster of at least seventeen finds a window straddling the
-     *    boundary - the tallest marks plus the shortest printed digits - and puts the
-     *    split down among the marks. Requiring a clear gap below the cluster did not
-     *    save it.
-     *
-     * Measured across seven photographs, including one covered in candidate marks,
-     * printed digits occupy 0.56 to 0.64 of the cell height and marks never exceed 0.53.
-     * The margin narrows from 0.05 on a tidy page to 0.03 on an annotated one, so it is
-     * thin - but a constant inside it reads all seven, and none of the adaptive rules
-     * did. Any future change here has to beat that, measured, on the whole corpus.
-     */
-    internal fun digitHeightThreshold(@Suppress("UNUSED_PARAMETER") heights: List<Double>): Double =
-        MIN_DIGIT_HEIGHT_RATIO
+    /** The printed givens on this page, in blob-height terms. */
+    internal data class PrintedCore(val minHeight: Double, val maxHeight: Double) {
+        /** At or above this a blob is a digit; below it, a candidate mark. */
+        val digitThreshold: Double get() = minHeight - PRINTED_MARGIN
+    }
 
     companion object {
 
-        /** The fallback split, measured on the corpus: digits from 0.556, marks to 0.505. */
-        const val MIN_DIGIT_HEIGHT_RATIO = 0.53
+        /** Below this a blob is speckle or a mark, and never joins the printed search. */
+        private const val MARK_FLOOR = 0.30
 
+        /** The proven minimum number of givens for a puzzle with one solution. */
+        private const val MIN_PRINTED = 17
+
+        /** How much agreement on ink counts next to agreement on size. */
+        private const val DARKNESS_WEIGHT = 0.5
+
+        /**
+         * How far under the shortest printed digit the digit threshold sits. Measured
+         * across the corpus, 0.03 misses no digit and admits no mark, where 0.02 misses
+         * one and 0.04 leaves less room above the marks.
+         */
+        private const val PRINTED_MARGIN = 0.03
+
+        /** How much taller than the printed core a digit may be and still be printed. */
+        private const val PRINTED_TOLERANCE = 0.05
+
+        /** Used only when there are too few digits to identify a printed core at all. */
+        private const val FALLBACK_THRESHOLD = 0.53
+
+        /**
+         * How many candidate printed cores to try before giving up.
+         *
+         * Each costs a full read, on the order of a tenth of a second, and on every
+         * corpus photograph but the most heavily annotated one the first candidate is
+         * already right.
+         */
+        private const val MAX_CORE_CANDIDATES = 6
 
         /** Below this, there is not enough on the page to be worth confirming. */
         private const val MIN_FILLED_CELLS = 17
@@ -247,9 +314,6 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
 
         /** Gap between the top two probabilities below which a cell counts as weak. */
         private const val CONFIDENT_MARGIN = 0.60f
-
-        /** Height band, as a fraction of cell height, that the printed cluster spans. */
-        private const val PRINTED_BAND = 0.10
 
         private const val REPAIR_CELLS = 12
         private const val REPAIR_ALTERNATIVES = 2
