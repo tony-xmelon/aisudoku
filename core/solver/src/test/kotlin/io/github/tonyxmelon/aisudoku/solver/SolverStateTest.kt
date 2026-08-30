@@ -94,3 +94,53 @@ class SolverStateTest {
 private object Row0 {
     val indices = (0..8).toList()
 }
+
+class SolverStateCandidatesOnlyTest {
+
+    @Test
+    fun `candidatesOnly does not race ahead and solve the puzzle`() {
+        // from() propagates so hard it finishes this puzzle outright, leaving nothing to
+        // explain. candidatesOnly must stop at the givens.
+        val propagated = assertNotNull(SolverState.from(Puzzles.EASY))
+        assertTrue(propagated.isSolved, "the fixture no longer exercises this distinction")
+
+        val explained = assertNotNull(SolverState.candidatesOnly(Puzzles.EASY))
+        assertFalse(explained.isSolved)
+        // Cells beyond the givens may already be down to one candidate — those are the
+        // naked singles the technique solver goes on to report. What must not happen is
+        // the whole grid falling out at construction time.
+        assertTrue(explained.solvedCount >= Puzzles.EASY.givenCount)
+        assertTrue(explained.solvedCount < 81, "construction solved the entire puzzle")
+    }
+
+    @Test
+    fun `candidatesOnly still removes a given's digit from its peers`() {
+        val state = assertNotNull(SolverState.candidatesOnly(Puzzles.EASY))
+        // Cell 0 is a given 5, so no peer of cell 0 may still offer a 5.
+        for (peer in io.github.tonyxmelon.aisudoku.model.Coordinates.peers[0]) {
+            assertFalse(5 in state.candidatesAt(peer), "cell $peer still allows a 5")
+        }
+    }
+
+    @Test
+    fun `candidatesOnly marks only the givens as already known`() {
+        val state = assertNotNull(SolverState.candidatesOnly(Puzzles.EASY))
+        for (i in 0 until 81) {
+            assertEquals(Puzzles.EASY[i].isFilled, state.isReported(i), "cell $i")
+        }
+    }
+
+    @Test
+    fun `candidatesOnly rejects a grid that breaks the rules`() {
+        assertNull(SolverState.candidatesOnly(Puzzles.CONTRADICTORY))
+    }
+
+    @Test
+    fun `place fixes a digit and clears it from peers without cascading`() {
+        val state = assertNotNull(SolverState.candidatesOnly(io.github.tonyxmelon.aisudoku.model.Grid.Empty))
+        assertTrue(state.place(0, 5))
+        assertEquals(5, state.valueAt(0))
+        assertFalse(5 in state.candidatesAt(1))
+        assertEquals(1, state.solvedCount)
+    }
+}

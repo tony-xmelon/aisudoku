@@ -78,13 +78,28 @@ class SolverState private constructor(private val candidates: IntArray) {
     }
 
     /**
-     * Removes a candidate without propagating.
+     * Removes a candidate without propagating. Returns false if the cell is left with
+     * nothing, which is a contradiction.
      *
-     * Only for building test fixtures. Production code must use [eliminate] so the
-     * consequences of a removal are followed through.
+     * Step-by-step explanation needs this: [eliminate] cascades, which races ahead of
+     * the user and leaves the technique solver nothing to describe.
      */
-    internal fun forceEliminate(index: Int, digit: Int) {
-        candidates[index] = CandidateSet(candidates[index]).minus(digit).bits
+    fun removeCandidate(index: Int, digit: Int): Boolean {
+        val reduced = CandidateSet(candidates[index]).minus(digit)
+        candidates[index] = reduced.bits
+        return !reduced.isEmpty
+    }
+
+    /**
+     * Fixes [digit] in [index] and removes it from the cell's peers, without cascading
+     * any further consequences. The non-propagating counterpart of [assign].
+     */
+    fun place(index: Int, digit: Int): Boolean {
+        candidates[index] = CandidateSet.NONE.plus(digit).bits
+        for (peer in Coordinates.peers[index]) {
+            if (!removeCandidate(peer, digit)) return false
+        }
+        return true
     }
 
     /** Solved cells become guesses; unsolved cells stay empty. */
@@ -109,10 +124,34 @@ class SolverState private constructor(private val candidates: IntArray) {
                 if (cell.source == CellSource.GIVEN) {
                     val digit = cell.digit ?: continue
                     if (!state.assign(i, digit)) return null
+                    state.markReported(i)
                 }
             }
+            return state
+        }
+
+        /**
+         * Builds a state holding only the candidates implied by the givens, with no
+         * cascading.
+         *
+         * [from] propagates so aggressively that it solves easy puzzles outright, which
+         * is ideal for [Solver] and useless for explanation — there would be no steps
+         * left to describe. This factory stops at "what could go here", so the
+         * techniques have something to find.
+         *
+         * Returns null when the givens already break the rules.
+         */
+        fun candidatesOnly(grid: Grid): SolverState? {
+            if (grid.givensOnly().conflicts().isNotEmpty()) return null
+
+            val state = SolverState(IntArray(Coordinates.CELL_COUNT) { CandidateSet.ALL.bits })
             for (i in 0 until Coordinates.CELL_COUNT) {
-                if (state.valueAt(i) != null) state.markReported(i)
+                val cell = grid[i]
+                if (cell.source == CellSource.GIVEN) {
+                    val digit = cell.digit ?: continue
+                    if (!state.place(i, digit)) return null
+                    state.markReported(i)
+                }
             }
             return state
         }

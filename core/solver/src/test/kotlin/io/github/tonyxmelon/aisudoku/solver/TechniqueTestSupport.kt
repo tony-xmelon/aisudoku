@@ -14,7 +14,7 @@ fun stateWithCandidates(vararg overrides: Pair<Int, CandidateSet>): SolverState 
     val state = assertNotNull(SolverState.from(Grid.Empty))
     for ((index, candidates) in overrides) {
         for (digit in 1..9) {
-            if (digit !in candidates) state.forceEliminate(index, digit)
+            if (digit !in candidates) state.removeCandidate(index, digit)
         }
     }
     return state
