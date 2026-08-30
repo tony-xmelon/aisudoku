@@ -1,1 +1,24 @@
-AI Sudoku test build.
+AI Sudoku - first build on a real device.
+
+Point the camera at a sudoku puzzle. It guides you into position, takes the photo
+itself when the framing is good, reads the printed and handwritten digits, and then
+lets you ask for a hint, check your own answers, or see the whole solution.
+
+Worth trying, roughly in order of how likely it is to break:
+
+1. Camera guidance. The line at the bottom should change as you move - move closer,
+   hold the phone flat, straighten up - and it should fire the shutter on its own once
+   it is happy. If it never fires, use the button.
+2. An unsolved printed puzzle. This is the case with the most evidence behind it:
+   every printed digit was read correctly on all six test photographs.
+3. A part-solved puzzle in pencil. Handwriting is the weak point, around 84% per
+   digit, so expect the odd misread. Tap a wrong cell to correct it.
+4. Check mine, on a puzzle where you know you have made a mistake.
+5. Hint. The setting toggles between naming the technique and just giving the digit.
+
+Known and expected:
+- Nothing here has ever run on a phone before, so camera behaviour is unverified.
+- The grid must be roughly upright and fill a decent part of the frame.
+- Small pencilled candidate marks in cell corners are ignored on purpose.
+- If it says a photo could not be read, it is refusing rather than guessing - a
+  confidently wrong grid is the worst thing it could hand you.
