@@ -103,11 +103,26 @@ almost the same luminance as the table it lies on, while the printed border is s
 every shot. The paper edge is also the wrong target in principle — the page carries a puzzle
 number, a URL and a difficulty label outside the grid.
 
-**Confirm the quad before trusting it.** Backgrounds contain long straight edges — wood-plank
-seams, table edges, a clipboard, floor tiles all appear in the corpus. A candidate quad is
-accepted only if, after rectification, it contains roughly nine evenly spaced horizontal and nine
-vertical interior lines. This doubles as the "that is actually a sudoku" test for live guidance,
-so the app does not sit saying *Hold still...* at a picture frame.
+**Confirm the quad before trusting it, and choose by that rather than by size.** Backgrounds
+contain long straight edges — wood-plank seams, table edges, a clipboard, floor tiles all appear in
+the corpus. More importantly, in one photograph the sheet of paper is a *larger and cleaner*
+quadrilateral than the grid printed on it: it covers 59% of the frame against the grid's 36% and
+approximates neatly to four corners, so picking the biggest candidate rectifies the page furniture
+instead of the puzzle.
+
+Candidates are therefore scored on whether the rectification actually contains a 9x9 grid, and the
+best-scoring one wins. The score is the weakest of the twenty places a grid line must appear,
+relative to the strongest line present. Measured on the corpus: the six photographs score 0.41,
+0.47, 0.56, 0.66, 0.80 and 0.96 against a 0.35 accept threshold, and the paper decoy that beat the
+grid on size scores 0.28.
+
+Counting line peaks was tried first and does not work — a thick outer border splits into two peaks
+and a column of digit strokes can align into a spurious one, so an "exactly ten" rule rejected
+three of the six good photographs. Asking whether a line exists where one is *required* is
+insensitive to extras.
+
+This doubles as the "that is actually a sudoku" test for live guidance, so the app does not sit
+saying *Hold still...* at a picture frame.
 
 **Guidance.** `FramingAdvisor` maps the quad plus frame statistics to exactly one line of text,
 first matching rule wins:
@@ -441,7 +456,7 @@ against 6.
 | M0 | DONE — Repo, project skeleton, CI, JDK 21 toolchain pinned, empty app builds and runs |
 | M1 | DONE — `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
 | M2 | DONE — Technique solver and `HintEngine`, both hint styles, TDD |
-| M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the structural early-out, the labelling helper and the regression harness, run against `corpus/` |
+| M3 | DONE — Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the structural early-out, the labelling helper and the regression harness, run against `corpus/` |
 | M4 | Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
 | M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair, and the certainty verdict of section 4.2. End to end from a still image |
 | M6 | CameraX live guidance, the preview checks of section 4.1, and auto-capture |
