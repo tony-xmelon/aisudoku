@@ -175,6 +175,14 @@ usable — calibrating against it is the point of having it.
 
 All thresholds are starting values to tune against the corpus, not constants.
 
+**Blur cannot be caught structurally, and this is measured.** Blurring a corpus photograph at
+radius 25 *raises* its grid score from 0.66 to 0.96 while sharpness collapses from 56 to 1: the
+blur erases the digit noise from the line projections, so the grid becomes easier to find at
+exactly the moment the digits become unreadable. The grid survives to about radius 60 and is gone
+by 90. Two consequences follow. The grid score must never be read as a quality signal. And blur is
+the clearest example of why acceptance is judged on extraction certainty rather than on image
+structure — no structural check can see it.
+
 **Structural early-out.** After capture, one hard check runs before recognition: is there a grid at
 all — a closed quad, ten by ten interior lines, above the resolution floor? If not, reject
 immediately, because running the pipeline cannot produce anything. This is the only proxy allowed
