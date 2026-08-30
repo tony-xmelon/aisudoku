@@ -1,24 +1,24 @@
-AI Sudoku - first build on a real device.
+Fixes from the first run on a phone.
 
-Point the camera at a sudoku puzzle. It guides you into position, takes the photo
-itself when the framing is good, reads the printed and handwritten digits, and then
-lets you ask for a hint, check your own answers, or see the whole solution.
+The big one: when a cell is marked red, the app now draws the digit IT read on top.
+Before, you saw the correct digit on your paper tinted red and reasonably concluded
+the solver was broken. It was not - recognition had misread that cell, and the
+overlay gave you no way to tell. Now a misread looks like a misread. Tap it to fix.
 
-Worth trying, roughly in order of how likely it is to break:
+The same misreading explained three other reports: Hint and Solve pointing at cells
+that already had a digit, and some written digits never being highlighted. Those
+cells were read as empty, so they genuinely were the next thing to fill.
 
-1. Camera guidance. The line at the bottom should change as you move - move closer,
-   hold the phone flat, straighten up - and it should fire the shutter on its own once
-   it is happy. If it never fires, use the button.
-2. An unsolved printed puzzle. This is the case with the most evidence behind it:
-   every printed digit was read correctly on all six test photographs.
-3. A part-solved puzzle in pencil. Handwriting is the weak point, around 84% per
-   digit, so expect the odd misread. Tap a wrong cell to correct it.
-4. Check mine, on a puzzle where you know you have made a mistake.
-5. Hint. The setting toggles between naming the technique and just giving the digit.
+Also fixed:
+- Solve now overlays the whole solution, not only the cells read as empty.
+- Hint stops once the puzzle is complete.
+- "Check the highlighted cells" clears once you have been through them, and each
+  cell now has a "Looks right" button so you can confirm a reading without editing it.
+- The viewfinder is square, and the shutter no longer sits under the system buttons.
+- Shutter says "Capture".
 
-Known and expected:
-- Nothing here has ever run on a phone before, so camera behaviour is unverified.
-- The grid must be roughly upright and fill a decent part of the frame.
-- Small pencilled candidate marks in cell corners are ignored on purpose.
-- If it says a photo could not be read, it is refusing rather than guessing - a
-  confidently wrong grid is the worst thing it could hand you.
+Not fixed yet, and honestly:
+- The heavily annotated puzzle that failed. I tried an adaptive rule for telling
+  candidate marks from digits and it made things worse on photos that already
+  worked, so I reverted it. I need that photo to fix it properly rather than guess.
+- No app icon, settings, about or history yet.

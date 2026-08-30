@@ -88,8 +88,12 @@ fun PuzzleScreen(
 @Composable
 private fun StatusLine(state: PuzzleState) {
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
-        state.message?.let {
-            Text(it, color = Color(0xFFFFD54F), style = MaterialTheme.typography.bodyMedium)
+        // Only while cells are actually outstanding. Previously this string stayed on
+        // screen after every one had been confirmed.
+        if (state.uncertainCells.isNotEmpty()) {
+            state.message?.let {
+                Text(it, color = Color(0xFFFFD54F), style = MaterialTheme.typography.bodyMedium)
+            }
         }
         Text(
             state.status,
@@ -192,6 +196,12 @@ private fun CellEditor(state: PuzzleState, index: Int, onChange: (PuzzleState) -
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (index in state.uncertainCells) {
+                TextButton(onClick = {
+                    onChange(state.copy(uncertainCells = state.uncertainCells - index, selectedCell = null))
+                }) { Text("Looks right") }
+            }
+
             TextButton(onClick = {
                 onChange(state.withCell(index, null, CellSource.EMPTY).copy(selectedCell = null))
             }) { Text("Clear") }
@@ -251,11 +261,37 @@ private fun DrawScope.drawOverlay(
             OverlayRole.INCORRECT -> Color(0xFFE57373)
             OverlayRole.HINT -> Color(0xFFFFD54F)
         }
-        if (digit.role == OverlayRole.CORRECT || digit.role == OverlayRole.INCORRECT) {
+        if (digit.role == OverlayRole.CORRECT) {
+            // The paper already shows the right digit, so a tint is enough.
             drawRect(
                 color = colour.copy(alpha = 0.30f),
                 topLeft = cellTopLeft(index),
                 size = androidx.compose.ui.geometry.Size(cell, cell),
+            )
+        } else if (digit.role == OverlayRole.INCORRECT) {
+            // Tint, and then draw what the app read on top. Without the digit, a
+            // misreading is indistinguishable from the app marking a correct answer
+            // wrong, which is exactly how it was first reported.
+            drawRect(
+                color = colour.copy(alpha = 0.45f),
+                topLeft = cellTopLeft(index),
+                size = androidx.compose.ui.geometry.Size(cell, cell),
+            )
+            val layout = measurer.measure(
+                digit.digit.toString(),
+                style = TextStyle(
+                    color = Color(0xFF8E0000),
+                    fontSize = (cell * 0.44f).toSp(),
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+            val origin = cellTopLeft(index)
+            drawText(
+                layout,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    origin.x + cell - layout.size.width - cell * 0.04f,
+                    origin.y + cell * 0.02f,
+                ),
             )
         } else {
             val layout = measurer.measure(

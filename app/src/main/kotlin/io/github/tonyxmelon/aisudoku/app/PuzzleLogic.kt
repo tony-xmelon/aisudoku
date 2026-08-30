@@ -1,5 +1,6 @@
 package io.github.tonyxmelon.aisudoku.app
 
+import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.AnswerCheck
 import io.github.tonyxmelon.aisudoku.solver.AnswerChecker
@@ -51,9 +52,11 @@ object PuzzleLogic {
         when (mode) {
             OverlayMode.NONE -> Unit
 
+            // Every cell that is not printed, so a finished puzzle shows the whole
+            // answer rather than the handful of cells recognition happened to miss.
             OverlayMode.SOLUTION -> (Solver.solve(grid) as? SolveResult.Unique)?.let { solved ->
                 for (i in 0 until 81) {
-                    if (!grid[i].isFilled) {
+                    if (grid[i].source != CellSource.GIVEN) {
                         digits[i] = OverlayDigit(solved.solution[i].digit!!, OverlayRole.FILLED)
                     }
                 }
@@ -61,6 +64,9 @@ object PuzzleLogic {
 
             OverlayMode.CHECK -> (AnswerChecker.check(grid) as? AnswerCheck.Checked)?.let { checked ->
                 for (i in checked.correct) digits[i] = OverlayDigit(grid[i].digit!!, OverlayRole.CORRECT)
+                // The digit carried here is what the app *read*, not what is on the
+                // paper. Drawing it is the whole point: a misread then looks like a
+                // misread instead of the app calling a correct answer wrong.
                 for (i in checked.incorrect) digits[i] = OverlayDigit(grid[i].digit!!, OverlayRole.INCORRECT)
             }
 
@@ -88,8 +94,22 @@ object PuzzleLogic {
         is SolveResult.Unique -> {
             val checked = AnswerChecker.check(grid) as? AnswerCheck.Checked
             val wrong = checked?.incorrect?.size ?: 0
-            if (wrong > 0) "$wrong of your answers are wrong."
-            else "The puzzle reads correctly and has one solution."
+            val empty = (0 until 81).count { !grid[it].isFilled }
+            when {
+                // The number shown on a red cell is what the app read. Saying so is what
+                // stops a misread looking like the app calling a right answer wrong.
+                wrong > 0 -> {
+                    val cells = if (wrong == 1) "1 cell disagrees" else "$wrong cells disagree"
+                    "$cells with the solution. The number shown on a red cell is what the " +
+                        "app read - if that is not what you wrote, tap it to fix."
+                }
+
+                empty > 0 -> {
+                    val cells = if (empty == 1) "1 cell" else "$empty cells"
+                    "Read correctly so far, with $cells still empty."
+                }
+                else -> "Solved, and every answer is right."
+            }
         }
 
         is SolveResult.None -> "These digits do not make a solvable puzzle - fix a cell or retake."

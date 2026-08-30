@@ -82,15 +82,48 @@ class PuzzleLogicTest {
     }
 
     @Test
-    fun `the status line reports a readable puzzle, a wrong answer and a broken read`() {
-        assertTrue(PuzzleLogic.status(puzzle).contains("one solution"))
+    fun `the status line distinguishes unfinished, wrong, solved and unreadable`() {
+        assertTrue(PuzzleLogic.status(puzzle).contains("still empty"), PuzzleLogic.status(puzzle))
 
         val empty = (0 until 81).first { !puzzle[it].isFilled }
         val wrongDigit = (1..9).first { it != solution[empty].digit }
-        assertTrue(PuzzleLogic.status(puzzle.with(empty, Cell.guess(wrongDigit))).contains("wrong"))
+        val withMistake = PuzzleLogic.status(puzzle.with(empty, Cell.guess(wrongDigit)))
+        assertTrue(withMistake.contains("1 cell disagrees"), withMistake)
+        // The wording has to say the number shown is what was *read*, because without
+        // that a misreading looks exactly like the app marking a correct answer wrong.
+        assertTrue(withMistake.contains("what the app read"), withMistake)
+
+        var finished = puzzle
+        for (i in 0 until 81) {
+            if (!finished[i].isFilled) finished = finished.with(i, Cell.guess(solution[i].digit!!))
+        }
+        assertTrue(PuzzleLogic.status(finished).contains("every answer is right"), PuzzleLogic.status(finished))
 
         val broken = Grid.Empty.with(0, Cell.given(5)).with(1, Cell.given(5))
         assertTrue(PuzzleLogic.status(broken).contains("not make a solvable puzzle"))
+    }
+
+    @Test
+    fun `solving a finished puzzle overlays every written cell, not just the empty ones`() {
+        // Reported from the phone: Solve showed a single digit on a completed puzzle,
+        // because only cells the app read as empty were being drawn.
+        var finished = puzzle
+        for (i in 0 until 81) {
+            if (!finished[i].isFilled) finished = finished.with(i, Cell.guess(solution[i].digit!!))
+        }
+        val overlay = PuzzleLogic.overlay(finished, OverlayMode.SOLUTION, HintStyle.EXPLAIN, false)
+        assertEquals(81 - puzzle.givenCount, overlay.digits.size)
+        assertTrue(overlay.digits.values.all { it.role == OverlayRole.FILLED })
+    }
+
+    @Test
+    fun `a finished puzzle has no hint left to give`() {
+        var finished = puzzle
+        for (i in 0 until 81) {
+            if (!finished[i].isFilled) finished = finished.with(i, Cell.guess(solution[i].digit!!))
+        }
+        assertTrue(PuzzleLogic.hint(finished, HintStyle.REVEAL) == null)
+        assertTrue(PuzzleLogic.overlay(finished, OverlayMode.HINT, HintStyle.REVEAL, false).digits.isEmpty())
     }
 
     @Test

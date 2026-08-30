@@ -29,6 +29,8 @@ data class CellAnalysis(
     val discardedMarks: Int,
     /** The digit normalised to a 28x28 MNIST-style bitmap, or null when there is none. */
     val normalised: FloatArray?,
+    /** The biggest blob found, digit or not. Used when choosing a threshold. */
+    val largestBlob: Blob? = null,
 ) {
     val hasDigit: Boolean get() = digit != null
 
@@ -76,17 +78,31 @@ object CellAnalyzer {
     private const val LINE_SPAN = 0.80
     private const val LINE_THICKNESS = 0.20
 
-    fun analyse(cell: GrayImage): CellAnalysis {
+    /**
+     * Finds the largest non-line blob in a cell, whatever its size.
+     *
+     * Whether that blob is a digit or a pencilled candidate mark is decided by
+     * [io.github.tonyxmelon.aisudoku.recognize.GridReader], which can compare all 81
+     * cells at once and set the threshold from the printed digits actually present. A
+     * fixed threshold here fails on a puzzle covered in annotations, where a large
+     * candidate mark can out-measure the constant.
+     */
+    fun analyse(cell: GrayImage, minHeightRatio: Double = MIN_DIGIT_HEIGHT_RATIO): CellAnalysis {
         val gray = Mat(cell.height, cell.width, CvType.CV_8UC1).also { it.put(0, 0, cell.pixels) }
         val blobs = findBlobs(gray, cell)
 
-        val digit = blobs
-            .filter { it.heightRatio >= MIN_DIGIT_HEIGHT_RATIO }
-            .maxByOrNull { it.area }
+        val largest = blobs.maxByOrNull { it.area }
+        val digit = largest?.takeIf { it.heightRatio >= minHeightRatio }
 
         val discarded = blobs.count { it !== digit }
         val normalised = digit?.let { normalise(gray, it, cell) }
-        return CellAnalysis(digit, discarded, normalised)
+        return CellAnalysis(digit, discarded, normalised, largestBlob = largest)
+    }
+
+    /** The largest non-line blob height in each cell, for choosing a threshold. */
+    fun blobHeights(cells: List<GrayImage>): List<Double> = cells.map { cell ->
+        val gray = Mat(cell.height, cell.width, CvType.CV_8UC1).also { it.put(0, 0, cell.pixels) }
+        findBlobs(gray, cell).maxByOrNull { it.area }?.heightRatio ?: 0.0
     }
 
     private fun findBlobs(gray: Mat, cell: GrayImage): List<Blob> {

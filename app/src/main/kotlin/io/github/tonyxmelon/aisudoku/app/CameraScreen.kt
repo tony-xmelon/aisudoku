@@ -13,6 +13,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -179,14 +181,27 @@ fun CameraScreen(onRead: (PuzzleState) -> Unit) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .systemBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // A square viewfinder, because the thing being photographed is square. It also
+        // stops the guidance and the shutter competing with the preview for space.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .weight(1f, fill = false),
+        ) {
+            AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+        }
 
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color(0xCC000000))
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -199,7 +214,7 @@ fun CameraScreen(onRead: (PuzzleState) -> Unit) {
             if (busy) {
                 CircularProgressIndicator(color = Color.White)
             } else {
-                Button(onClick = { takePicture() }) { Text("Take the photo now") }
+                Button(onClick = { takePicture() }) { Text("Capture") }
             }
         }
     }
