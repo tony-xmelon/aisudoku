@@ -53,25 +53,24 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Check Firebase credentials are configured
+      # The app id is committed, so the only thing CI is missing is the credential.
+      - name: Check the Firebase credential is configured
         id: firebase
         env:
           KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         run: |
-          if [ -n "$KEY" ] && [ -n "$APP_ID" ]; then
+          if [ -n "$KEY" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Firebase secrets are not set, so no build was distributed."
-            echo "::notice::Add FIREBASE_SERVICE_ACCOUNT and FIREBASE_APP_ID to enable it."
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT is not set, so this build was not distributed."
+            echo "::warning::See docs/firebase-distribution.md - it is the only remaining step."
           fi
 
       - name: Upload to Firebase App Distribution
         if: steps.firebase.outputs.ready == 'true'
         env:
           BUILD_NUMBER: ${{ github.run_number }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         run: |
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/firebase-key.json"
           export FIREBASE_CREDENTIALS_FILE="$RUNNER_TEMP/firebase-key.json"

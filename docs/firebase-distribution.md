@@ -1,79 +1,64 @@
 # Distributing test builds through Firebase
 
-CI already assembles a signed release APK on every push to `main` and uploads it as a
-workflow artifact. Distribution to testers needs two secrets that only you can create,
-because they come from your Firebase project. Until they exist the distribute job runs,
-logs a notice and succeeds — a missing credential does not break the build.
+Project: **`aisudoku-xmelon`** (number 52623658492)
+Android app: **`1:52623658492:android:dbb8616352a8d44e29f679`**, package `io.github.tonyxmelon.aisudoku`
 
-## What has to be done once
+## What is already set up
 
-**1. Register the Android app in the Firebase project.**
+- The Android app is registered in the Firebase project.
+- A tester group `testers` exists. It is **empty**, so no build has emailed anybody.
+- Two releases have been distributed successfully, so the path is proven working:
+  `0.1.1 (1)` and `0.1.2 (2)`.
+- The app id is committed in `app/build.gradle.kts`. It is not a secret - it is derivable
+  from any built APK - so a fresh clone can distribute without configuration.
+- CI builds a release APK on every push and uploads it as a workflow artifact.
 
-In [the console](https://console.firebase.google.com/u/2/project/aisudoku-xmelon/overview),
-add an Android app with the package name:
+`google-services.json` is deliberately **not** used. The app links no Firebase SDK and
+makes no network calls; distribution is purely a build-time concern.
 
-```
-io.github.tonyxmelon.aisudoku
-```
+## Distributing from this machine
 
-This must match exactly; App Distribution keys builds off it. Downloading
-`google-services.json` is *not* required — the app makes no network calls and links no
-Firebase SDK, so nothing in it reads that file. Distribution is a build-time concern only.
+The Firebase CLI is already signed in, so this works as-is:
 
-**2. Copy the App ID.**
-
-Project settings → General → Your apps → App ID. It looks like:
-
-```
-1:123456789012:android:0123456789abcdef
+```bash
+BUILD_NUMBER=$(date +%s) ./gradlew :app:assembleRelease && firebase appdistribution:distribute app/build/outputs/apk/release/app-arm64-v8a-release.apk --app 1:52623658492:android:dbb8616352a8d44e29f679 --release-notes-file docs/release-notes.txt --groups testers --project aisudoku-xmelon
 ```
 
-**3. Create a service account key.**
+## The one remaining step: distributing from CI
 
-In the Google Cloud console for the same project, create a service account, grant it the
-**Firebase App Distribution Admin** role, and create a JSON key. The whole JSON file
-becomes the secret value.
+CI cannot use the signed-in CLI, because that credential lives only on this machine. It
+needs a service account instead, and creating one is the single thing that has to be done
+by hand:
 
-**4. Add both as GitHub repository secrets.**
+1. In the [Google Cloud console](https://console.cloud.google.com/iam-admin/serviceaccounts?project=aisudoku-xmelon)
+   for `aisudoku-xmelon`, create a service account.
+2. Grant it the **Firebase App Distribution Admin** role.
+3. Create a JSON key for it and download the file.
+4. In GitHub: `Settings → Secrets and variables → Actions → New repository secret`, named
+   **`FIREBASE_SERVICE_ACCOUNT`**, with the entire contents of the JSON file as the value.
 
-`Settings → Secrets and variables → Actions → New repository secret`:
+That is the only secret needed; the app id is already committed. The next push to `main`
+will distribute automatically. Until then CI logs a warning and still succeeds, so the
+build is never broken by a credential it does not have.
 
-| Secret | Value |
-| --- | --- |
-| `FIREBASE_APP_ID` | the App ID from step 2 |
-| `FIREBASE_SERVICE_ACCOUNT` | the entire contents of the JSON key file |
+**This step is deliberately left to you.** The key can publish builds to your testers, and
+it should not pass through anything but your own hands and GitHub's secret store.
 
-**5. Create a tester group called `testers`.**
+## Adding testers
 
-App Distribution → Testers & Groups. The Gradle config distributes to that group by
-name; change `groups` in `app/build.gradle.kts` if you would rather call it something
-else.
+The group is empty, which is why no build has notified anyone. Add people in
+[App Distribution → Testers & Groups](https://console.firebase.google.com/project/aisudoku-xmelon/appdistribution),
+or from the CLI:
 
-That is all. The next push to `main` distributes a build.
+```bash
+firebase appdistribution:testers:add your.email@example.com --project aisudoku-xmelon
+```
 
-## Why the credential is handled this way
-
-The service account key is a credential with permission to publish builds to your
-testers. It is never committed, never written to the repository, and in CI it exists only
-as a temporary file that is deleted in the same step that uses it. `.gitignore` also
-blocks the obvious filenames in case one is ever downloaded into the working tree.
-
-The App ID is not secret, but it lives beside the key so that a clone with neither still
-builds. `app/build.gradle.kts` reads both from the environment and falls back to empty
-strings, which is why the build works untouched on a machine that has never seen them.
+Adding a tester sends them an invitation email, which is why it has been left for you to do.
 
 ## Signing
 
-Release builds are currently signed with the debug key. That is fine for App
-Distribution — testers install the APK directly — but it is **not** publishable to Google
-Play, which requires a real upload key. When that time comes, add a keystore as a further
-set of secrets and point `signingConfigs` at it.
-
-## Running a distribution by hand
-
-```bash
-FIREBASE_APP_ID=1:...:android:... \
-FIREBASE_CREDENTIALS_FILE=/path/to/key.json \
-BUILD_NUMBER=1 \
-./gradlew :app:assembleRelease appDistributionUploadRelease
-```
+Release builds are signed with the debug key. That is fine for App Distribution, where
+testers install the APK directly, but it is **not** publishable to Google Play, which
+requires a real upload key. When that time comes, add a keystore as further secrets and
+point `signingConfigs` at it.

@@ -51,10 +51,12 @@ android {
 }
 
 firebaseAppDistributionDefault {
-    // Everything identifying or authenticating comes from the environment. The service
-    // account key is a credential and must never be committed; the app id is not secret
-    // but lives with it so the build works untouched on a machine that has neither.
-    appId = System.getenv("FIREBASE_APP_ID") ?: ""
+    // The app id identifies the Firebase app and is not a secret - it is derivable from
+    // any built APK - so it is committed and the build works out of the box. The service
+    // account key IS a credential, so it only ever arrives through the environment and
+    // is never written to the repository.
+    appId = System.getenv("FIREBASE_APP_ID")
+        ?: "1:52623658492:android:dbb8616352a8d44e29f679"
     serviceCredentialsFile = System.getenv("FIREBASE_CREDENTIALS_FILE") ?: ""
     releaseNotesFile = "$rootDir/docs/release-notes.txt"
     groups = "testers"
