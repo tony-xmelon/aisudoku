@@ -50,3 +50,38 @@ class TechniqueSolverTest {
         assertIs<TechniqueOutcome.Invalid>(TechniqueSolver.solve(Puzzles.CONTRADICTORY))
     }
 }
+
+/**
+ * Records how far the four implemented techniques actually reach.
+ *
+ * This is the signal for whether more techniques are worth building: when reasoning
+ * stalls, [ExplainedHintEngine] falls back to a plain reveal, and a user who chose
+ * "explain it" stops getting explanations.
+ */
+class TechniqueReachTest {
+
+    @Test
+    fun `reasoning alone finishes an easy puzzle`() {
+        val outcome = assertIs<TechniqueOutcome.Solved>(TechniqueSolver.solve(Puzzles.EASY))
+        println("EASY: solved in ${outcome.steps.size} steps, graded ${outcome.difficulty}")
+    }
+
+    @Test
+    fun `the reach on the hardest known puzzle is recorded`() {
+        when (val outcome = TechniqueSolver.solve(Puzzles.HARDEST)) {
+            is TechniqueOutcome.Solved ->
+                println("HARDEST: solved in ${outcome.steps.size} steps, graded ${outcome.difficulty}")
+
+            is TechniqueOutcome.Stuck -> {
+                val placed = outcome.partial.filledCount - Puzzles.HARDEST.givenCount
+                println(
+                    "HARDEST: stuck after ${outcome.steps.size} steps, " +
+                        "placed $placed of the ${81 - Puzzles.HARDEST.givenCount} missing digits"
+                )
+                assertTrue(outcome.partial.filledCount >= Puzzles.HARDEST.givenCount)
+            }
+
+            TechniqueOutcome.Invalid -> error("the hardest puzzle is a valid puzzle")
+        }
+    }
+}

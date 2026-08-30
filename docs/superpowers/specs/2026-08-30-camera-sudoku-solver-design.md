@@ -354,6 +354,14 @@ The working surface is the rectified photo with an overlay drawn on top.
 The technique solver also grades puzzle difficulty as a by-product, from the hardest technique
 required to finish.
 
+**Known limit, measured.** The four implemented techniques — naked single, hidden single, pointing
+pair, box line reduction — finish an easy puzzle in around 45 steps, but find *nothing at all* on
+Arto Inkala's 2012 puzzle: reasoning stalls before placing a single digit. On puzzles that hard,
+*Explain it* silently degrades to *Just the digit* via the fallback. That is the correct behaviour
+— a user who asks for help must get help — but it means the explanation feature is only as good as
+the technique list. Whether to extend it should be decided from real puzzles, by measuring how
+often the fallback fires, not from this one adversarial case.
+
 ## 8. Testing
 
 **Solver and hints** — TDD on the JVM. Generated puzzles checked for uniqueness, a set of known hard
@@ -422,9 +430,9 @@ against 6.
 
 | | Deliverable |
 | --- | --- |
-| M0 | Repo, project skeleton, CI, JDK 21 toolchain pinned, empty app builds and runs |
-| M1 | `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
-| M2 | Technique solver and `HintEngine`, both hint styles, TDD |
+| M0 | DONE — Repo, project skeleton, CI, JDK 21 toolchain pinned, empty app builds and runs |
+| M1 | DONE — `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
+| M2 | DONE — Technique solver and `HintEngine`, both hint styles, TDD |
 | M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the structural early-out, the labelling helper and the regression harness, run against `corpus/` |
 | M4 | Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
 | M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair, and the certainty verdict of section 4.2. End to end from a still image |
