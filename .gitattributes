@@ -1,0 +1,10 @@
+# Keep line endings sane across Windows development and Linux CI.
+* text=auto eol=lf
+
+# gradlew is executed by /bin/sh on CI; CRLF breaks the shebang.
+gradlew text eol=lf
+*.bat text eol=crlf
+
+*.jar binary
+*.jpg binary
+*.png binary
