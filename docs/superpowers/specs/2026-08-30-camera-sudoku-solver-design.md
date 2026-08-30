@@ -35,6 +35,8 @@ tapping the cell.
 | Guess recognition | Per-cell CNN | Handwriting varies too much within one grid for clustering to be safe in v1. |
 | Cell geometry | Detected interior grid lines | Also from the corpus: paper curls and bows, so dividing the rectified square into ninths crops digits near the edges. |
 | Error correction | The solver validates the read | A published sudoku has exactly one solution, so a read that is unsolvable or ambiguous is provably wrong. This replaces the cloud safety net. |
+| Photo acceptance | Strict gate, refuse marginal input | A confidently wrong grid is the worst failure this app has: the user cannot detect it until the puzzle is ruined. A retake costs three seconds. |
+| Training and data | Entirely local | Corpus photographs and model training stay on the development machine; nothing is uploaded and the corpus is not committed. |
 | Hint style | User setting | Both a plain reveal and a technique explanation are built; the user picks in settings. |
 | Working surface | The rectified photo | The captured photo, straightened. Overlay geometry becomes trivial and it looks better than a tilted original. |
 
@@ -129,6 +131,68 @@ Messages are hysteretic — a message must hold for several frames before replac
 sharpness is above threshold, fire `takePicture()`. A manual shutter button is always present as an
 escape hatch, and auto-capture can be turned off in settings.
 
+### 4.1 Acceptance gate
+
+**A photo must earn the right to be processed.** The app refuses marginal input rather than
+producing a plausible wrong grid from it. A wrong answer delivered confidently is the worst
+outcome this app can produce: the user cannot tell it is wrong until they have wasted the puzzle.
+A retake costs three seconds.
+
+The gate runs twice against the same criteria. **Before capture**, on preview frames, driving the
+guidance text in the table above — so a rejection after the shutter should be rare. **After
+capture**, on the full-resolution still after rectification and line fitting, because several
+checks are only meaningful at full resolution.
+
+**Geometry**
+
+| Check | Starting threshold |
+| --- | --- |
+| Quad found and closed | required |
+| All ten horizontal and ten vertical interior lines located | required |
+| Interior line spacing regularity (coefficient of variation) | <= 0.15 |
+| Rectified grid side in the captured still | >= 700px, i.e. about 78px per cell |
+| Grid share of the shorter frame dimension | >= 30% |
+| Corner angles after rectification | 90 +/- 15 degrees |
+| Ratio between opposite side lengths | <= 1.25 |
+| Rotation from upright | within +/- 15 degrees |
+| Fitted line bow, as deviation from straight | below tolerance |
+
+Upright matters because a sudoku grid is rotationally symmetric — the grid itself cannot tell us
+which way is up, only the digits can. Requiring near-upright input avoids that problem entirely in
+v1. Detecting orientation by classifying at four rotations and keeping the most confident is a
+later enhancement.
+
+**Photometry**
+
+| Check | Starting threshold |
+| --- | --- |
+| Laplacian variance over the grid region | above threshold |
+| Per-quadrant sharpness against the grid median | each >= 60% |
+| Clipped-white pixels inside the grid, i.e. glare | < 2% |
+| Mean page luma | 80 to 235 of 255 |
+| Illumination ratio, brightest page region over darkest | <= 3.0 |
+| Separation between printed line darkness and page white | above threshold |
+
+Sharpness is measured on the grid region, not the frame, because a sharp background behind a
+blurred page would otherwise pass. The per-quadrant check catches a shot that focused on one
+corner. The illumination ratio must stay loose enough to admit the shadowed corpus photo, which is
+usable — calibrating against it is the point of having it.
+
+All thresholds above are starting values to be tuned against the corpus, not fixed constants.
+
+### 4.2 What rejection looks like
+
+Two tiers, because a hard block with no way through is its own kind of failure:
+
+- **Hard reject** — no grid, resolution below the floor, no interior line structure, severe blur.
+  Processing genuinely cannot work. Back to the camera.
+- **Soft reject** — everything found, but a check passed only narrowly. Offer *Use it anyway*,
+  and if taken, open the result with the correction UI already showing the weakest cells.
+
+Rejection always names the specific failure and what to do about it — *Move closer, the grid is
+too small to read*, *Part of the grid is cut off*, *Too blurry, hold still* — never a generic
+failure message. The user is being asked to do something, so they have to be told what.
+
 ## 5. Reading the grid
 
 Homography from the quad to a 1152x1152 square, 128px per cell.
@@ -221,15 +285,19 @@ puzzle books. This is the single largest technical risk in the project.
 A published sudoku has exactly one solution. That makes the solver a proof-checker for the
 recognizer, which is what replaces the cloud safety net.
 
-1. Take the givens. Check for duplicates in any row, column, or box.
-2. Count solutions, capped at 2.
-3. **Exactly one** -> accept the read.
-4. **Zero or more than one** -> something was misread. Rank cells by the margin between the
+1. **Givens count sanity.** Fewer than 17 givens cannot yield a unique solution — 17 is the proven
+   minimum for a proper sudoku — so a read below that is definitely wrong, and almost always means
+   givens were misclassified as guesses. A completely filled grid of 81 givens is legitimate: it is
+   a printed solution, which the app is expected to accept.
+2. Take the givens. Check for duplicates in any row, column, or box.
+3. Count solutions, capped at 2.
+4. **Exactly one** -> accept the read.
+5. **Zero or more than one** -> something was misread. Rank cells by the margin between the
    classifier's top two candidates, smallest margin first. Enumerate alternatives for the weakest
    cells in order of likelihood — including "actually empty" and "given and guess were swapped" —
    searching under a node and time budget for a reading that yields a unique puzzle. Accept the first
    one found.
-5. **Nothing found** -> open the correction UI with the least-confident cells already highlighted, so
+6. **Nothing found** -> open the correction UI with the least-confident cells already highlighted, so
    the user fixes three cells rather than hunting across 81.
 
 More than one solution is the informative case: it usually means a given was dropped rather than
@@ -276,6 +344,11 @@ A small labelling helper (local HTML page or CLI) is part of the work.
 | `IMG20260830142308` | Unsolved, printed only. Strong straight background edges to mislead quad detection. |
 | `IMG20260830142356` | Partly solved with bold dark handwriting. Shadow across the page, page bowed on a clipboard, busy background. |
 
+**The corpus contains no rejects.** Every photograph in it is usable, so it cannot test the
+acceptance gate of section 4.1 at all. That gate needs deliberately bad input: shot from too far,
+out of focus, grid partly out of frame, heavy glare, steeply angled, page folded. These are
+quick to produce and each one should be labelled with the rejection reason it ought to trigger.
+
 **Known gaps.** One puzzle source means one font. One device, all shots roughly overhead at
 similar distance. No low light, no glare or specular highlight, no newsprint or magazine stock, no
 photographs of a screen, no steep angles, no landscape orientation.
@@ -300,6 +373,7 @@ against 6.
 | Paper curl and bow misaligning cells toward the edges | Cell corners taken from fitted interior grid lines instead of dividing the square into ninths |
 | Background straight lines mistaken for the grid | A quad is rejected unless it contains a 9x9 interior line structure |
 | Candidate marks read as answers | Blob height measured against the printed digit height established by clustering; marks run about a third of answer height and sit high in the cell |
+| Acceptance gate tuned too strictly, so the app feels fussy and will not capture | Thresholds are tuned against the corpus, not fixed; soft rejects always offer *Use it anyway*; the live guidance tells the user how to satisfy the gate rather than just refusing |
 | Corpus is single-source and single-device | Accuracy measured on it is optimistic. Broaden before trusting a number or shipping |
 | JDK 25 is newer than current AGP supports | Pin a JDK 21 toolchain in M0 and verify the build before anything else is written |
 | OpenCV adds roughly 20MB | arm64-only ABI via App Bundle; revisit only if it becomes a problem |
@@ -313,10 +387,10 @@ against 6.
 | M0 | Repo, project skeleton, CI, JDK 21 toolchain pinned, empty app builds and runs |
 | M1 | `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
 | M2 | Technique solver and `HintEngine`, both hint styles, TDD |
-| M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the labelling helper and the regression harness, run against `corpus/` |
+| M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the post-capture acceptance gate, the labelling helper and the regression harness, run against `corpus/` |
 | M4 | Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
 | M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair. End to end from a still image |
-| M6 | CameraX live guidance and auto-capture |
+| M6 | CameraX live guidance, the same gate applied to preview frames, and auto-capture |
 | M7 | Overlay modes and settings |
 | M8 | Correction UI |
 | M9 | Polish, permissions, error states, release build |
