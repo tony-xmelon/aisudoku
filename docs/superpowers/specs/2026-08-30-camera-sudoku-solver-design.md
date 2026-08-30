@@ -31,7 +31,9 @@ tapping the cell.
 | Recognition | Entirely on device | No API key is available, and offline is the better product anyway: no backend, no per-solve cost, no privacy exposure, works with no signal, nothing to rate limit. |
 | Cloud fallback | Not built, but not designed out | `GridReader` sits behind an interface. A cloud second opinion could be added later without disturbing anything above it. |
 | Given recognition | Glyph clustering plus CNN voting | Every printed digit in one photo shares a font and size, so the 81 cells collapse to roughly 9 clusters. Voting within a cluster plus a distinct-label constraint makes the givens near-certain. |
+| Given versus guess | Cluster tightness, not ink darkness | Revised after reviewing the corpus: one photo has handwriting drawn as dark as the print beside it. Printed digits are mechanically identical to one another; handwriting never is. |
 | Guess recognition | Per-cell CNN | Handwriting varies too much within one grid for clustering to be safe in v1. |
+| Cell geometry | Detected interior grid lines | Also from the corpus: paper curls and bows, so dividing the rectified square into ninths crops digits near the edges. |
 | Error correction | The solver validates the read | A published sudoku has exactly one solution, so a read that is unsolvable or ambiguous is provably wrong. This replaces the cloud safety net. |
 | Hint style | User setting | Both a plain reveal and a technique explanation are built; the user picks in settings. |
 | Working surface | The rectified photo | The captured photo, straightened. Overlay geometry becomes trivial and it looks better than a tilted original. |
@@ -41,8 +43,9 @@ tapping the cell.
 ```
 core:model      pure Kotlin   Digit, Cell, CellSource, Grid, RecognizedGrid, CellReading
 core:solver     pure Kotlin   backtracking solver, uniqueness counter, technique solver, HintEngine
-core:vision     Android       GridDetector, FramingAdvisor, Rectifier, CellExtractor  (OpenCV)
-core:recognize  Android       DigitClassifier (LiteRT), StyleClassifier, GlyphClusterer,
+core:vision     Android       GridDetector, FramingAdvisor, Rectifier, GridLineFitter,
+                              CellExtractor  (OpenCV)
+core:recognize  Android       InkTriage, GlyphClusterer, DigitClassifier (LiteRT),
                               GridReader, SolverGuidedRepair
 app             Android       CameraX pipeline, Compose UI, overlay, settings, correction screen
 ```
@@ -93,6 +96,17 @@ full-resolution still once we commit.
 quadrilateral that covers at least 25% of the frame and is roughly square once perspective is
 corrected.
 
+**Detect the printed grid border, not the sheet of paper.** In the corpus the paper is often
+almost the same luminance as the table it lies on, while the printed border is stark black in
+every shot. The paper edge is also the wrong target in principle — the page carries a puzzle
+number, a URL and a difficulty label outside the grid.
+
+**Confirm the quad before trusting it.** Backgrounds contain long straight edges — wood-plank
+seams, table edges, a clipboard, floor tiles all appear in the corpus. A candidate quad is
+accepted only if, after rectification, it contains roughly nine evenly spaced horizontal and nine
+vertical interior lines. This doubles as the "that is actually a sudoku" test for live guidance,
+so the app does not sit saying *Hold still...* at a picture frame.
+
 **Guidance.** `FramingAdvisor` maps the quad plus frame statistics to exactly one line of text,
 first matching rule wins:
 
@@ -117,54 +131,75 @@ escape hatch, and auto-capture can be turned off in settings.
 
 ## 5. Reading the grid
 
-Homography from the quad to a 1152x1152 square, 128px per cell. Each cell is cropped with an inner
-margin so grid lines are excluded.
+Homography from the quad to a 1152x1152 square, 128px per cell.
+
+**Cell boundaries come from the detected interior lines, not from dividing by nine.** Paper is not
+flat: in the corpus one sheet is visibly curled and another is bowed over a clipboard. A single
+planar homography leaves cells progressively misaligned toward the edges, which crops digits.
+After the initial rectification, locate the ten horizontal and ten vertical grid lines and use
+their actual intersections as cell corners. Each cell is then cropped with an inner margin so the
+lines themselves are excluded.
 
 ### 5.1 Ink triage
 
-Otsu binarize the cell, then connected components:
+Per-cell adaptive threshold — global thresholding fails on the corpus shot with a shadow across
+the page — then connected components. Every blob in the cell is classified individually by height
+relative to the printed digit height, which section 5.2 establishes precisely, and by its position
+in the cell:
 
-- no significant ink -> **empty**
-- ink only near the cell border, or several small scattered blobs -> **discarded marks**, cell reads
-  empty with `hadDiscardedMarks = true`
-- one dominant central blob -> **a digit**, continue
+- **answer-sized, roughly centred** -> a digit, continue to recognition
+- **roughly a third of digit height, sitting high in the cell** -> a candidate mark, discarded
+- **faint, diffuse, low edge gradient** -> eraser residue, discarded
 
-### 5.2 Style: given or guess
+A cell keeps its answer blob even when candidate marks or residue are also present; those cells
+are common in the corpus. `hadDiscardedMarks` records that something was thrown away.
 
-Decided from how the ink looks, never from which digit it is. Per-cell features: mean saturation and
-darkness of ink pixels, stroke-width variance, offset of the blob centroid from the cell centre, and
-blob size relative to the median across the grid.
+**Eraser residue needs an absolute darkness floor, not just a relative threshold.** In the
+completed puzzle in the corpus, most cells carry grey smudge and some carry the ghost of a rubbed
+out digit. Otsu on such a cell happily reports "ink". A blob must be dark enough in absolute terms
+relative to the page white, and have sharp enough edges, to count.
 
-These are clustered across all 81 cells rather than thresholded per cell. Printed digits form a tight
-cluster — same ink, same size, same position; handwriting scatters. Judging a cell against its 80
-neighbours is far more robust than judging it alone.
+### 5.2 Glyph clustering, which decides both what is printed and what it says
 
-The user can always toggle a cell between given and guess. Nothing downstream blocks on this being
-automatic.
+Clustering runs *before* style detection, because the clustering is what reveals the style. This
+is a correction to an earlier version of this design, which proposed deciding given-versus-guess
+from ink darkness and saturation and then clustering the printed set afterwards.
 
-### 5.3 Givens: glyph clustering
+**Darkness does not separate the two.** One corpus photo has handwritten digits drawn firmly
+enough to be as dark as the printed ones sitting beside them. Any threshold that catches the
+pencil in the faint photos misclassifies the bold handwriting in that one.
 
-This is the accuracy centrepiece. Within a single photo every printed digit is the same font at the
-same size, so the printed cells collapse into a handful of visually identical groups.
+**Uniformity separates them perfectly.** Printed digits within one photo are mechanically
+identical: one font, one size, the same offset within every cell. Handwriting is never identical
+to itself. So cluster tightness *is* the style signal.
 
-1. Normalize each printed glyph: deskew, binarize, centre by mass, scale to a fixed box.
-2. Pairwise distance over the printed set — binary mask Hamming distance after alignment. At most 81
-   glyphs, so at most ~3,240 comparisons. Negligible cost.
-3. Agglomerative clustering with a distance threshold. Expect at most 9 clusters.
-4. Label each cluster: run the CNN on every member, average the softmax across the cluster, and take
-   the result. Averaging over several members cancels per-cell noise.
-5. Enforce distinct labels across clusters by solving it as an assignment problem (Hungarian
-   algorithm, cost = negative mean log-probability). Two clusters cannot both claim to be an 8.
-6. Sanity checks: more than 9 members in a cluster means the threshold over-merged; more than 9
-   clusters means it over-split. Either triggers a threshold retry.
+1. Normalize every answer-sized blob in the grid: deskew, binarize, centre by mass, scale to a
+   fixed box.
+2. Pairwise distance — Hamming distance over aligned binary masks. At most 81 glyphs, so at most
+   ~3,240 comparisons. Negligible cost.
+3. Agglomerative clustering at a tight threshold.
+4. **The printed set** is the clusters that are tight, hold two or more members, and whose members
+   agree on height and on offset within the cell. Everything else is handwriting.
+5. The printed glyph height becomes the reference height that section 5.1 uses to tell answers
+   from candidate marks. The two stages are mutually dependent, so triage runs twice: once with a
+   provisional height estimate, then again once the printed clusters have fixed it.
+6. Label each printed cluster: run the CNN on every member, average the softmax across the
+   cluster, take the result. Averaging over several members cancels per-cell noise.
+7. Enforce distinct labels across clusters as an assignment problem (Hungarian algorithm,
+   cost = negative mean log-probability). Two clusters cannot both claim to be an 8.
+8. Sanity checks: a cluster with more than nine members means the threshold over-merged; more than
+   nine printed clusters means it over-split. Either triggers a retry at an adjusted threshold.
 
-The effect is that a mediocre classifier still produces excellent givens, and givens are what the
-entire solve depends on.
+**The singleton problem.** A digit printed only once in the grid forms a one-member cluster and
+looks like handwriting by the rule in step 4. Guard: once the multi-member printed clusters have
+established the printed height, cell offset and stroke weight, test each singleton against that
+geometry. A singleton that matches is printed.
 
-Clustering handwriting the same way is plausible — one person's digits are also consistent — but
-there are fewer instances per digit and far more variance, so it is a later enhancement, not v1.
+Ink darkness and saturation survive as a weak secondary prior, useful for breaking ties, but they
+no longer decide anything on their own. And the user can always toggle a cell between given and
+guess — nothing downstream blocks on this being automatic.
 
-### 5.4 Guesses: per-cell CNN
+### 5.3 Guesses: per-cell CNN
 
 Blob centred by mass and size-normalized to 20x20 inside a 28x28 box. This is the MNIST convention,
 and matching the preprocessing matters more than the model architecture does.
@@ -227,10 +262,28 @@ puzzles, and hand-built fixtures for each technique with the expected explanatio
 JSON of digit and source, plus a runner that reports per-cell digit accuracy, given/guess accuracy,
 and end-to-end unique-solve rate. Without this, "did that change help?" has no answer.
 
-This requires 20-30 photographs of real puzzles — printed, partly solved, various lighting, glossy
-and matte paper. Gathering them is the highest-leverage contribution to accuracy in the whole project
-and should happen early, before the classifier is tuned. A small labelling helper (local HTML page or
-CLI) is part of the work.
+A small labelling helper (local HTML page or CLI) is part of the work.
+
+**Corpus as of 2026-08-30: six photographs in `corpus/`,** 3000x4000, one puzzle source
+(sudoku.cba.si), one device. Between them they exercise most of the pipeline:
+
+| File | What it tests |
+| --- | --- |
+| `IMG20260830142203` | Completed grid, all answers in pencil. Heavy eraser residue and ghost digits. Curled paper. Dark background, high paper contrast. |
+| `IMG20260830142243` | Partly solved. Dense multi-digit candidate marks. Faint pencil answers alongside bold print. |
+| `IMG20260830142250` | Mostly empty, dense and very faint candidate marks. Paper barely brighter than the table. |
+| `IMG20260830142301` | Unsolved, printed only. The clean baseline. |
+| `IMG20260830142308` | Unsolved, printed only. Strong straight background edges to mislead quad detection. |
+| `IMG20260830142356` | Partly solved with bold dark handwriting. Shadow across the page, page bowed on a clipboard, busy background. |
+
+**Known gaps.** One puzzle source means one font. One device, all shots roughly overhead at
+similar distance. No low light, no glare or specular highlight, no newsprint or magazine stock, no
+photographs of a screen, no steep angles, no landscape orientation.
+
+This is enough to build the pipeline and the harness against, and enough to catch real regressions.
+It is **not** enough to quote an accuracy figure from — a number measured on six same-source
+photographs will be optimistic. Broadening to 20-30 across the gaps above should happen before any
+tuning conclusion is trusted, and before release.
 
 **Classifier** — held-out accuracy and a confusion matrix. Watch 1 against 7, 3 against 8, and 5
 against 6.
@@ -242,7 +295,12 @@ against 6.
 | Risk | Mitigation |
 | --- | --- |
 | Handwriting accuracy, the dominant risk | Solver-guided repair, cheap manual correction, and real photographs in the training and evaluation corpus |
-| Given and guess confused when someone writes in black pen | Manual toggle; nothing in the core flow blocks on automatic detection |
+| Given and guess confused when someone writes dark, as in one corpus photo | Style comes from cluster tightness rather than darkness; manual toggle as the backstop |
+| Eraser residue and ghost digits read as ink | Absolute darkness floor plus an edge-sharpness test in triage. The completed-puzzle photo is the regression case |
+| Paper curl and bow misaligning cells toward the edges | Cell corners taken from fitted interior grid lines instead of dividing the square into ninths |
+| Background straight lines mistaken for the grid | A quad is rejected unless it contains a 9x9 interior line structure |
+| Candidate marks read as answers | Blob height measured against the printed digit height established by clustering; marks run about a third of answer height and sit high in the cell |
+| Corpus is single-source and single-device | Accuracy measured on it is optimistic. Broaden before trusting a number or shipping |
 | JDK 25 is newer than current AGP supports | Pin a JDK 21 toolchain in M0 and verify the build before anything else is written |
 | OpenCV adds roughly 20MB | arm64-only ABI via App Bundle; revisit only if it becomes a problem |
 | Glare and shadow on glossy paper | The framing advisor refuses to auto-capture until it clears |
@@ -255,9 +313,9 @@ against 6.
 | M0 | Repo, project skeleton, CI, JDK 21 toolchain pinned, empty app builds and runs |
 | M1 | `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
 | M2 | Technique solver and `HintEngine`, both hint styles, TDD |
-| M3 | Vision pipeline — detection, rectification, cell extraction — validated on static images |
+| M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the labelling helper and the regression harness, run against `corpus/` |
 | M4 | Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
-| M5 | `GridReader`: ink triage, style clustering, glyph clustering, solver-guided repair. End to end from a still image |
+| M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair. End to end from a still image |
 | M6 | CameraX live guidance and auto-capture |
 | M7 | Overlay modes and settings |
 | M8 | Correction UI |
