@@ -35,3 +35,5 @@ firebase-service-account*.json
 tools/recognizer/data/
 tools/recognizer/*.pt
 tools/recognizer/*.onnx
+tools/recognizer/digits.bin
+tools/recognizer/digits.json

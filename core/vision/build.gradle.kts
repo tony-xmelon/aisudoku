@@ -1,5 +1,9 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    // Corpus loading is shared with :core:recognize, so it lives in test fixtures
+    // rather than being duplicated. Degrade stays in `test`: it touches internal
+    // members, and a separate compilation cannot see those.
+    `java-test-fixtures`
 }
 
 kotlin {
@@ -14,6 +18,8 @@ dependencies {
     compileOnly(libs.opencv.jvm)
     testImplementation(libs.opencv.jvm)
     testImplementation(kotlin("test"))
+    testFixturesImplementation(libs.opencv.jvm)
+    testFixturesApi("org.junit.jupiter:junit-jupiter-api:5.11.4")
 }
 
 tasks.test {

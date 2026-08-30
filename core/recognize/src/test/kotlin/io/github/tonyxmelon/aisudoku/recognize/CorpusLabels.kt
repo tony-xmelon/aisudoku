@@ -1,0 +1,67 @@
+package io.github.tonyxmelon.aisudoku.recognize
+
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import java.io.File
+
+/**
+ * Hand-transcribed ground truth for the corpus photographs.
+ *
+ * The labels are committed even though the photographs are not, so this checks for both
+ * and skips when either is missing. Each file holds two nine-row blocks: `givens` is
+ * what is printed, `written` is everything on the paper.
+ *
+ * Every label was machine-verified when written: each givens block has exactly one
+ * solution, and for the completed puzzle that solution equals the written grid.
+ */
+object CorpusLabels {
+
+    enum class Source { GIVEN, GUESS, EMPTY }
+
+    data class Truth(val digit: Int?, val source: Source)
+
+    private val directory = File("../../corpus-labels").canonicalFile
+
+    val isAvailable: Boolean get() = directory.isDirectory && (directory.listFiles()?.isNotEmpty() == true)
+
+    fun requireLabels() {
+        assumeTrue(isAvailable, "corpus labels not found at $directory")
+    }
+
+    /** The 81 cells of one photograph, row-major, or null when it has no label file. */
+    fun forPhoto(photoName: String): List<Truth>? {
+        val file = File(directory, photoName.substringBeforeLast('.') + ".json")
+        if (!file.isFile) return null
+        val text = file.readText()
+
+        val givens = block(text, "givens")
+        val written = block(text, "written")
+        require(givens.length == 81 && written.length == 81) {
+            "${file.name}: expected 81 cells, got ${givens.length} and ${written.length}"
+        }
+
+        return (0 until 81).map { i ->
+            when {
+                givens[i] != '.' -> Truth(givens[i] - '0', Source.GIVEN)
+                written[i] != '.' -> Truth(written[i] - '0', Source.GUESS)
+                else -> Truth(null, Source.EMPTY)
+            }
+        }
+    }
+
+    /**
+     * Pulls one named array of nine-character strings out of the JSON.
+     *
+     * Hand-parsed rather than pulling in a JSON library for two fields in a file this
+     * regular; the shape is fixed by the generator that writes it.
+     */
+    private fun block(text: String, name: String): String {
+        val start = text.indexOf("\"$name\"")
+        require(start >= 0) { "no \"$name\" array in the label file" }
+        val open = text.indexOf('[', start)
+        val close = text.indexOf(']', open)
+        require(open in 0 until close) { "malformed \"$name\" array" }
+        return Regex("\"([.1-9]{9})\"")
+            .findAll(text.substring(open, close))
+            .joinToString("") { it.groupValues[1] }
+    }
+}

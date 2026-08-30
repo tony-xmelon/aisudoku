@@ -12,3 +12,4 @@ dependencyResolutionManagement {
 include(":core:model")
 include(":core:solver")
 include(":core:vision")
+include(":core:recognize")
