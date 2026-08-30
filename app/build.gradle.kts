@@ -57,7 +57,14 @@ firebaseAppDistributionDefault {
     // is never written to the repository.
     appId = System.getenv("FIREBASE_APP_ID")
         ?: "1:52623658492:android:dbb8616352a8d44e29f679"
-    serviceCredentialsFile = System.getenv("FIREBASE_CREDENTIALS_FILE") ?: ""
+
+    // Only set this when a file is genuinely supplied. An empty string counts as a
+    // configured path, which the plugin resolves against the project directory and then
+    // fails on - before it ever falls through to FIREBASE_TOKEN.
+    System.getenv("FIREBASE_CREDENTIALS_FILE")
+        ?.takeIf { it.isNotBlank() }
+        ?.let { serviceCredentialsFile = it }
+
     releaseNotesFile = "$rootDir/docs/release-notes.txt"
     groups = "testers"
 }
