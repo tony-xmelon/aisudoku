@@ -1,5 +1,3 @@
-import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -52,7 +50,7 @@ android {
     }
 }
 
-firebaseAppDistribution {
+firebaseAppDistributionDefault {
     // Everything identifying or authenticating comes from the environment. The service
     // account key is a credential and must never be committed; the app id is not secret
     // but lives with it so the build works untouched on a machine that has neither.

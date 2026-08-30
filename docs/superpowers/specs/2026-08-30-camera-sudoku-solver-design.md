@@ -457,12 +457,12 @@ against 6.
 | M1 | DONE — `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
 | M2 | DONE — Technique solver and `HintEngine`, both hint styles, TDD |
 | M3 | DONE — Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the structural early-out, the labelling helper and the regression harness, run against `corpus/` |
-| M4 | Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
-| M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair, and the certainty verdict of section 4.2. End to end from a still image |
-| M6 | CameraX live guidance, the preview checks of section 4.1, and auto-capture |
-| M7 | Overlay modes and settings |
-| M8 | Correction UI |
-| M9 | Polish, permissions, error states, release build |
+| M4 | DONE — Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
+| M5 | DONE — `GridReader`: ink triage, glyph clustering and style, solver-guided repair, and the certainty verdict of section 4.2. End to end from a still image |
+| M6 | DONE — CameraX live guidance, the preview checks of section 4.1, and auto-capture |
+| M7 | DONE — Overlay modes and settings |
+| M8 | DONE — Correction UI |
+| M9 | DONE — Polish, permissions, error states, release build |
 
 M1 through M5 need no phone. The app can read a photograph and produce a solved puzzle before any
 camera code exists — which is the right order, because the camera is the easy part and the recognizer
