@@ -63,6 +63,16 @@ class SolverState private constructor(private val candidates: IntArray) {
         return true
     }
 
+    /**
+     * Removes a candidate without propagating.
+     *
+     * Only for building test fixtures. Production code must use [eliminate] so the
+     * consequences of a removal are followed through.
+     */
+    internal fun forceEliminate(index: Int, digit: Int) {
+        candidates[index] = CandidateSet(candidates[index]).minus(digit).bits
+    }
+
     /** Solved cells become guesses; unsolved cells stay empty. */
     fun toGrid(): Grid = Grid.of(
         (0 until Coordinates.CELL_COUNT).map { i ->
