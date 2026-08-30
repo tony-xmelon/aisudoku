@@ -11,6 +11,9 @@ coreKtx = "1.17.0"
 appDistribution = "5.3.0"
 
 [libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version = "5.11.4" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.11.4" }
 opencv-jvm = { module = "org.openpnp:opencv", version.ref = "opencvJvm" }
 opencv-android = { module = "org.opencv:opencv", version.ref = "opencvAndroid" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }

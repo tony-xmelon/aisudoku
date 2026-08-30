@@ -34,7 +34,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.tonyxmelon.aisudoku.model.CellSource
-import io.github.tonyxmelon.aisudoku.solver.AnswerCheck
 import io.github.tonyxmelon.aisudoku.solver.Hint
 import io.github.tonyxmelon.aisudoku.solver.SolveResult
 
@@ -92,23 +91,11 @@ private fun StatusLine(state: PuzzleState) {
         state.message?.let {
             Text(it, color = Color(0xFFFFD54F), style = MaterialTheme.typography.bodyMedium)
         }
-        when (val result = state.solve) {
-            is SolveResult.Unique -> {
-                val checked = state.check as? AnswerCheck.Checked
-                val wrong = checked?.incorrect?.size ?: 0
-                Text(
-                    if (wrong > 0) "$wrong of your answers are wrong."
-                    else "The puzzle reads correctly and has one solution.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            is SolveResult.None ->
-                Text("These digits do not make a solvable puzzle - fix a cell or retake.",
-                    color = Color(0xFFFF8A80), style = MaterialTheme.typography.bodyMedium)
-            is SolveResult.Multiple ->
-                Text("More than one solution, so a printed digit was probably missed.",
-                    color = Color(0xFFFF8A80), style = MaterialTheme.typography.bodyMedium)
-        }
+        Text(
+            state.status,
+            color = if (state.solve is SolveResult.Unique) Color.Unspecified else Color(0xFFFF8A80),
+            style = MaterialTheme.typography.bodyMedium,
+        )
 
         if (state.overlay == OverlayMode.HINT) {
             when (val hint = state.hint) {
