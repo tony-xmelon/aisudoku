@@ -1,5 +1,7 @@
 # Full-resolution corpus photographs are large (roughly 20MB each) and do not
 # belong in git history. See docs/superpowers/specs for the corpus policy.
+# corpus-labels/ IS committed: the labels are hand-made ground truth and tiny,
+# while the photographs they describe stay local.
 corpus/*.jpg
 corpus/*.jpeg
 corpus/*.png

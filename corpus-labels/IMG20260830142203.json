@@ -1,0 +1,26 @@
+{
+  "photo": "IMG20260830142203.jpg",
+  "givens": [
+    ".........",
+    ".3..5..48",
+    "2..341...",
+    "......6..",
+    "85...91..",
+    ".....5.3.",
+    ".65...4..",
+    "1...2..6.",
+    "....64.97"
+  ],
+  "written": [
+    "546892371",
+    "931756248",
+    "287341956",
+    "479213685",
+    "853679124",
+    "612485739",
+    "765938412",
+    "194527863",
+    "328164597"
+  ],
+  "notes": "Completed in pencil over heavy eraser residue and ghost digits. Curled paper, dark background. Every guess is correct. Validated: givens are unique and their solution equals the written grid."
+}
