@@ -26,10 +26,24 @@ class GridReaderTest {
         var confirmable = 0
         val report = StringBuilder("\n=== grid reader over the corpus ===\n")
 
+        var considered = 0
         for (file in CorpusFixtures.photos) {
-            val truth = CorpusLabels.forPhoto(file.name) ?: continue
             val verdict = assertIs<GateVerdict.Usable>(StructuralGate.assess(CorpusFixtures.load(file)))
             val result = reader.read(verdict.cells)
+            considered++
+
+            // A photograph with no hand-written label still has to yield a grid; it just
+            // cannot be scored for accuracy.
+            val truth = CorpusLabels.forPhoto(file.name)
+            if (truth == null) {
+                when (result) {
+                    is ReadResult.Accepted -> accepted++
+                    is ReadResult.NeedsConfirmation -> confirmable++
+                    is ReadResult.Unreadable ->
+                        report.append("%-46s UNREADABLE (unlabelled)  %s%n".format(file.name, result.reason))
+                }
+                continue
+            }
 
             val grid = when (result) {
                 is ReadResult.Accepted -> { accepted++; result.grid }
@@ -38,7 +52,7 @@ class GridReaderTest {
             }
 
             if (grid == null) {
-                report.append("%-26s UNREADABLE  %s\n".format(file.name, (result as ReadResult.Unreadable).reason))
+                report.append("%-46s UNREADABLE  %s\n".format(file.name, (result as ReadResult.Unreadable).reason))
                 continue
             }
 
@@ -65,7 +79,7 @@ class GridReaderTest {
                 else -> "?"
             }
             report.append(
-                "%-26s %-14s givens %d/%d  style %d/81\n".format(
+                "%-46s %-14s givens %d/%d  style %d/81\n".format(
                     file.name, label, givenRight, givenTotal, styleRight,
                 )
             )
@@ -75,7 +89,7 @@ class GridReaderTest {
         println(report)
 
         assertTrue(
-            accepted + confirmable == CorpusFixtures.photos.size,
+            accepted + confirmable == considered,
             "every corpus photo should yield a grid:\n$report",
         )
     }

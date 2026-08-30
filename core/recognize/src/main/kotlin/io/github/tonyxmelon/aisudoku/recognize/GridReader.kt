@@ -212,26 +212,29 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
     /**
      * Where digits stop and pencilled candidate marks begin.
      *
-     * A constant, and deliberately so. Two adaptive schemes were tried against the
-     * corpus and both were worse:
+     * A constant, after three adaptive schemes were each measured against the corpus and
+     * each proved worse:
      *
-     * Splitting at the widest gap in the height distribution finds the gap between
-     * *print and handwriting*, not the one between marks and digits, so the threshold
-     * lands above the printed givens and discards them.
+     *  - Splitting at the widest gap finds the gap between print and handwriting, so the
+     *    threshold lands above the printed givens and discards them.
+     *  - Taking the densest cluster finds the handwriting on a completed puzzle, where
+     *    written answers outnumber printed givens.
+     *  - Taking the lowest cluster of at least seventeen finds a window straddling the
+     *    boundary - the tallest marks plus the shortest printed digits - and puts the
+     *    split down among the marks. Requiring a clear gap below the cluster did not
+     *    save it.
      *
-     * Taking the densest tight cluster as the print finds the *handwriting* on a
-     * completed puzzle, where there are more written answers than printed givens.
-     *
-     * Measured across all six corpus photographs, printed digits occupy 0.56 to 0.64 of
-     * the cell height and candidate marks never exceed 0.51, whether the page is clean,
-     * shadowed, curled or covered in annotations. A constant in that gap is the rule the
-     * evidence actually supports. If a photograph is found where marks grow past it, the
-     * fix should be designed from that photograph rather than guessed at.
+     * Measured across seven photographs, including one covered in candidate marks,
+     * printed digits occupy 0.56 to 0.64 of the cell height and marks never exceed 0.53.
+     * The margin narrows from 0.05 on a tidy page to 0.03 on an annotated one, so it is
+     * thin - but a constant inside it reads all seven, and none of the adaptive rules
+     * did. Any future change here has to beat that, measured, on the whole corpus.
      */
     internal fun digitHeightThreshold(@Suppress("UNUSED_PARAMETER") heights: List<Double>): Double =
         MIN_DIGIT_HEIGHT_RATIO
 
     companion object {
+
         /** The fallback split, measured on the corpus: digits from 0.556, marks to 0.505. */
         const val MIN_DIGIT_HEIGHT_RATIO = 0.53
 
