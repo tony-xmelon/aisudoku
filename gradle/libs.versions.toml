@@ -1,5 +1,9 @@
 [versions]
 kotlin = "2.2.20"
+opencvJvm = "4.9.0-0"
+
+[libraries]
+opencv-jvm = { module = "org.openpnp:opencv", version.ref = "opencvJvm" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
