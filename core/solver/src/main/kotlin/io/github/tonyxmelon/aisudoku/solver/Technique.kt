@@ -16,7 +16,10 @@ interface Technique {
 /**
  * Every technique, easiest first. Order matters: a hint should offer the simplest
  * reasoning that works, not the cleverest.
- *
- * Populated in full once the techniques exist.
  */
-val ALL_TECHNIQUES: List<Technique> = emptyList()
+val ALL_TECHNIQUES: List<Technique> = listOf(
+    NakedSingle,
+    HiddenSingle,
+    PointingPair,
+    BoxLineReduction,
+)
