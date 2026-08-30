@@ -27,22 +27,45 @@ BUILD_NUMBER=$(date +%s) ./gradlew :app:assembleRelease && firebase appdistribut
 ## The one remaining step: distributing from CI
 
 CI cannot use the signed-in CLI, because that credential lives only on this machine. It
-needs a service account instead, and creating one is the single thing that has to be done
-by hand:
+needs one of two credentials, and CI accepts either. **Take the first one** - it is a
+single command and never touches the Google Cloud console.
 
-1. In the [Google Cloud console](https://console.cloud.google.com/iam-admin/serviceaccounts?project=aisudoku-xmelon)
-   for `aisudoku-xmelon`, create a service account.
-2. Grant it the **Firebase App Distribution Admin** role.
-3. Create a JSON key for it and download the file.
-4. In GitHub: `Settings → Secrets and variables → Actions → New repository secret`, named
-   **`FIREBASE_SERVICE_ACCOUNT`**, with the entire contents of the JSON file as the value.
+### Option A: a Firebase token (recommended)
 
-That is the only secret needed; the app id is already committed. The next push to `main`
-will distribute automatically. Until then CI logs a warning and still succeeds, so the
-build is never broken by a credential it does not have.
+```bash
+firebase login:ci
+```
 
-**This step is deliberately left to you.** The key can publish builds to your testers, and
-it should not pass through anything but your own hands and GitHub's secret store.
+It opens a browser, you sign in as **tony.xmelon@gmail.com**, and it prints a token. Add
+that token in GitHub under `Settings -> Secrets and variables -> Actions -> New repository
+secret`, named **`FIREBASE_TOKEN`**.
+
+That is all. The next push to `main` distributes.
+
+### Option B: a service account key
+
+Only needed if you would rather not use a long-lived token.
+
+If `aisudoku-xmelon` does not appear in the Google Cloud console, it is almost certainly
+one of these, because a Firebase project *is* a Cloud project and this one demonstrably
+exists (number 52623658492):
+
+- **You are signed in as the wrong Google account.** The Firebase console link for this
+  project uses `/u/2/`, meaning the third Google account in your browser. The Cloud
+  console uses a different parameter, so go straight there with:
+  https://console.cloud.google.com/iam-admin/serviceaccounts?project=aisudoku-xmelon&authuser=2
+  (try `authuser=0`, `1`, `2` until it resolves; it must be the account that owns the
+  project, tony.xmelon@gmail.com)
+- **The project picker is filtered by organization.** Firebase-created projects sit under
+  *No organization*, which a Workspace account may hide by default. Clear the filter, or
+  just use the direct link above, which bypasses the picker entirely.
+
+Then: create a service account, grant it **Firebase App Distribution Admin**, create a
+JSON key, and add the whole file as the GitHub secret **`FIREBASE_SERVICE_ACCOUNT`**.
+
+**Either credential is deliberately left to you.** Both can publish builds to your
+testers, and neither should pass through anything but your own hands and GitHub's secret
+store.
 
 ## Adding testers
 

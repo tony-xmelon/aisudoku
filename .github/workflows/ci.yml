@@ -53,22 +53,35 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # The app id is committed, so the only thing CI is missing is the credential.
-      - name: Check the Firebase credential is configured
+      # The app id is committed, so the only thing CI is missing is a credential.
+      # Either kind works; FIREBASE_TOKEN is far easier to obtain.
+      - name: Check a Firebase credential is configured
         id: firebase
         env:
+          TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          if [ -n "$KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$TOKEN" ]; then
+            echo "kind=token" >> "$GITHUB_OUTPUT"
+          elif [ -n "$KEY" ]; then
+            echo "kind=key" >> "$GITHUB_OUTPUT"
           else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::FIREBASE_SERVICE_ACCOUNT is not set, so this build was not distributed."
-            echo "::warning::See docs/firebase-distribution.md - it is the only remaining step."
+            echo "kind=none" >> "$GITHUB_OUTPUT"
+            echo "::warning::No Firebase credential, so this build was not distributed."
+            echo "::warning::Set FIREBASE_TOKEN (run: firebase login:ci) or FIREBASE_SERVICE_ACCOUNT."
+            echo "::warning::See docs/firebase-distribution.md."
           fi
 
-      - name: Upload to Firebase App Distribution
-        if: steps.firebase.outputs.ready == 'true'
+      # A refresh token from `firebase login:ci`. Needs no Google Cloud console access.
+      - name: Distribute using a Firebase token
+        if: steps.firebase.outputs.kind == 'token'
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: ./gradlew :app:assembleRelease appDistributionUploadRelease --console=plain
+
+      - name: Distribute using a service account
+        if: steps.firebase.outputs.kind == 'key'
         env:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
