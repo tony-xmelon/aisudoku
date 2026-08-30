@@ -20,4 +20,8 @@ tasks.test {
     useJUnitPlatform()
     testLogging { events("failed") }
     maxHeapSize = "2g"   // full-resolution 12MP Mats
+
+    // Gradle does not forward -D to the forked test JVM, so DumpCorpusTest would never
+    // see it. Passed through explicitly.
+    systemProperty("dump", providers.systemProperty("dump").getOrElse("false"))
 }
