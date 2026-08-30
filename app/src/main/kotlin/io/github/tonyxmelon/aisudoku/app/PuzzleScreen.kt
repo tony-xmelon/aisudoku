@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +47,8 @@ fun PuzzleScreen(
     state: PuzzleState,
     onChange: (PuzzleState) -> Unit,
     onRetake: () -> Unit,
+    onSettings: () -> Unit,
+    onHistory: () -> Unit,
 ) {
     val measurer = rememberTextMeasurer()
 
@@ -80,7 +81,7 @@ fun PuzzleScreen(
         }
 
         item { StatusLine(state) }
-        item { ActionRow(state, onChange, onRetake) }
+        item { ActionRow(state, onChange, onRetake, onSettings, onHistory) }
         state.selectedCell?.let { index -> item { CellEditor(state, index, onChange) } }
     }
 }
@@ -120,7 +121,13 @@ private fun StatusLine(state: PuzzleState) {
 }
 
 @Composable
-private fun ActionRow(state: PuzzleState, onChange: (PuzzleState) -> Unit, onRetake: () -> Unit) {
+private fun ActionRow(
+    state: PuzzleState,
+    onChange: (PuzzleState) -> Unit,
+    onRetake: () -> Unit,
+    onSettings: () -> Unit,
+    onHistory: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
@@ -152,17 +159,6 @@ private fun ActionRow(state: PuzzleState, onChange: (PuzzleState) -> Unit, onRet
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            AssistChip(
-                onClick = {
-                    onChange(
-                        state.copy(
-                            hintStyle = if (state.hintStyle == HintStyle.EXPLAIN) HintStyle.REVEAL else HintStyle.EXPLAIN,
-                            revealedHintDigit = false,
-                        )
-                    )
-                },
-                label = { Text(if (state.hintStyle == HintStyle.EXPLAIN) "Hints: explain" else "Hints: just the digit") },
-            )
             if (state.overlay == OverlayMode.HINT && state.hintStyle == HintStyle.EXPLAIN && !state.revealedHintDigit) {
                 TextButton(onClick = { onChange(state.copy(revealedHintDigit = true)) }) {
                     Text("Show me the digit")
@@ -170,7 +166,10 @@ private fun ActionRow(state: PuzzleState, onChange: (PuzzleState) -> Unit, onRet
             }
         }
 
-        Button(onClick = onRetake) { Text("Take another photo") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = onRetake) { Text("Take another photo") }
+            NavigationRow(onHistory = onHistory, onSettings = onSettings)
+        }
     }
 }
 

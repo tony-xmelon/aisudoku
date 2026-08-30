@@ -54,7 +54,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 @SuppressLint("UnsafeOptInUsageError")
 @Composable
-fun CameraScreen(onRead: (PuzzleState) -> Unit) {
+fun CameraScreen(
+    autoCapture: Boolean,
+    onRead: (PuzzleState) -> Unit,
+    onSettings: () -> Unit,
+    onHistory: () -> Unit,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -159,7 +164,7 @@ fun CameraScreen(onRead: (PuzzleState) -> Unit) {
                     if (!capturing.get()) {
                         val advice = advisor.advise(Images.fromPreview(proxy))
                         guidance = advice.message
-                        if (advice.readyToCapture) takePicture()
+                        if (autoCapture && advice.readyToCapture) takePicture()
                     }
                 } catch (_: Exception) {
                     // A frame we cannot make sense of is not worth reporting; the next
@@ -216,6 +221,7 @@ fun CameraScreen(onRead: (PuzzleState) -> Unit) {
             } else {
                 Button(onClick = { takePicture() }) { Text("Capture") }
             }
+            NavigationRow(onHistory = onHistory, onSettings = onSettings)
         }
     }
 }

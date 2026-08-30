@@ -1,24 +1,32 @@
-Fixes from the first run on a phone.
+Everything from the first round of feedback, plus a better recogniser.
 
-The big one: when a cell is marked red, the app now draws the digit IT read on top.
-Before, you saw the correct digit on your paper tinted red and reasonably concluded
-the solver was broken. It was not - recognition had misread that cell, and the
-overlay gave you no way to tell. Now a misread looks like a misread. Tap it to fix.
+The recogniser now works the way you suggested: find the printed digits first.
+Printed digits share a font, a size and an ink, and a puzzle needs at least 17 of
+them, so they are the one population that can be identified reliably. Once they are
+known, anything bigger is handwriting and anything smaller is a pencil mark - so the
+thresholds come from the photo in hand instead of a constant that had to suit every
+photo at once. On a page covered in annotations even that is not enough, because 17
+marks can look tighter than the print, so several candidates are tried and the solver
+decides: the printed givens are by definition the set that forms a valid puzzle.
 
-The same misreading explained three other reports: Hint and Solve pointing at cells
-that already had a digit, and some written digits never being highlighted. Those
-cells were read as empty, so they genuinely were the next thing to fill.
+The annotated puzzle that failed now reads. All seven test photos read correctly.
 
-Also fixed:
-- Solve now overlays the whole solution, not only the cells read as empty.
+Also in this build:
+- Red cells now show the digit the app READ. Before, you saw the correct digit on
+  your paper tinted red and reasonably concluded the solver was broken.
+- Solve overlays the whole solution, not only the cells read as empty.
 - Hint stops once the puzzle is complete.
-- "Check the highlighted cells" clears once you have been through them, and each
-  cell now has a "Looks right" button so you can confirm a reading without editing it.
-- The viewfinder is square, and the shutter no longer sits under the system buttons.
-- Shutter says "Capture".
+- "Check the highlighted cells" clears when you have been through them, and each cell
+  has a "Looks right" button to confirm a reading without changing it.
+- Square viewfinder; shutter clear of the system buttons; it says "Capture".
 
-Not fixed yet, and honestly:
-- The heavily annotated puzzle that failed. I tried an adaptive rule for telling
-  candidate marks from digits and it made things worse on photos that already
-  worked, so I reverted it. I need that photo to fix it properly rather than guess.
-- No app icon, settings, about or history yet.
+New:
+- An app icon.
+- History. Every puzzle is saved as you photograph it, listed under day headings,
+  and reopens exactly as you left it. Delete any of them.
+- Settings, About and the legal notices, including open source attribution.
+- Auto-capture can be switched off.
+
+On privacy: the app has no internet permission at all - a dependency was quietly
+adding a network permission and it has been removed, so the permission list is now
+just the camera. Photos never leave the phone.
