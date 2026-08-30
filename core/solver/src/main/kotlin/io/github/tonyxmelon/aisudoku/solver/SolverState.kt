@@ -15,6 +15,18 @@ import io.github.tonyxmelon.aisudoku.model.Grid
  */
 class SolverState private constructor(private val candidates: IntArray) {
 
+    /**
+     * Cells already accounted for: the puzzle's givens, plus any cell offered as a hint.
+     * Without this a naked single would keep re-reporting the givens forever.
+     */
+    private val reported = BooleanArray(Coordinates.CELL_COUNT)
+
+    fun isReported(index: Int): Boolean = reported[index]
+
+    fun markReported(index: Int) {
+        reported[index] = true
+    }
+
     fun candidatesAt(index: Int): CandidateSet = CandidateSet(candidates[index])
 
     /** The digit at [index], or null while more than one remains possible. */
@@ -24,7 +36,9 @@ class SolverState private constructor(private val candidates: IntArray) {
 
     val isSolved: Boolean get() = candidates.all { CandidateSet(it).size == 1 }
 
-    fun copy(): SolverState = SolverState(candidates.copyOf())
+    fun copy(): SolverState = SolverState(candidates.copyOf()).also {
+        reported.copyInto(it.reported)
+    }
 
     /** Fix [digit] in [index] by eliminating every other digit there. */
     fun assign(index: Int, digit: Int): Boolean {
@@ -96,6 +110,9 @@ class SolverState private constructor(private val candidates: IntArray) {
                     val digit = cell.digit ?: continue
                     if (!state.assign(i, digit)) return null
                 }
+            }
+            for (i in 0 until Coordinates.CELL_COUNT) {
+                if (state.valueAt(i) != null) state.markReported(i)
             }
             return state
         }
