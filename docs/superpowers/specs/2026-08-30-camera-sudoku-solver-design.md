@@ -35,7 +35,7 @@ tapping the cell.
 | Guess recognition | Per-cell CNN | Handwriting varies too much within one grid for clustering to be safe in v1. |
 | Cell geometry | Detected interior grid lines | Also from the corpus: paper curls and bows, so dividing the rectified square into ninths crops digits near the edges. |
 | Error correction | The solver validates the read | A published sudoku has exactly one solution, so a read that is unsolvable or ambiguous is provably wrong. This replaces the cloud safety net. |
-| Photo acceptance | Strict gate, refuse marginal input | A confidently wrong grid is the worst failure this app has: the user cannot detect it until the puzzle is ruined. A retake costs three seconds. |
+| Photo acceptance | Judged on extraction certainty, not on image metrics | A confidently wrong grid is the worst failure this app has: the user cannot detect it until the puzzle is ruined. But image metrics reject usable photos and pass unusable ones, so the gate asks whether the pipeline actually produced a grid it can stand behind. |
 | Training and data | Entirely local | Corpus photographs and model training stay on the development machine; nothing is uploaded and the corpus is not committed. |
 | Hint style | User setting | Both a plain reveal and a technique explanation are built; the user picks in settings. |
 | Working surface | The rectified photo | The captured photo, straightened. Overlay geometry becomes trivial and it looks better than a tilted original. |
@@ -131,17 +131,12 @@ Messages are hysteretic — a message must hold for several frames before replac
 sharpness is above threshold, fire `takePicture()`. A manual shutter button is always present as an
 escape hatch, and auto-capture can be turned off in settings.
 
-### 4.1 Acceptance gate
+### 4.1 Preview checks: deciding when to fire the shutter
 
-**A photo must earn the right to be processed.** The app refuses marginal input rather than
-producing a plausible wrong grid from it. A wrong answer delivered confidently is the worst
-outcome this app can produce: the user cannot tell it is wrong until they have wasted the puzzle.
-A retake costs three seconds.
-
-The gate runs twice against the same criteria. **Before capture**, on preview frames, driving the
-guidance text in the table above — so a rejection after the shutter should be rare. **After
-capture**, on the full-resolution still after rectification and line fitting, because several
-checks are only meaningful at full resolution.
+These are cheap proxies computed on preview frames. They drive the guidance text and decide when
+auto-capture triggers. **They do not decide whether a photo is acceptable** — section 4.2 does
+that. Their job is to steer the camera toward a good shot and to cut off input that is obviously
+hopeless.
 
 **Geometry**
 
@@ -178,20 +173,58 @@ blurred page would otherwise pass. The per-quadrant check catches a shot that fo
 corner. The illumination ratio must stay loose enough to admit the shadowed corpus photo, which is
 usable — calibrating against it is the point of having it.
 
-All thresholds above are starting values to be tuned against the corpus, not fixed constants.
+All thresholds are starting values to tune against the corpus, not constants.
 
-### 4.2 What rejection looks like
+**Structural early-out.** After capture, one hard check runs before recognition: is there a grid at
+all — a closed quad, ten by ten interior lines, above the resolution floor? If not, reject
+immediately, because running the pipeline cannot produce anything. This is the only proxy allowed
+to reject a captured photo on its own.
 
-Two tiers, because a hard block with no way through is its own kind of failure:
+### 4.2 Acceptance is decided by extraction certainty
 
-- **Hard reject** — no grid, resolution below the floor, no interior line structure, severe blur.
-  Processing genuinely cannot work. Back to the camera.
-- **Soft reject** — everything found, but a check passed only narrowly. Offer *Use it anyway*,
-  and if taken, open the result with the correction UI already showing the weakest cells.
+**A photo is accepted when the app can actually read it, not when it looks readable.** Proxy
+metrics are nervous in the wrong places: they reject usable photos that happen to score badly and
+pass unusable ones that happen to score well. The honest question is whether the pipeline came out
+the other end holding a grid it can stand behind.
+
+So the real gate runs *after* recognition, on the result. It costs a full pipeline run — on the
+order of a tenth of a second on device — which is nothing next to a wrong answer.
+
+**Certainty signals**
+
+| Signal | What it says |
+| --- | --- |
+| Per-cell classifier margin | Gap between the top two digit probabilities. A small gap is a cell the app is guessing at. |
+| Printed cluster quality | Whether clusters came out tight, multi-member, and geometrically consistent, and whether the Hungarian label assignment had a clear winner. |
+| Triage ambiguity | Blobs that landed near the answer-versus-candidate size boundary, or near the ink-versus-residue floor. |
+| Repair depth | How many cells section 6 had to overturn before the grid became uniquely solvable. Zero is a clean read; several means the recognizer and the solver disagreed. |
+| Solution count | Exactly one, none, or many. The strongest signal available, and the only one that is a proof rather than an estimate. |
+
+**Verdict**
+
+- **Accepted** — exactly one solution, every cell above the confidence floor, clustering clean,
+  repair depth zero. Go straight to the result.
+- **Needs confirmation** — exactly one solution, but a handful of cells were weak, ambiguous, or
+  overturned by repair. Show the result with exactly those cells flagged and ask the user to
+  confirm them. The app is saying what it is unsure about instead of guessing or refusing.
+- **Rejected** — no unique solution even after repair, or too many cells below the floor to be
+  worth confirming one at a time. Retake.
+
+The middle tier matters: **rejection and correction are the same mechanism at different scales.**
+Three uncertain cells is a question worth asking. Forty is a photo worth retaking. The threshold
+between them is a tuning decision, not a principle — start around five.
+
+### 4.3 What rejection looks like
 
 Rejection always names the specific failure and what to do about it — *Move closer, the grid is
-too small to read*, *Part of the grid is cut off*, *Too blurry, hold still* — never a generic
-failure message. The user is being asked to do something, so they have to be told what.
+too small to read*, *Part of the grid is cut off*, *Too blurry, hold still*, *Could not read enough
+of the grid to be sure* — never a generic failure message. The user is being asked to do
+something, so they have to be told what.
+
+Where the fault is structural, the preview checks of section 4.1 supply the wording, since they
+know which condition failed. Where the fault is certainty, the message names how much could not be
+read, and the weakest cells are highlighted on the rejected photo so the user can see what went
+wrong rather than being told to try again blind.
 
 ## 5. Reading the grid
 
@@ -344,6 +377,10 @@ A small labelling helper (local HTML page or CLI) is part of the work.
 | `IMG20260830142308` | Unsolved, printed only. Strong straight background edges to mislead quad detection. |
 | `IMG20260830142356` | Partly solved with bold dark handwriting. Shadow across the page, page bowed on a clipboard, busy background. |
 
+The harness also reports **certainty calibration**: for each photo, the verdict of section 4.2
+against whether the read was actually correct. Accepting a wrong grid and rejecting a right one are
+both failures, and neither is visible from accuracy alone.
+
 **The corpus contains no rejects.** Every photograph in it is usable, so it cannot test the
 acceptance gate of section 4.1 at all. That gate needs deliberately bad input: shot from too far,
 out of focus, grid partly out of frame, heavy glare, steeply angled, page folded. These are
@@ -373,7 +410,8 @@ against 6.
 | Paper curl and bow misaligning cells toward the edges | Cell corners taken from fitted interior grid lines instead of dividing the square into ninths |
 | Background straight lines mistaken for the grid | A quad is rejected unless it contains a 9x9 interior line structure |
 | Candidate marks read as answers | Blob height measured against the printed digit height established by clustering; marks run about a third of answer height and sit high in the cell |
-| Acceptance gate tuned too strictly, so the app feels fussy and will not capture | Thresholds are tuned against the corpus, not fixed; soft rejects always offer *Use it anyway*; the live guidance tells the user how to satisfy the gate rather than just refusing |
+| Acceptance gate tuned too strictly, so the app feels fussy and will not capture | Only the structural early-out can reject on a proxy metric; everything else is judged on whether the read succeeded, so a photo that scores badly but reads cleanly is accepted. The live guidance tells the user how to satisfy the gate rather than just refusing |
+| Confidence scores poorly calibrated, so the certainty gate trusts the wrong reads | Solution uniqueness is a proof, not an estimate, and carries the most weight in the verdict. The corpus harness reports certainty against ground truth so calibration is measurable rather than assumed |
 | Corpus is single-source and single-device | Accuracy measured on it is optimistic. Broaden before trusting a number or shipping |
 | JDK 25 is newer than current AGP supports | Pin a JDK 21 toolchain in M0 and verify the build before anything else is written |
 | OpenCV adds roughly 20MB | arm64-only ABI via App Bundle; revisit only if it becomes a problem |
@@ -387,10 +425,10 @@ against 6.
 | M0 | Repo, project skeleton, CI, JDK 21 toolchain pinned, empty app builds and runs |
 | M1 | `core:model` and backtracking solver with uniqueness counting, pure Kotlin, TDD |
 | M2 | Technique solver and `HintEngine`, both hint styles, TDD |
-| M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the post-capture acceptance gate, the labelling helper and the regression harness, run against `corpus/` |
+| M3 | Vision pipeline — quad detection with interior-line validation, rectification, grid line fitting, cell extraction — plus the structural early-out, the labelling helper and the regression harness, run against `corpus/` |
 | M4 | Classifier trained in Python, exported to LiteRT, integrated, measured on the corpus |
-| M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair. End to end from a still image |
-| M6 | CameraX live guidance, the same gate applied to preview frames, and auto-capture |
+| M5 | `GridReader`: ink triage, glyph clustering and style, solver-guided repair, and the certainty verdict of section 4.2. End to end from a still image |
+| M6 | CameraX live guidance, the preview checks of section 4.1, and auto-capture |
 | M7 | Overlay modes and settings |
 | M8 | Correction UI |
 | M9 | Polish, permissions, error states, release build |
