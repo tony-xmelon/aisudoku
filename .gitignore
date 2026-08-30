@@ -30,3 +30,8 @@ venv/
 firebase-service-account*.json
 *-service-account.json
 .firebase/
+
+# Training artefacts
+tools/recognizer/data/
+tools/recognizer/*.pt
+tools/recognizer/*.onnx
