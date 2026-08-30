@@ -22,3 +22,9 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Firebase App Distribution: the service account key is a credential.
+# google-services.json is not secret and may be committed when the app module exists.
+firebase-service-account*.json
+*-service-account.json
+.firebase/

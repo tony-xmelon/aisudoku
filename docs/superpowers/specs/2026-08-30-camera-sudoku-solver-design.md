@@ -448,3 +448,23 @@ Exact versions get resolved and locked during M0 rather than guessed here.
   downloadable SDK as a module
 - LiteRT (formerly TensorFlow Lite) for Android
 - Python side: PyTorch or TensorFlow for training, plus Pillow and a font corpus for synthesis
+
+## 12. Distribution
+
+Test builds go out through **Firebase App Distribution**, project `aisudoku-xmelon`
+(https://console.firebase.google.com/u/2/project/aisudoku-xmelon/overview). This applies from the
+first installable build onward and is a concern of the Android plans, not the core engine.
+
+Two things to get right when that work starts:
+
+- `google-services.json` identifies the project and is normally committed. The **App Distribution
+  service account key is a credential** and must never be. It is already in `.gitignore`; in CI it
+  belongs in a repository secret.
+- App Distribution needs the applicationId to match the Firebase app registration, which fixes
+  `io.github.tonyxmelon.aisudoku` in place earlier than a Play release would. Changing it later
+  means re-registering the app.
+
+Nothing here implies analytics, Crashlytics or any other Firebase service. The app makes no network
+calls (section 2); distribution is a build-time concern only, and adding a Firebase SDK to the app
+itself would contradict that.
+
