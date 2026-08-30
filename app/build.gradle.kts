@@ -1,3 +1,5 @@
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -12,8 +14,10 @@ android {
         applicationId = "io.github.tonyxmelon.aisudoku"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1"
+        // CI supplies a build number so every distributed build is distinct;
+        // locally it stays 1.
+        versionCode = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
+        versionName = "0.1." + (System.getenv("BUILD_NUMBER") ?: "0")
     }
 
     // OpenCV ships native libraries for four ABIs. Only arm64 matters for real phones,
@@ -47,8 +51,11 @@ android {
 }
 
 firebaseAppDistribution {
-    // The service account key is a credential and is never committed; CI supplies it
-    // through the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+    // Everything identifying or authenticating comes from the environment. The service
+    // account key is a credential and must never be committed; the app id is not secret
+    // but lives with it so the build works untouched on a machine that has neither.
+    appId = System.getenv("FIREBASE_APP_ID") ?: ""
+    serviceCredentialsFile = System.getenv("FIREBASE_CREDENTIALS_FILE") ?: ""
     releaseNotesFile = "$rootDir/docs/release-notes.txt"
     groups = "testers"
 }

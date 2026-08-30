@@ -4,15 +4,76 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew build --console=plain
+
+      # Corpus photographs are not in the repository, so every test that needs one
+      # skips here. That is expected: see docs/superpowers/plans.
+      - name: Build and test
+        run: ./gradlew build --console=plain
+
+      - name: Assemble release APK
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: ./gradlew :app:assembleRelease --console=plain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aisudoku-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  distribute:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Check Firebase credentials are configured
+        id: firebase
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: |
+          if [ -n "$KEY" ] && [ -n "$APP_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Firebase secrets are not set, so no build was distributed."
+            echo "::notice::Add FIREBASE_SERVICE_ACCOUNT and FIREBASE_APP_ID to enable it."
+          fi
+
+      - name: Upload to Firebase App Distribution
+        if: steps.firebase.outputs.ready == 'true'
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: |
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/firebase-key.json"
+          export FIREBASE_CREDENTIALS_FILE="$RUNNER_TEMP/firebase-key.json"
+          ./gradlew :app:assembleRelease appDistributionUploadRelease --console=plain
+          rm -f "$RUNNER_TEMP/firebase-key.json"
