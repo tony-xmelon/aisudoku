@@ -87,3 +87,36 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
+
+/**
+ * Builds and distributes a release using the locally signed-in Firebase CLI.
+ *
+ * The App Distribution Gradle plugin cannot use the CLI's own login, so this shells out
+ * to the CLI instead. It needs no service account and no token: if `firebase login:list`
+ * shows an account, this works.
+ */
+tasks.register<Exec>("distributeLocal") {
+    group = "publishing"
+    description = "Build a release APK and distribute it via the signed-in Firebase CLI"
+    dependsOn("assembleRelease")
+
+    val apk = layout.buildDirectory.file("outputs/apk/release/app-arm64-v8a-release.apk")
+    val notes = rootProject.layout.projectDirectory.file("docs/release-notes.txt")
+
+    // Windows resolves `firebase` to a .cmd shim, which needs a shell to launch.
+    val firebase = if (System.getProperty("os.name").startsWith("Windows")) {
+        listOf("cmd", "/c", "firebase")
+    } else {
+        listOf("firebase")
+    }
+
+    commandLine(
+        firebase + listOf(
+            "appdistribution:distribute", apk.get().asFile.absolutePath,
+            "--app", "1:52623658492:android:dbb8616352a8d44e29f679",
+            "--release-notes-file", notes.asFile.absolutePath,
+            "--groups", "testers",
+            "--project", "aisudoku-xmelon",
+        )
+    )
+}

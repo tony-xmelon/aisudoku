@@ -18,11 +18,15 @@ makes no network calls; distribution is purely a build-time concern.
 
 ## Distributing from this machine
 
-The Firebase CLI is already signed in, so this works as-is:
+One command. It uses the locally signed-in Firebase CLI, so it needs no service account
+and no token:
 
 ```bash
-BUILD_NUMBER=$(date +%s) ./gradlew :app:assembleRelease && firebase appdistribution:distribute app/build/outputs/apk/release/app-arm64-v8a-release.apk --app 1:52623658492:android:dbb8616352a8d44e29f679 --release-notes-file docs/release-notes.txt --groups testers --project aisudoku-xmelon
+./gradlew :app:distributeLocal
 ```
+
+Set `BUILD_NUMBER` to give the release a distinct version, e.g.
+`BUILD_NUMBER=$(date +%s) ./gradlew :app:distributeLocal`.
 
 ## The one remaining step: distributing from CI
 
@@ -36,8 +40,15 @@ single command and never touches the Google Cloud console.
 firebase login:ci
 ```
 
-It opens a browser, you sign in as **tony.xmelon@gmail.com**, and it prints a token. Add
-that token in GitHub under `Settings -> Secrets and variables -> Actions -> New repository
+It opens a browser, you sign in as **tony.xmelon@gmail.com**, and it prints a token.
+Put it straight into GitHub without it landing in your shell history - this prompts for
+the value and hides it as you paste:
+
+```bash
+gh secret set FIREBASE_TOKEN --repo tony-xmelon/aisudoku
+```
+
+Or add it by hand under `Settings -> Secrets and variables -> Actions -> New repository
 secret`, named **`FIREBASE_TOKEN`**.
 
 That is all. The next push to `main` distributes.
@@ -52,10 +63,12 @@ exists (number 52623658492):
 
 - **You are signed in as the wrong Google account.** The Firebase console link for this
   project uses `/u/2/`, meaning the third Google account in your browser. The Cloud
-  console uses a different parameter, so go straight there with:
-  https://console.cloud.google.com/iam-admin/serviceaccounts?project=aisudoku-xmelon&authuser=2
-  (try `authuser=0`, `1`, `2` until it resolves; it must be the account that owns the
-  project, tony.xmelon@gmail.com)
+  console uses a separate index that does not always match, so name the account instead
+  of guessing an index:
+  https://console.cloud.google.com/iam-admin/serviceaccounts?project=aisudoku-xmelon&authuser=tony.xmelon@gmail.com
+- **That account has never accepted the Google Cloud Terms of Service.** Cloud hides every
+  project until it has, including ones owned through Firebase. Opening the link above
+  prompts for it.
 - **The project picker is filtered by organization.** Firebase-created projects sit under
   *No organization*, which a Workspace account may hide by default. Clear the filter, or
   just use the direct link above, which bypasses the picker entirely.
