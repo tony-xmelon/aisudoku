@@ -1,0 +1,121 @@
+package io.github.tonyxmelon.aisudoku.recognize
+
+import io.github.tonyxmelon.aisudoku.model.CellSource
+import io.github.tonyxmelon.aisudoku.vision.CorpusFixtures
+import io.github.tonyxmelon.aisudoku.vision.GateVerdict
+import io.github.tonyxmelon.aisudoku.vision.OpenCvNatives
+import io.github.tonyxmelon.aisudoku.vision.StructuralGate
+import kotlin.test.Test
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+/** End to end: a photograph in, a grid the reader stands behind out. */
+class GridReaderTest {
+
+    private fun setUp() {
+        CorpusLabels.requireLabels()
+        CorpusFixtures.requireCorpus()
+        OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }
+    }
+
+    @Test
+    fun `reads every corpus photo into a grid, and reports the outcome`() {
+        setUp()
+        val reader = GridReader()
+        var accepted = 0
+        var confirmable = 0
+        val report = StringBuilder("\n=== grid reader over the corpus ===\n")
+
+        for (file in CorpusFixtures.photos) {
+            val truth = CorpusLabels.forPhoto(file.name) ?: continue
+            val verdict = assertIs<GateVerdict.Usable>(StructuralGate.assess(CorpusFixtures.load(file)))
+            val result = reader.read(verdict.cells)
+
+            val grid = when (result) {
+                is ReadResult.Accepted -> { accepted++; result.grid }
+                is ReadResult.NeedsConfirmation -> { confirmable++; result.grid }
+                is ReadResult.Unreadable -> null
+            }
+
+            if (grid == null) {
+                report.append("%-26s UNREADABLE  %s\n".format(file.name, (result as ReadResult.Unreadable).reason))
+                continue
+            }
+
+            var givenRight = 0
+            var givenTotal = 0
+            var styleRight = 0
+            for (i in 0 until 81) {
+                val expected = truth[i]
+                val actual = grid[i]
+                if (expected.source == CorpusLabels.Source.GIVEN) {
+                    givenTotal++
+                    if (actual.digit == expected.digit) givenRight++
+                }
+                val actualSource = when (actual.source) {
+                    CellSource.GIVEN -> CorpusLabels.Source.GIVEN
+                    CellSource.GUESS -> CorpusLabels.Source.GUESS
+                    CellSource.EMPTY -> CorpusLabels.Source.EMPTY
+                }
+                if (actualSource == expected.source) styleRight++
+            }
+            val label = when (result) {
+                is ReadResult.Accepted -> "ACCEPTED"
+                is ReadResult.NeedsConfirmation -> "CONFIRM(${result.uncertainCells.size})"
+                else -> "?"
+            }
+            report.append(
+                "%-26s %-14s givens %d/%d  style %d/81\n".format(
+                    file.name, label, givenRight, givenTotal, styleRight,
+                )
+            )
+        }
+        report.append("$accepted accepted, $confirmable need confirmation, " +
+            "${CorpusFixtures.photos.size - accepted - confirmable} unreadable\n")
+        println(report)
+
+        assertTrue(
+            accepted + confirmable == CorpusFixtures.photos.size,
+            "every corpus photo should yield a grid:\n$report",
+        )
+    }
+
+    @Test
+    fun `the printed digits of every photo are read correctly`() {
+        setUp()
+        val reader = GridReader()
+        for (file in CorpusFixtures.photos) {
+            val truth = CorpusLabels.forPhoto(file.name) ?: continue
+            val verdict = assertIs<GateVerdict.Usable>(StructuralGate.assess(CorpusFixtures.load(file)))
+            val result = reader.read(verdict.cells)
+            val grid = when (result) {
+                is ReadResult.Accepted -> result.grid
+                is ReadResult.NeedsConfirmation -> result.grid
+                is ReadResult.Unreadable -> continue
+            }
+            for (i in 0 until 81) {
+                if (truth[i].source != CorpusLabels.Source.GIVEN) continue
+                assertTrue(
+                    grid[i].digit == truth[i].digit,
+                    "${file.name} cell $i: read ${grid[i].digit}, expected ${truth[i].digit}",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a grid the reader accepts always has exactly one solution`() {
+        setUp()
+        val reader = GridReader()
+        for (file in CorpusFixtures.photos) {
+            val verdict = assertIs<GateVerdict.Usable>(StructuralGate.assess(CorpusFixtures.load(file)))
+            val result = reader.read(verdict.cells)
+            if (result is ReadResult.Accepted) {
+                assertTrue(
+                    io.github.tonyxmelon.aisudoku.solver.Solver.hasUniqueSolution(result.grid),
+                    "${file.name} was accepted but its grid is not a proper puzzle",
+                )
+            }
+        }
+    }
+}
