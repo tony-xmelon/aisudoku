@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import android.graphics.Color
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +44,14 @@ class MainActivity : ComponentActivity() {
 
         // Draw behind the status and navigation bars, and let each screen inset its own
         // content. The camera wants the preview under them; nothing else does.
-        enableEdgeToEdge()
+        //
+        // The bars are pinned dark rather than left on auto: this app is dark whatever
+        // the phone is set to, so on a phone in light mode `auto` would put dark system
+        // icons on a dark background and they would vanish.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
 
         // The vision module never links against a platform, so the loader is injected.
         OpenCvNatives.ensureLoaded {

@@ -91,11 +91,14 @@ fun PuzzleScreen(
             Box(
                 modifier = Modifier
                     .size(minOf(maxWidth, maxHeight))
-                    .pointerInput(state.grid) {
+                    .pointerInput(state.grid, state.lines) {
                         detectTapGestures { offset ->
-                            val cell = size.width / 9f
-                            val column = (offset.x / cell).toInt().coerceIn(0, 8)
-                            val row = (offset.y / cell).toInt().coerceIn(0, 8)
+                            val column = state.lines.vertical
+                                .indexOfLast { it * size.width <= offset.x }
+                                .coerceIn(0, 8)
+                            val row = state.lines.horizontal
+                                .indexOfLast { it * size.height <= offset.y }
+                                .coerceIn(0, 8)
                             onChange(state.copy(selectedCell = row * 9 + column))
                         }
                     }
@@ -336,64 +339,56 @@ private fun CellEditor(state: PuzzleState, index: Int, onChange: (PuzzleState) -
  * which is what the first version did.
  */
 private fun DrawScope.drawOverlay(state: PuzzleState, measurer: TextMeasurer) {
-    val cell = size.width / 9f
-    fun topLeft(index: Int) = Offset((index % 9) * cell, (index / 9) * cell)
+    val squares = Squares(state.lines, size.width, size.height)
 
     if (state.overlay == OverlayMode.READING) {
-        drawReading(state, measurer, cell, ::topLeft)
+        drawReading(state, measurer, squares)
+    }
+
+    // The full solution covers squares the user has already answered, so their own
+    // writing would show through every digit. One scrim over the whole grid keeps the
+    // answer legible without giving any single square a colour of its own.
+    if (state.overlay == OverlayMode.SOLUTION) {
+        drawRect(Color(0x59000000), Offset.Zero, size)
     }
 
     for (index in state.evidenceCells()) {
-        drawRect(Overlays.evidence.copy(alpha = 0.28f), topLeft(index), Size(cell, cell))
+        squares.fill(this, index, Overlays.evidence.copy(alpha = 0.28f))
     }
 
     for ((index, digit) in state.overlayDigits()) {
         val colour = Overlays.colour(digit.role)
         when (digit.role) {
             // The paper already shows the right digit, so a tint is all that is needed.
-            OverlayRole.CORRECT -> drawRect(colour.copy(alpha = 0.32f), topLeft(index), Size(cell, cell))
+            OverlayRole.CORRECT -> squares.fill(this, index, colour.copy(alpha = 0.32f))
 
             // Tint, and then what the app read, on a chip in the corner. On a chip
-            // because it is the app talking, not a digit on the paper - without that,
-            // a misreading is indistinguishable from the app marking a right answer
-            // wrong, which is exactly how it was first reported.
+            // because it is the app talking, not a digit on the paper - without that, a
+            // misreading is indistinguishable from the app marking a right answer wrong,
+            // which is exactly how it was first reported.
             OverlayRole.INCORRECT -> {
-                drawRect(colour.copy(alpha = 0.42f), topLeft(index), Size(cell, cell))
-                drawChip(measurer, topLeft(index), cell, digit.digit, colour)
+                squares.fill(this, index, colour.copy(alpha = 0.42f))
+                drawChip(measurer, squares, index, digit.digit, colour)
             }
 
-            OverlayRole.SOLUTION, OverlayRole.HINT -> {
-                val layout = measurer.measure(
-                    digit.digit.toString(),
-                    style = TextStyle(
-                        color = colour,
-                        fontSize = (cell * 0.62f / 2.2f).sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
-                val origin = topLeft(index)
-                drawText(
-                    layout,
-                    topLeft = Offset(
-                        origin.x + (cell - layout.size.width) / 2f,
-                        origin.y + (cell - layout.size.height) / 2f,
-                    ),
-                )
-            }
+            OverlayRole.SOLUTION, OverlayRole.HINT ->
+                drawCentred(measurer, squares, index, digit.digit.toString(), colour)
         }
     }
 
     for (index in state.uncertainCells) {
+        val at = squares.topLeft(index)
+        val cell = squares.size(index)
         drawRect(
             color = Overlays.uncertain,
-            topLeft = topLeft(index) + Offset(cell * 0.04f, cell * 0.04f),
-            size = Size(cell * 0.92f, cell * 0.92f),
-            style = Stroke(width = cell * 0.07f),
+            topLeft = at + Offset(cell.width * 0.05f, cell.height * 0.05f),
+            size = Size(cell.width * 0.90f, cell.height * 0.90f),
+            style = Stroke(width = squares.unit * 0.07f),
         )
     }
 
     state.selectedCell?.let { index ->
-        drawRect(Color.White, topLeft(index), Size(cell, cell), style = Stroke(width = 4f))
+        drawRect(Color.White, squares.topLeft(index), squares.size(index), style = Stroke(width = 4f))
     }
 }
 
@@ -405,15 +400,9 @@ private fun DrawScope.drawOverlay(state: PuzzleState, measurer: TextMeasurer) {
  * exists because after a read there was otherwise no way to see what the app had decided
  * - only what it had decided to do about it.
  */
-private fun DrawScope.drawReading(
-    state: PuzzleState,
-    measurer: TextMeasurer,
-    cell: Float,
-    topLeft: (Int) -> Offset,
-) {
+private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, squares: Squares) {
     val reports = state.reports
     for (index in 0 until 81) {
-        val origin = topLeft(index)
         val report = reports?.getOrNull(index)
 
         // Without reports - a puzzle reopened from history - fall back to the grid,
@@ -432,29 +421,31 @@ private fun DrawScope.drawReading(
             Ink.NONE -> null
         }
         if (tint != null) {
-            drawRect(tint.copy(alpha = 0.30f), origin, Size(cell, cell))
+            squares.fill(this, index, tint.copy(alpha = 0.30f))
         }
         if (digit != null && tint != null) {
-            drawChip(measurer, origin, cell, digit, tint)
-            report?.let { drawConfidence(origin, cell, it.confidence) }
+            drawChip(measurer, squares, index, digit, tint)
+            report?.let { drawConfidence(squares, index, it.confidence) }
         }
     }
 }
 
 /** How sure the classifier was, as a bar across the foot of the cell. */
-private fun DrawScope.drawConfidence(origin: Offset, cell: Float, confidence: Float) {
-    val height = cell * 0.07f
-    val inset = cell * 0.08f
-    val width = cell - inset * 2
-    val top = origin.y + cell - height - inset * 0.5f
-    drawRect(Color(0x55000000), Offset(origin.x + inset, top), Size(width, height))
+private fun DrawScope.drawConfidence(squares: Squares, index: Int, confidence: Float) {
+    val at = squares.topLeft(index)
+    val cell = squares.size(index)
+    val height = squares.unit * 0.07f
+    val inset = squares.unit * 0.08f
+    val width = cell.width - inset * 2
+    val top = at.y + cell.height - height - inset * 0.5f
+    drawRect(Color(0x55000000), Offset(at.x + inset, top), Size(width, height))
     drawRect(
         color = when {
             confidence >= 0.9f -> Overlays.correct
             confidence >= 0.6f -> Overlays.uncertain
             else -> Overlays.incorrect
         },
-        topLeft = Offset(origin.x + inset, top),
+        topLeft = Offset(at.x + inset, top),
         size = Size(width * confidence.coerceIn(0f, 1f), height),
     )
 }
@@ -462,8 +453,8 @@ private fun DrawScope.drawConfidence(origin: Offset, cell: Float, confidence: Fl
 /** The digit the app read, drawn as a label rather than as ink on the page. */
 private fun DrawScope.drawChip(
     measurer: TextMeasurer,
-    origin: Offset,
-    cell: Float,
+    squares: Squares,
+    index: Int,
     digit: Int,
     colour: Color,
 ) {
@@ -471,19 +462,73 @@ private fun DrawScope.drawChip(
         digit.toString(),
         style = TextStyle(
             color = Color.White,
-            fontSize = (cell * 0.40f / 2.2f).sp,
+            fontSize = (squares.unit * 0.40f / 2.2f).sp,
             fontWeight = FontWeight.Bold,
         ),
     )
-    val padding = cell * 0.05f
+    val origin = squares.topLeft(index)
+    val cell = squares.size(index)
+    val padding = squares.unit * 0.05f
     val width = layout.size.width + padding * 2
     val height = layout.size.height + padding
-    val at = Offset(origin.x + cell - width - padding, origin.y + padding)
+    val at = Offset(origin.x + cell.width - width - padding, origin.y + padding)
     drawRoundRect(
         color = colour.copy(alpha = 0.95f),
         topLeft = at,
         size = Size(width, height),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cell * 0.08f),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(squares.unit * 0.08f),
     )
     drawText(layout, topLeft = Offset(at.x + padding, at.y + padding / 2))
+}
+
+/**
+ * The 81 rectangles of the photograph on screen.
+ *
+ * Taken from the grid lines the extractor actually fitted, not from dividing by nine.
+ * Paper is not flat, which is why those lines are fitted in the first place; drawing on
+ * ninths puts the tints and digits a few pixels off exactly where the page is most bowed.
+ */
+private class Squares(lines: GridLines, width: Float, height: Float) {
+    private val xs = FloatArray(10) { lines.vertical[it] * width }
+    private val ys = FloatArray(10) { lines.horizontal[it] * height }
+
+    /** A typical square, for text and strokes that should not vary from cell to cell. */
+    val unit: Float = minOf(width, height) / 9f
+
+    fun topLeft(index: Int) = Offset(xs[index % 9], ys[index / 9])
+
+    fun size(index: Int) = Size(
+        xs[index % 9 + 1] - xs[index % 9],
+        ys[index / 9 + 1] - ys[index / 9],
+    )
+
+    fun fill(scope: DrawScope, index: Int, colour: Color) =
+        scope.drawRect(colour, topLeft(index), size(index))
+}
+
+/** A digit in the middle of its square. */
+private fun DrawScope.drawCentred(
+    measurer: TextMeasurer,
+    squares: Squares,
+    index: Int,
+    text: String,
+    colour: Color,
+) {
+    val layout = measurer.measure(
+        text,
+        style = TextStyle(
+            color = colour,
+            fontSize = (squares.unit * 0.62f / 2.2f).sp,
+            fontWeight = FontWeight.Bold,
+        ),
+    )
+    val at = squares.topLeft(index)
+    val cell = squares.size(index)
+    drawText(
+        layout,
+        topLeft = Offset(
+            at.x + (cell.width - layout.size.width) / 2f,
+            at.y + (cell.height - layout.size.height) / 2f,
+        ),
+    )
 }

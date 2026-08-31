@@ -105,6 +105,12 @@ fun CameraScreen(
                 is GateVerdict.Rejected -> failure = verdict.reason.message
 
                 is GateVerdict.Usable -> {
+                    val lines = GridLines(
+                        vertical = verdict.geometry.verticalLines
+                            .map { (it / verdict.rectified.width).toFloat() },
+                        horizontal = verdict.geometry.horizontalLines
+                            .map { (it / verdict.rectified.height).toFloat() },
+                    )
                     when (val read = GridReader().read(verdict.cells)) {
                         is ReadResult.Unreadable -> failure = read.reason
                         is ReadResult.Accepted -> onRead(
@@ -113,6 +119,7 @@ fun CameraScreen(
                                 grid = read.grid,
                                 uncertainCells = emptySet(),
                                 readingNote = null,
+                                lines = lines,
                                 reports = read.readings.map(CellReport::of),
                             )
                         )
@@ -123,6 +130,7 @@ fun CameraScreen(
                                 grid = read.grid,
                                 uncertainCells = read.uncertainCells,
                                 readingNote = read.reason,
+                                lines = lines,
                                 reports = read.readings.map(CellReport::of),
                             )
                         )

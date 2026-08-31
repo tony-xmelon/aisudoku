@@ -7,6 +7,25 @@ import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.Hint
 
 /**
+ * Where the grid lines really are, as fractions of the photograph's width and height.
+ *
+ * Ten of each. The overlay cannot simply divide by nine: paper is not flat, and the
+ * extractor already fits the real lines because a single homography leaves cells
+ * progressively misaligned towards the edges. Drawing on ninths would put the tints and
+ * digits a few pixels off exactly where the page is most bowed.
+ */
+data class GridLines(val vertical: List<Float>, val horizontal: List<Float>) {
+    init {
+        require(vertical.size == 10 && horizontal.size == 10) { "expected ten lines each way" }
+    }
+
+    companion object {
+        /** Even ninths, for a puzzle reopened from history with no geometry kept. */
+        val EVEN = GridLines(List(10) { it / 9f }, List(10) { it / 9f })
+    }
+}
+
+/**
  * Everything the puzzle screen shows.
  *
  * The rules live in [PuzzleLogic], which knows nothing about Android and is therefore
@@ -18,6 +37,8 @@ data class PuzzleState(
     /** Cells the reader was not sure of. Drawn as a ring, and cleared as they are settled. */
     val uncertainCells: Set<Int>,
     val readingNote: String?,
+    /** Where the grid lines are, so the overlay lands on the squares it means. */
+    val lines: GridLines = GridLines.EVEN,
     /**
      * What the reader made of each square, when this puzzle came from a photograph.
      * Null for a puzzle reopened from history, where only the grid was kept.
