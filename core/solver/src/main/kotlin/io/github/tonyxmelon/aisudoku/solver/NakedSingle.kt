@@ -21,6 +21,26 @@ object NakedSingle : Technique {
         "to set up. Everything harder is a way of getting some square down to a single " +
         "candidate, so when a harder technique pays off, look here next."
 
+    /**
+     * One neighbour for each digit this square cannot be.
+     *
+     * The evidence for a naked single is not the square itself. It is the eight squares
+     * around it that have used up the other eight digits, and pointing at those is the
+     * entire lesson - pointing at the square only says "look here", which the user can
+     * already see.
+     *
+     * There is always exactly one such neighbour per digit: a candidate is only ever
+     * struck out by a digit being placed where this square can see it.
+     */
+    private fun eliminators(state: SolverState, index: Int, answer: Int): Set<Int> {
+        val byDigit = mutableMapOf<Int, Int>()
+        for (peer in Coordinates.peers[index]) {
+            val value = state.valueAt(peer) ?: continue
+            if (value != answer) byDigit.putIfAbsent(value, peer)
+        }
+        return byDigit.values.toSet()
+    }
+
     override fun findAll(state: SolverState): List<Deduction> =
         (0 until Coordinates.CELL_COUNT).mapNotNull { index ->
             val digit = state.candidatesAt(index).single ?: return@mapNotNull null
@@ -30,7 +50,7 @@ object NakedSingle : Technique {
                 difficulty = difficulty,
                 explanation = "Only $digit can go here - every other digit already appears " +
                     "in this row, column or box.",
-                supportingCells = setOf(index),
+                supportingCells = eliminators(state, index, digit),
                 index = index,
                 digit = digit,
             )

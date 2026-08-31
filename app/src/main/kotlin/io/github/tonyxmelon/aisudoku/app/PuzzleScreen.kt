@@ -18,9 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -29,8 +32,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -57,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import io.github.tonyxmelon.aisudoku.BuildConfig
 import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.recognize.Ink
+import io.github.tonyxmelon.aisudoku.solver.Techniques
 
 /**
  * The straightened photograph with help drawn on top.
@@ -260,28 +269,7 @@ private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) 
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
         ) { Text("Back", maxLines = 1) }
 
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                "Step ${state.lessonStep + 1} of ${route.steps.size}",
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-            )
-            // Which list is being walked. Without it, browsing one technique and walking
-            // the route look identical once you are three steps in.
-            state.tutorTechnique?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                )
-            }
-        }
+        TutorPicker(state, onChange, route.steps.size, Modifier.weight(1f))
 
         if (state.lessonStep < route.steps.size - 1) {
             Button(
@@ -321,6 +309,79 @@ private fun ModeButton(
         Button(onClick, modifier, enabled, contentPadding = padding) { text() }
     } else {
         OutlinedButton(onClick, modifier, enabled, contentPadding = padding) { text() }
+    }
+}
+
+/**
+ * Which list the tutor is walking, and a way to change it.
+ *
+ * The route is what the app would do next and is the right default, but on a hard puzzle
+ * it can be six eliminations in a row - which reads as a list of unrelated facts unless
+ * the user can see what else is on offer and go and look at it.
+ *
+ * Every technique is listed with the number of places it applies right now, including the
+ * ones that apply nowhere: "naked single, none" is worth knowing when you are hunting for
+ * one.
+ */
+@Composable
+private fun TutorPicker(
+    state: PuzzleState,
+    onChange: (PuzzleState) -> Unit,
+    steps: Int,
+    modifier: Modifier,
+) {
+    var open by remember { mutableStateOf(false) }
+    val counts = state.findingCounts
+
+    Box(modifier = modifier) {
+        TextButton(
+            onClick = { open = true },
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "${state.lessonStep + 1} of $steps",
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        state.tutorTechnique ?: "Best route",
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                    )
+                    Icon(
+                        Icons.Filled.ArrowDropDown,
+                        contentDescription = "Choose what to be shown",
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Best route") },
+                trailingIcon = { Text("$steps") },
+                onClick = {
+                    open = false
+                    onChange(state.tutor())
+                },
+            )
+            for (technique in Techniques.all) {
+                val found = counts[technique.name] ?: 0
+                DropdownMenuItem(
+                    enabled = found > 0,
+                    text = { Text(technique.name) },
+                    trailingIcon = { Text(if (found > 0) "$found" else "none") },
+                    onClick = {
+                        open = false
+                        onChange(state.tutor(technique.name))
+                    },
+                )
+            }
+        }
     }
 }
 

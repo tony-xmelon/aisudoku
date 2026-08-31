@@ -1,3 +1,36 @@
+HINTS: THE SECOND PRESS DID NOTHING, and now it does.
+
+A naked single's evidence used to be the square itself, which points at nothing
+once the square is taken out - so the first two presses drew the same eight
+squares and the second looked broken. The evidence is now the EIGHT NEIGHBOURS
+that used the other eight digits up, which is the whole reason the square is
+forced. All four presses now change what is on screen, and there is a test that
+fails if any two of them ever draw the same thing again.
+
+The wording is plainer too, and much shorter. Each press says exactly what the
+next one will give you:
+
+  1. There is a square you can fill in the highlighted box.
+  2. <technique>, what it claims, and the squares that prove it.
+  3. It is the ringed square.
+  4. The digit, and why.
+
+The long "how to hunt for this" paragraph is gone from hints. It is the wrong
+thing to read while stuck on one square, and it is one tap away in Strategies.
+
+THE TUTOR HAS A MENU. Tap the middle of the tutor bar and every technique is
+there with the number of places it applies right now - including the ones that
+apply nowhere, because "naked single, none" is worth knowing when you are
+hunting for one. Pick any of them to step through its findings, or Best route to
+go back to what the app would do next.
+
+AND IT SAYS WHAT THE ROUTE IS FIRST. Six eliminations in a row read as six
+unrelated facts. Now it tells you up front how many steps there are, how many of
+them actually fill a square in - often none, on a hard puzzle - and that
+clearing candidates out of the way is the job rather than a disappointment. Each
+step then leads with what it does: "Put 7 in row 4, column 2", or "This fills
+nothing in. It rules 5 out of three squares."
+
 A NEW ICON, with meaning this time.
 
 The old one was a three-by-three grid, which is noughts and crosses, and a nine

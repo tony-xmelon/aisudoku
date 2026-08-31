@@ -95,6 +95,9 @@ data class PuzzleState(
     /** What the route ahead asks of you, said before you set off. */
     val outlook: String? by lazy { PuzzleLogic.outlook(walkthrough) }
 
+    /** How many places each technique applies right now, for the tutor's own menu. */
+    val findingCounts: Map<String, Int> by lazy { TechniqueSolver.findingCounts(grid) }
+
     private val computed: Overlay by lazy {
         PuzzleLogic.overlay(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep)
     }

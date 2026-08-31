@@ -147,16 +147,14 @@ object PuzzleLogic {
 
                 val supporting = (h as? Hint.Explained)?.supportingCells.orEmpty() - h.index
 
-                // A naked single's evidence is the square itself, which points at nothing
-                // once the square is taken out. Its box is the honest answer to "where
-                // should I be looking" - until the ring goes round the square, which says
-                // it better.
-                evidence = when {
-                    supporting.isNotEmpty() -> supporting
-                    hintDepth <= 1 ->
-                        Coordinates.boxIndices[Coordinates.boxOf(h.index)].toSet() - h.index
-
-                    else -> emptySet()
+                // Each rung has to change what is on screen, or pressing again looks like
+                // nothing happened - which is what it did. The first rung answers "where
+                // should I look" with the box; every rung after it shows the evidence,
+                // which is a different set of squares.
+                evidence = if (hintDepth == 0 || supporting.isEmpty()) {
+                    Coordinates.boxIndices[Coordinates.boxOf(h.index)].toSet() - h.index
+                } else {
+                    supporting
                 }
                 if (hintDepth >= 2) focus = h.index
                 if (hintDepth >= HINT_DEPTHS - 1) {
@@ -238,14 +236,40 @@ object PuzzleLogic {
      */
     fun outlook(walkthrough: Walkthrough?): String? {
         if (walkthrough == null || walkthrough.isEmpty) return null
-        val steps = if (walkthrough.steps.size == 1) "one step" else "${walkthrough.steps.size} steps"
+        val total = walkthrough.steps.size
+        val places = walkthrough.steps.count { it is Deduction.Placement }
         val hardest = walkthrough.hardestTechnique?.lowercase() ?: "nothing unusual"
-        return if (walkthrough.finishes) {
-            "From here it is $steps, and the hardest thing you need is a $hardest."
+
+        // What the steps DO matters more than how many there are. A run of eliminations
+        // reads as a list of unrelated facts unless it is said in advance that none of
+        // them fill a square in, and that clearing the way is the whole job.
+        val shape = when {
+            places == 0 -> "None of them puts a digit in a square: they clear candidates " +
+                "out of the way, which is how a hard puzzle is opened up."
+
+            places == total -> "Every one of them fills a square in."
+
+            else -> "$places of them fill a square in; the rest clear candidates out of " +
+                "the way first."
+        }
+        val ending = if (walkthrough.finishes) {
+            "That is the rest of the puzzle."
         } else {
-            "$steps can be reasoned out from here, the hardest being a $hardest. After " +
-                "that this app runs out of techniques, and the rest needs one it has not " +
-                "been taught."
+            "After them this app runs out of techniques, and what is left needs one it " +
+                "has not been taught."
+        }
+        return "$total steps can be reasoned out from here, the hardest a $hardest. " +
+            "$shape $ending"
+    }
+
+    /** What one step of the route actually does, said before the reasoning behind it. */
+    private fun effect(step: Deduction): String = when (step) {
+        is Deduction.Placement ->
+            "Put ${step.digit} in row ${step.index / 9 + 1}, column ${step.index % 9 + 1}."
+
+        is Deduction.Elimination -> {
+            val squares = if (step.fromCells.size == 1) "one square" else "${step.fromCells.size} squares"
+            "This fills nothing in. It rules ${step.digit} out of $squares."
         }
     }
 
@@ -276,6 +300,7 @@ object PuzzleLogic {
         OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
             val step = route.steps[lessonStep.coerceIn(0, route.steps.size - 1)]
             listOfNotNull(
+                effect(step),
                 "${step.technique}. ${step.explanation}",
                 Techniques.byName(step.technique)?.howTo,
             ).joinToString("\n\n")
@@ -287,28 +312,29 @@ object PuzzleLogic {
     /**
      * The staircase, one tread at a time.
      *
-     * Every rung but the last says another press will say more, because a hint the user
-     * does not know can be pushed further is a hint that gave everything away at once.
+     * Every rung names exactly what the next press will give, so the user can stop at the
+     * one that was enough for them.
+     *
+     * The long "how to hunt for this" text deliberately does not appear here. A hint is
+     * read while stuck on one square, and a paragraph about the technique in general is
+     * the wrong thing to meet at that moment; it is one tap away under Strategies.
      */
     private fun hintGuidance(grid: Grid, style: HintStyle, depth: Int): String {
         val hint = hint(grid, style) ?: return "Nothing left to work out."
         if (style == HintStyle.REVEAL || hint !is Hint.Explained) {
             return "Row ${hint.index / 9 + 1}, column ${hint.index % 9 + 1}."
         }
-        val technique = Techniques.byName(hint.technique)
-        val more = "\n\nPress Hint again for more."
+        val rule = Techniques.byName(hint.technique)?.rule.orEmpty()
         return when (depth) {
-            0 -> "There is a move to be found in the highlighted box.$more"
+            0 -> "There is a square you can fill in the highlighted box.\n\n" +
+                "Press Hint again to be told which technique finds it."
 
-            1 -> listOfNotNull(
-                "${hint.technique}. ${technique?.rule.orEmpty()}".trim(),
-                technique?.howTo,
-            ).joinToString("\n\n") + more
+            1 -> "${hint.technique}. $rule\n\nThe highlighted squares are what " +
+                "proves it.\n\nPress Hint again to be shown which square."
 
-            2 -> ("It is this square. ${hint.technique}." +
-                (technique?.rule?.let { " $it" } ?: "")) + more
+            2 -> "It is the ringed square.\n\nPress Hint again for the digit."
 
-            else -> "${hint.technique}. ${hint.explanation}"
+            else -> hint.explanation
         }
     }
 }

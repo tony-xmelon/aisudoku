@@ -204,11 +204,15 @@ class PuzzleLogicTest {
         val plain = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.REVEAL)
         assertEquals(listOf(LegendKey.HINT), PuzzleLogic.legend(plain, OverlayMode.HINT, false))
 
-        // A naked single's evidence is the cell itself, so once the answer is taken out
-        // there is nothing left to tint - and nothing left to name either.
+        // The explained style always has something to point at, including for a naked
+        // single: its evidence is the neighbours that used the other digits up. When that
+        // was the square itself, two rungs of the staircase looked identical on screen.
         val explained = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)
-        assertTrue(explained.evidence.isEmpty())
-        assertEquals(listOf(LegendKey.HINT), PuzzleLogic.legend(explained, OverlayMode.HINT, false))
+        assertTrue(explained.evidence.isNotEmpty())
+        assertEquals(
+            listOf(LegendKey.HINT, LegendKey.EVIDENCE),
+            PuzzleLogic.legend(explained, OverlayMode.HINT, false),
+        )
     }
 
     // ---------------------------------------------------------------- training
@@ -229,6 +233,19 @@ class PuzzleLogicTest {
         val last = hintOverlay(PuzzleLogic.HINT_DEPTHS - 1)
         val (index, drawn) = last.digits.entries.single()
         assertEquals(solution[index].digit, drawn.digit)
+    }
+
+    /**
+     * Reported from the phone: the first two presses of Hint drew the same eight squares,
+     * so the second looked like it had done nothing.
+     */
+    @Test
+    fun `no two rungs of the staircase look the same`() {
+        val seen = (0 until PuzzleLogic.HINT_DEPTHS).map {
+            val step = hintOverlay(it)
+            Triple(step.evidence, step.focus, step.digits.keys)
+        }
+        assertEquals(seen.size, seen.toSet().size, "two rungs draw the same thing: $seen")
     }
 
     @Test

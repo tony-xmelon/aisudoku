@@ -20,11 +20,30 @@ class NakedSingleTest {
         assertEquals(Difficulty.EASY, deduction.difficulty)
     }
 
+    /**
+     * The evidence is the neighbours that used the other digits up, not the square
+     * itself. Pointing at the square tells the user to look where they are already
+     * looking, and it made the second rung of the hint staircase change nothing at all.
+     */
     @Test
-    fun `points at the cell itself as the evidence`() {
-        val state = stateWithCandidates(40 to CandidateSet.of(7))
+    fun `points at the neighbours that ruled the other digits out`() {
+        val grid = io.github.tonyxmelon.aisudoku.model.Grid.fromRows(
+            "12345678.",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+        )
+        val state = assertIs<SolverState>(SolverState.candidatesOnly(grid))
         val deduction = assertIs<Deduction.Placement>(NakedSingle.find(state))
-        assertEquals(setOf(40), deduction.supportingCells)
+
+        assertEquals(8, deduction.index)
+        assertEquals(9, deduction.digit)
+        assertEquals((0..7).toSet(), deduction.supportingCells)
     }
 
     @Test
