@@ -8,16 +8,19 @@ WHAT WAS READ is a fourth button beside Hint, Check and Solve. The squares stay
 FILLED, as you preferred, and the digit is now a HOLE CUT IN THE FILL - it adds
 no ink at all, and what shows through the glyph is the page itself.
 
-It sits in the bottom-right corner rather than the middle, because it has to be
-BESIDE your own digit to be compared with it, not on top of it. The middle holds
-the answer and the top holds the candidate marks, which leaves that corner as
-the emptiest part of a real page. The old chip was an opaque block at the
-top-right, sitting exactly on the marks.
+It is BIG AND CENTRED, the size the solution draws its digits. A small hole in a
+light tint is a small amount of contrast, and the way to buy contrast without
+covering anything is to make the hole bigger rather than the tint heavier.
 
-The corner has slightly more of the same tint for the digit to be cut out of: a
-hole in a thirty percent tint is only thirty percent of a contrast, which is not
-enough to read a digit out of. It is still translucent, so the page is visible
-through all of it. The confidence bar is a hairline along the bottom edge.
+Centring it over your own digit turns out to be the point rather than the
+problem. Where the reading is right the two coincide and the square just reads
+as a clean digit standing out of a tinted surround. Where it is wrong, your
+strokes come out of the glyph and into the tint - far more visible than two
+small digits sitting side by side ever were.
+
+The tint is heavier than before at forty-four percent, which it can afford to be
+now that most of it is cut away again on any square holding a digit. The
+confidence bar is a hairline along the bottom edge.
 
 The same treatment is now used on a red square in Check, because it is the same
 statement: this is what I saw there.

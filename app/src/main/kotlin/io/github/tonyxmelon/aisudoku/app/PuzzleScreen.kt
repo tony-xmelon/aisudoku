@@ -33,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -395,7 +394,7 @@ private fun DrawScope.drawOverlayInLayer(state: PuzzleState, measurer: TextMeasu
             // how it was first reported.
             OverlayRole.INCORRECT -> {
                 squares.fill(this, index, colour.copy(alpha = 0.42f))
-                drawReadDigit(measurer, squares, index, digit.digit, colour)
+                drawReadDigit(measurer, squares, index, digit.digit)
             }
 
             OverlayRole.SOLUTION, OverlayRole.HINT ->
@@ -432,10 +431,9 @@ private fun DrawScope.drawOverlayInLayer(state: PuzzleState, measurer: TextMeasu
  * A tint says what the square was taken to be. It reads at a glance in a way an outline
  * does not, and the price is that everything else drawn here has to stay out of the way:
  *
- *  - the digit is **punched out of the tint** in the bottom-right corner, so it adds no
- *    ink and hides nothing. Candidate marks are written along the top of a square and the
- *    answer through the middle, so the bottom-right corner is the emptiest part of a real
- *    page. A solid chip at the top-right sat exactly on top of the marks;
+ *  - the digit is **punched out of the tint**, big and centred, so it adds no ink and
+ *    hides nothing. A solid chip used to sit at the top-right, which is exactly where the
+ *    candidate marks are written;
  *  - the confidence bar is a hairline along the very bottom edge, drawn by
  *    [drawOverlay] so that the squares the reader flagged carry one in every layer.
  *
@@ -463,12 +461,13 @@ private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, sq
             Ink.NONE -> null
         } ?: continue
 
-        // Pencil marks are tinted more faintly: there are forty of them on a busy page
+        // Heavier than it looks: on a square holding a digit most of this is about to be
+        // cut away again. Pencil marks stay faint - there are forty of them on a busy page
         // and they are the least interesting thing on it.
         val marks = ink == Ink.MARK
-        squares.fill(this, index, colour.copy(alpha = if (marks) 0.20f else 0.30f))
+        squares.fill(this, index, colour.copy(alpha = if (marks) 0.24f else 0.44f))
 
-        if (digit != null) drawReadDigit(measurer, squares, index, digit, colour)
+        if (digit != null) drawReadDigit(measurer, squares, index, digit)
 
     }
 }
@@ -509,9 +508,15 @@ private fun DrawScope.drawConfidence(squares: Squares, index: Int, confidence: F
  * cleared, so what shows through it is the photograph itself. That is the whole point -
  * every other way of putting the app's digit on the page covered some of the page.
  *
- * It sits in the bottom-right corner rather than the middle. The middle is where the
- * answer is written and the top is where the candidate marks go, and the digit has to be
- * *beside* the paper's own digit to be compared with it, not on top of it.
+ * Big and centred, the size of the digits the solution draws. A small hole in a light
+ * tint is a small amount of contrast, and the way to buy contrast without covering
+ * anything is to make the hole bigger rather than the tint heavier.
+ *
+ * Centring it over the paper's own digit turns out to be the point rather than the
+ * problem. Where the reading is right the two coincide and the square simply reads as a
+ * clean digit standing out of a tinted surround. Where it is wrong the paper's strokes
+ * come out of the glyph and into the tint, which is far more visible than two small
+ * digits sitting side by side ever were.
  *
  * Only works inside an offscreen layer; see [drawOverlay].
  */
@@ -520,40 +525,24 @@ private fun DrawScope.drawReadDigit(
     squares: Squares,
     index: Int,
     digit: Int,
-    colour: Color,
 ) {
     val layout = measurer.measure(
         digit.toString(),
         style = TextStyle(
             // Irrelevant under BlendMode.Clear - only the glyph's shape is used.
             color = Color.Black,
-            fontSize = (squares.unit * 0.42f / 2.2f).sp,
+            fontSize = (squares.unit * 0.62f / 2.2f).sp,
             fontWeight = FontWeight.Bold,
         ),
     )
-    val origin = squares.topLeft(index)
+    val at = squares.topLeft(index)
     val cell = squares.size(index)
-    val padding = squares.unit * 0.05f
-    val at = Offset(
-        origin.x + cell.width - layout.size.width - padding * 2 - squares.unit * 0.04f,
-        origin.y + cell.height - layout.size.height - padding * 2 - squares.unit * 0.09f,
-    )
-
-    // A hole in a thirty percent tint is only thirty percent of a contrast, which is not
-    // enough to read a digit out of. So the corner gets more of the same colour to be cut
-    // from - denser, but still translucent, so the page is visible through all of it.
-    drawRoundRect(
-        color = colour.copy(alpha = 0.30f),
-        topLeft = at,
-        size = Size(
-            layout.size.width + padding * 2,
-            layout.size.height + padding * 2,
-        ),
-        cornerRadius = CornerRadius(squares.unit * 0.07f),
-    )
     drawText(
         layout,
-        topLeft = Offset(at.x + padding, at.y + padding),
+        topLeft = Offset(
+            at.x + (cell.width - layout.size.width) / 2f,
+            at.y + (cell.height - layout.size.height) / 2f,
+        ),
         blendMode = BlendMode.Clear,
     )
 }
