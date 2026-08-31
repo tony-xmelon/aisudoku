@@ -146,6 +146,12 @@ Messages are hysteretic — a message must hold for several frames before replac
 sharpness is above threshold, fire `takePicture()`. A manual shutter button is always present as an
 escape hatch, and auto-capture can be turned off in settings.
 
+**The preview fills the screen; the square is drawn on top of it.** The first build made the
+*preview itself* square, which put it under the notch and the status bar and left the bottom half of
+the screen black. A camera should look like a camera: full-bleed preview, four corner brackets
+marking where the puzzle should sit, the guidance on a pill above the shutter, and every control
+inset from the system bars it would otherwise hide under.
+
 ### 4.1 Preview checks: deciding when to fire the shutter
 
 These are cheap proxies computed on preview frames. They drive the guidance text and decide when
@@ -260,81 +266,97 @@ After the initial rectification, locate the ten horizontal and ten vertical grid
 their actual intersections as cell corners. Each cell is then cropped with an inner margin so the
 lines themselves are excluded.
 
-### 5.1 Ink triage
+### 5.1 Find the print first; everything else follows from it
 
-Per-cell adaptive threshold — global thresholding fails on the corpus shot with a shadow across
-the page — then connected components. Every blob in the cell is classified individually by height
-relative to the printed digit height, which section 5.2 establishes precisely, and by its position
-in the cell:
+*This replaces two earlier designs. The first decided given-versus-guess from ink darkness, which
+fails because one corpus photo has handwriting as dark as the print beside it. The second clustered
+glyph shapes and called the tight clusters printed, which is sound but needs a reference height it
+does not have until it has already run. What is here now was arrived at from the user's own
+observation, and it is simpler than either.*
 
-- **answer-sized, roughly centred** -> a digit, continue to recognition
-- **roughly a third of digit height, sitting high in the cell** -> a candidate mark, discarded
-- **faint, diffuse, low edge gradient** -> eraser residue, discarded
+The printed digits are the one population on the page whose properties are guaranteed:
 
-A cell keeps its answer blob even when candidate marks or residue are also present; those cells
-are common in the corpus. `hadDiscardedMarks` records that something was thrown away.
+- **one font, one ink, one size** — they are mechanically identical to each other, while
+  handwriting is never identical even to itself;
+- **at least seventeen of them**, because no sudoku with a single solution can have fewer. That is
+  a proven bound, not a heuristic.
 
-**Eraser residue needs an absolute darkness floor, not just a relative threshold.** In the
-completed puzzle in the corpus, most cells carry grey smudge and some carry the ghost of a rubbed
-out digit. Otsu on such a cell happily reports "ink". A blob must be dark enough in absolute terms
-relative to the page white, and have sharp enough edges, to count.
+So find them first, and every other threshold follows from what was measured rather than from a
+constant chosen in advance.
 
-### 5.2 Glyph clustering, which decides both what is printed and what it says
+**Finding the core.** Take the largest ink blob in each cell. Slide a window of seventeen over them
+sorted by height and score each window by
 
-Clustering runs *before* style detection, because the clustering is what reveals the style. This
-is a correction to an earlier version of this design, which proposed deciding given-versus-guess
-from ink darkness and saturation and then clustering the printed set afterwards.
+```
+height spread  +  0.5 x darkness spread  +  1.0 x median darkness
+```
 
-**Darkness does not separate the two.** One corpus photo has handwritten digits drawn firmly
-enough to be as dark as the printed ones sitting beside them. Any threshold that catches the
-pencil in the faint photos misclassifies the bold handwriting in that one.
+The first two terms ask for a group that agrees on size and on ink. The third asks for the darkest
+such group, and it is what makes this work on a page covered in candidate marks: there the marks
+are numerous and uniform enough that seventeen of *them* agree on size more tightly than the print
+does, and the tie is broken by the fact that print is toner and everything else is pencil. Without
+that term the core lands on the marks; with it, the core is the printed digits on all seven corpus
+photographs.
 
-**Uniformity separates them perfectly.** Printed digits within one photo are mechanically
-identical: one font, one size, the same offset within every cell. Handwriting is never identical
-to itself. So cluster tightness *is* the style signal.
+**Classifying every cell against the core.** Measured across the corpus, relative to the core's
+median height:
 
-1. Normalize every answer-sized blob in the grid: deskew, binarize, centre by mass, scale to a
-   fixed box.
-2. Pairwise distance — Hamming distance over aligned binary masks. At most 81 glyphs, so at most
-   ~3,240 comparisons. Negligible cost.
-3. Agglomerative clustering at a tight threshold.
-4. **The printed set** is the clusters that are tight, hold two or more members, and whose members
-   agree on height and on offset within the cell. Everything else is handwriting.
-5. The printed glyph height becomes the reference height that section 5.1 uses to tell answers
-   from candidate marks. The two stages are mutually dependent, so triage runs twice: once with a
-   provisional height estimate, then again once the printed clusters have fixed it.
-6. Label each printed cluster: run the CNN on every member, average the softmax across the
-   cluster, take the result. Averaging over several members cancels per-cell noise.
-7. Enforce distinct labels across clusters as an assignment problem (Hungarian algorithm,
-   cost = negative mean log-probability). Two clusters cannot both claim to be an 8.
-8. Sanity checks: a cluster with more than nine members means the threshold over-merged; more than
-   nine printed clusters means it over-split. Either triggers a retry at an adjusted threshold.
+| | height / core | vertical offset |
+|---|---|---|
+| printed digits | 0.93 – 1.05 | −0.15 to +0.19 |
+| handwritten answers | 1.15 – 1.68 | −0.10 to +0.16 |
+| candidate marks reaching digit size | up to 1.22 | **−0.14 to −0.24** |
 
-**The singleton problem.** A digit printed only once in the grid forms a one-member cluster and
-looks like handwriting by the rule in step 4. Guard: once the multi-member printed clusters have
-established the printed height, cell offset and stroke weight, test each singleton against that
-geometry. A singleton that matches is printed.
+The printed band is tight enough to be decided on height alone. Handwriting is always at least 15%
+taller than the print. The only things that reach into either band are large candidate marks — a
+ringed pair of digits, say — and *where they sit* gives them away: candidate marks are written along
+the top edge of a cell and answers in the middle of it. That is the whole rule:
 
-Ink darkness and saturation survive as a weak secondary prior, useful for breaking ties, but they
-no longer decide anything on their own. And the user can always toggle a cell between given and
-guess — nothing downstream blocks on this being automatic.
+- height within 0.90–1.09 of the core, not sitting high in the cell -> **printed**
+- height at least 1.10 of the core, not sitting high in the cell -> **a written answer**
+- anything else -> **a candidate mark**, and the cell counts as empty
 
-### 5.3 Guesses: per-cell CNN
+This sorts all 532 ink blobs in the corpus correctly, including the photograph where marks are
+taller than the print.
 
-Blob centred by mass and size-normalized to 20x20 inside a 28x28 box. This is the MNIST convention,
-and matching the preprocessing matters more than the model architecture does.
+**No absolute thresholds survive.** Every number above is a ratio to something measured in the same
+photograph. The one exception is a floor below which a blob is too small to join the search at all.
 
-**Model.** Small CNN, 9 output classes (1-9), roughly 200KB as LiteRT. Trained in Python on:
+### 5.2 When the printed digits do not make a puzzle
 
-- MNIST digits 1-9 for handwriting.
-- Synthetic printed digits rendered from roughly 100 fonts, augmented with blur, rotation, scale
-  jitter, threshold artifacts, noise, and simulated grid-line bleed.
+A grid whose givens have no unique solution is proof that the printed reading is wrong somewhere —
+and *only* the printed reading can be wrong, because the solver works from the givens alone, so no
+handwritten answer, right or wrong, changes the outcome.
 
-The model serves both paths — per-cell for guesses, cluster-averaged for givens.
+Repair questions the least print-like given first, and tries **removing it before changing it**.
+The observed failure is a false positive — a clump of candidate marks matching the print in size —
+and removing a real given almost never yields a unique puzzle, whereas changing one can quietly
+produce a *different* puzzle that solves cleanly. An earlier version tried changes first and
+"fixed" a correctly read printed 1 into a 7, reporting success.
 
-**Known weakness.** MNIST is loose-leaf handwriting, not digits cramped into a 5mm square touching a
-grid line. Expect a real accuracy gap until the corpus in section 8 supplies photographs of actual
-puzzle books. This is the single largest technical risk in the project.
+### 5.3 Recognizing the digits
+
+Blob centred by mass and size-normalized to 20x20 inside a 28x28 box: the MNIST convention, where
+matching the preprocessing matters more than the model does. A small CNN, 9 classes, about 105k
+parameters, shipped as raw float32 weights and run by a few hundred lines of Kotlin — which keeps
+the whole inference path JVM-testable and adds nothing to the APK.
+
+Four training sources, each added because the one before it was measurably insufficient:
+
+- **MNIST digits 1–9**, for handwriting in general.
+- **Synthetic printed digits** from 120 system fonts. MNIST contains no printed glyphs at all, and
+  an MNIST-only model read every printed 6 as an 8.
+- **Synthetic continental digits.** MNIST is American handwriting. The corpus writer forms a 1 with
+  a flag descending half the digit's height and a 7 with a crossbar; MNIST has almost none of
+  either, and the model read eight of nine such ones as a 4 — the flag and the stem make the same
+  corner a 4's diagonal does. No system font draws a flag anywhere near that long, so these are
+  drawn stroke by stroke.
+- **The corpus cells themselves**, heavily augmented, so the model adapts to the hand it will
+  actually be reading.
+
+Only the last of those can flatter its own score, so it is measured by **leave-one-photograph-out**:
+for each photograph, a model trained without it is scored on it. That number, not the one from the
+shipped model, is what the reader is worth on a photograph it has never seen.
 
 ## 6. The solver as a spell-checker
 
@@ -361,29 +383,70 @@ misread, which narrows the search considerably.
 
 ## 7. What the user can do
 
-The working surface is the rectified photo with an overlay drawn on top.
+The working surface is the rectified photo with an overlay drawn on top, under a fixed bar of
+controls. The screen is a three-part column — bar, photograph, controls — so everything is visible
+at once and the photograph takes whatever room is left.
+
+### 7.1 The colour rules
+
+Learned from the first build, which drew doubt as a yellow fill and a wrong answer as a red one, so
+a cell that was both came out orange — and orange meant nothing. The user could not tell what the
+shades meant, and was right not to.
+
+- **One meaning per colour, and at most one fill per cell.**
+- **Doubt is a ring, never a fill**, so it can sit over any fill without inventing a colour.
+- **Every mode shows its own key** under the photograph. Nothing is drawn that is not named.
+- **What the app read is drawn on a chip**, not as loose ink, so it reads as the app talking rather
+  than as a digit on the paper.
+
+### 7.2 The four layers
 
 - **Hint.** Setting-controlled.
-  - *Just the digit* — pick the most constrained empty cell and reveal it.
+  - *Just the digit* — the most constrained cell the user has left empty.
   - *Explain it* — name the technique (naked single, hidden single, pointing pair, box-line
-    reduction), highlight the cells that prove it, and reveal the digit only if asked again.
-- **Check my answers.** Solve from the givens, then colour each handwritten guess green or red.
-  Because the puzzle has exactly one solution, every guess is definitively right or wrong — there is
-  no third state.
-- **Full solution.** Fill every empty cell.
-- **Fix a misread.** Tap a cell, get a keypad: set a digit, clear it, or toggle given and guess. Or
-  retake the photo. Every correction re-runs the solve immediately.
+    reduction), highlight the cells that prove it, and give the digit.
+
+  A hint reasons from **the givens plus every answer the user has written that is correct**. Without
+  that it explains a step they took ten minutes ago: the first build pointed at a cell already
+  holding a 9 and explained that it could only be a 9. Wrong answers are left out rather than
+  trusted, since reasoning from a wrong digit produces wrong advice.
+
+  There is no separate *reveal the digit* step. Every technique's explanation names the digit in
+  passing — "only 4 can go here" — so the button asked a question that had already been answered.
+
+- **Check my answers.** Solve from the givens, then colour each handwritten answer green or red.
+  Because the puzzle has exactly one solution, every answer is definitively right or wrong; there is
+  no third state. A red cell also carries the digit the app *read* there, so a misread looks like a
+  misread rather than like the app calling a correct answer wrong.
+- **Full solution.** Every cell that is not printed, so a finished puzzle shows the whole answer
+  rather than the handful of cells recognition happened to miss.
+- **What was read.** The recognizer's own account of the page: each square tinted by what it was
+  taken to be — printed, handwritten, pencil marks, or empty — with the digit read and a bar showing
+  the classifier's confidence. Tapping a square gives the exact figures and the runner-up.
+
+  This is deliberately quieter than the other three, and it answers a different question: not "help
+  me" but "what did you actually see?". Without it a misread is invisible until it causes a wrong
+  answer somewhere else, and there is no way to tell a confident mistake — worth a photograph and a
+  fix — from a coin flip, which is just a cell to correct and move on from.
+
+- **Fix a misread.** Tap any cell for a modal sheet with a three-by-three keypad: set a digit, clear
+  it, or switch it between printed and handwritten. Every correction re-runs the solve immediately.
+
+### 7.3 Confirming the reading
+
+Cells the reader was unsure of are ringed, and a banner says how many and what to do. It stays until
+every one has been corrected or accepted, and then it goes — the first build left the message up
+after the user had dealt with all of them, which read as though the app had not noticed.
 
 The technique solver also grades puzzle difficulty as a by-product, from the hardest technique
 required to finish.
 
-**Known limit, measured.** The four implemented techniques — naked single, hidden single, pointing
-pair, box line reduction — finish an easy puzzle in around 45 steps, but find *nothing at all* on
-Arto Inkala's 2012 puzzle: reasoning stalls before placing a single digit. On puzzles that hard,
-*Explain it* silently degrades to *Just the digit* via the fallback. That is the correct behaviour
-— a user who asks for help must get help — but it means the explanation feature is only as good as
-the technique list. Whether to extend it should be decided from real puzzles, by measuring how
-often the fallback fires, not from this one adversarial case.
+**Known limit, measured.** The four implemented techniques finish an easy puzzle in around 45 steps,
+but find *nothing at all* on Arto Inkala's 2012 puzzle: reasoning stalls before placing a single
+digit. On puzzles that hard, *Explain it* silently degrades to *Just the digit* via the fallback.
+That is the correct behaviour — a user who asks for help must get help — but it means the
+explanation feature is only as good as the technique list. Whether to extend it should be decided
+from real puzzles, by measuring how often the fallback fires, not from this one adversarial case.
 
 ## 8. Testing
 
@@ -396,7 +459,7 @@ and end-to-end unique-solve rate. Without this, "did that change help?" has no a
 
 A small labelling helper (local HTML page or CLI) is part of the work.
 
-**Corpus as of 2026-08-30: six photographs in `corpus/`,** 3000x4000, one puzzle source
+**Corpus as of 2026-08-31: seven photographs in `corpus/`,** one puzzle source
 (sudoku.cba.si), one device. Between them they exercise most of the pipeline:
 
 | File | What it tests |
@@ -407,6 +470,7 @@ A small labelling helper (local HTML page or CLI) is part of the work.
 | `IMG20260830142301` | Unsolved, printed only. The clean baseline. |
 | `IMG20260830142308` | Unsolved, printed only. Strong straight background edges to mislead quad detection. |
 | `IMG20260830142356` | Partly solved with bold dark handwriting. Shadow across the page, page bowed on a clipboard, busy background. |
+| `viber_image_2026-08-31_01-58-40-177` | Puzzle #89114, difficulty *hardest*, in progress. Twenty-four givens, ten handwritten answers, all correct. Nearly every remaining cell carries pencilled candidates, several of them ringed. The hardest triage case in the corpus: the marks are the same graphite as the answers, and a ringed pair is *taller* than any printed digit. Contributed after the app failed to read it on a phone. |
 
 The harness also reports **certainty calibration**: for each photo, the verdict of section 4.2
 against whether the read was actually correct. Accepting a wrong grid and rejecting a right one are
@@ -428,6 +492,28 @@ tuning conclusion is trusted, and before release.
 
 **Classifier** — held-out accuracy and a confusion matrix. Watch 1 against 7, 3 against 8, and 5
 against 6.
+
+### 8.1 Measured, 2026-08-31
+
+| | |
+| --- | --- |
+| Photographs read into a grid | 7 of 7. Six accepted outright, one with a single cell to confirm |
+| Printed digits | 167 of 167 |
+| Cells sorted into print / handwriting / marks | 567 of 567 |
+| Handwriting, **shipped model** | 93 of 94 |
+| Handwriting, **leave-one-photograph-out** | **90 of 94 (95.7%)** |
+| MNIST test set | 98.3% |
+
+The leave-one-photograph-out figure is the honest one and the only one worth quoting: the shipped
+model has seen every corpus cell, so its 93/94 measures nothing but consistency between the Kotlin
+and PyTorch inference paths. That one cell of disagreement is real drift — scipy's binary opening
+and OpenCV's differ by a pixel at the mask edge — and is left alone rather than chased.
+
+Before the continental digits and corpus adaptation were added, handwriting stood at 76 of 94, with
+eight of the eighteen errors being a 1 read as a 4.
+
+Both numbers still come from one writer, one puzzle source and one device. They say the pipeline
+works on this hand; they do not say what it does on anyone else's.
 
 **UI** — Compose tests for the correction flow. Camera behaviour stays manual.
 

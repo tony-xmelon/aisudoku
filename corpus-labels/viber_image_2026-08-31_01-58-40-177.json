@@ -1,0 +1,26 @@
+{
+  "photo": "viber_image_2026-08-31_01-58-40-177.jpg",
+  "givens": [
+    ".9...4.7.",
+    "...2..8..",
+    "...9.8.51",
+    "1.4......",
+    "..2...3.6",
+    "..6..3.2.",
+    "..5...78.",
+    "...51....",
+    "7......1."
+  ],
+  "written": [
+    ".9...4.7.",
+    "...2..8.9",
+    "...9.8451",
+    "134...59.",
+    "..2...346",
+    "..6..312.",
+    ".15...78.",
+    "...517...",
+    "7......15"
+  ],
+  "notes": "Puzzle #89114, difficulty \"hardest\", in progress. Twenty-four printed givens, ten handwritten answers, ALL TEN CORRECT. Nearly every remaining cell carries pencil candidate marks, several of them circled, which is what makes this the hardest triage case in the corpus: the marks are the same graphite as the answers and a circled pair is as tall as a written digit. Verified: the givens have exactly one solution and every written answer agrees with it."
+}

@@ -7,14 +7,23 @@ import io.github.tonyxmelon.aisudoku.solver.Solver
 import io.github.tonyxmelon.aisudoku.vision.GrayImage
 import kotlin.math.abs
 
+/**
+ * What one cell was judged to hold.
+ *
+ * [MARK] and [NONE] are both empty as far as the puzzle is concerned, but they are not
+ * the same thing to a person looking at the page: one cell has pencilled candidates in
+ * it that the reader deliberately ignored, the other has nothing at all.
+ */
+enum class Ink { PRINTED, ANSWER, MARK, NONE }
+
 /** How the reader judged one cell. */
 data class CellReading(
     val index: Int,
+    val ink: Ink,
     /** Probabilities for digits 1..9, or null when the cell holds no digit. */
     val probabilities: FloatArray?,
     val heightRatio: Double,
     val darkness: Double,
-    val hadDiscardedMarks: Boolean,
 ) {
     val digit: Int? get() = probabilities?.let { p -> p.indices.maxBy { p[it] } + 1 }
 
@@ -38,8 +47,8 @@ sealed interface ReadResult {
 
     /**
      * A grid, but with cells the reader is unsure of. Those are exactly the cells to
-     * ask the user about — rejection and correction are the same mechanism at
-     * different scales.
+     * ask the user about - rejection and correction are the same mechanism at different
+     * scales.
      */
     data class NeedsConfirmation(
         val grid: Grid,
@@ -55,211 +64,199 @@ sealed interface ReadResult {
 /**
  * Turns 81 cell images into a grid, and decides whether to stand behind it.
  *
+ * Everything starts from the printed digits. They are the one population on the page
+ * whose properties are guaranteed: one font, one ink, one size, and never fewer than
+ * seventeen of them, because no sudoku with a single solution can have fewer. Find them
+ * and the rest follows - what is taller is handwriting, and what is smaller, or sits
+ * high in the cell, is a pencilled candidate mark - so every threshold comes from the
+ * photograph in hand rather than being fixed in advance.
+ *
  * Acceptance is judged on whether extraction actually succeeded, not on how the
- * photograph scored: image metrics reject usable photographs and pass unusable ones.
- * Blur is the clearest case — it *raises* the grid-detection score while destroying
- * legibility — so the verdict here comes from classifier margins, how much the solver
- * had to overturn, and whether the puzzle has a unique solution.
+ * photograph scored. Image metrics reject usable photographs and pass unusable ones;
+ * blur is the clearest case, raising the grid-detection score while destroying
+ * legibility. So the verdict comes from classifier margins, and from whether the printed
+ * digits form a puzzle with exactly one solution.
  */
 class GridReader(private val classifier: DigitClassifier = DigitClassifier.load()) {
 
     fun read(cells: List<GrayImage>): ReadResult {
         require(cells.size == 81) { "expected 81 cells but got ${cells.size}" }
 
-        // Find the print first: everything else follows from it, since what is bigger is
-        // handwriting and what is smaller is a candidate mark.
-        //
-        // On a page covered in annotations the marks are numerous and uniform enough that
-        // seventeen of them can look tighter than the printed digits, so several
-        // candidates are tried and the solver decides. That is not a fallback but the
-        // point: the printed givens are, by definition, the set that forms a puzzle with
-        // one solution. Nothing else on the page does.
-        val blobs = CellAnalyzer.largestBlobs(cells)
-        var firstAttempt: ReadResult? = null
-        for (core in printedCoreCandidates(blobs)) {
-            val attempt = readWith(cells, core)
-            if (attempt is ReadResult.Accepted || attempt is ReadResult.NeedsConfirmation) return attempt
-            if (firstAttempt == null) firstAttempt = attempt
-        }
-        return firstAttempt ?: readWith(cells, null)
-    }
+        val ink = CellAnalyzer.inspect(cells)
+        val core = findPrintedCore(ink.mapNotNull { it?.blob })
+            ?: return ReadResult.Unreadable(
+                "Could not find the printed digits in that photo.", emptySet(),
+            )
 
-    private fun readWith(cells: List<GrayImage>, core: PrintedCore?): ReadResult {
-        val analyses = cells.map { CellAnalyzer.analyse(it, core?.digitThreshold ?: FALLBACK_THRESHOLD) }
-        val readings = analyses.mapIndexed { index, analysis ->
+        val readings = ink.mapIndexed { index, cell ->
+            val kind = if (cell == null) Ink.NONE else classify(cell.blob, core)
             CellReading(
                 index = index,
-                probabilities = analysis.normalised?.let { classifier.classify(it) },
-                heightRatio = analysis.digit?.heightRatio ?: 0.0,
-                darkness = analysis.digit?.darkness ?: 255.0,
-                hadDiscardedMarks = analysis.discardedMarks > 0,
+                ink = kind,
+                probabilities = if (cell == null || kind == Ink.MARK || kind == Ink.NONE) null
+                else classifier.classify(cell.normalised),
+                heightRatio = cell?.blob?.heightRatio ?: 0.0,
+                darkness = cell?.blob?.darkness ?: 255.0,
             )
         }
 
-        val filled = readings.filter { it.digit != null }
-        if (filled.size < MIN_FILLED_CELLS) {
+        val printed = readings.filter { it.ink == Ink.PRINTED }
+        if (printed.size < MIN_GIVENS) {
             return ReadResult.Unreadable(
-                "Could not read enough of the grid to be sure.",
-                filled.map { it.index }.toSet(),
+                "Only ${printed.size} printed digits were found, which is too few for a puzzle.",
+                printed.map { it.index }.toSet(),
             )
         }
 
-        val printed = printedCells(readings, core)
-        val grid = assemble(readings, printed)
-
+        val grid = assemble(readings)
         val weak = readings
             .filter { it.digit != null && it.margin < CONFIDENT_MARGIN }
             .map { it.index }
             .toSet()
 
-        return when (val solved = Solver.solve(grid)) {
+        return when (Solver.solve(grid)) {
             is SolveResult.Unique ->
                 if (weak.isEmpty()) {
                     ReadResult.Accepted(grid, readings)
                 } else {
                     ReadResult.NeedsConfirmation(
                         grid, readings, weak,
-                        "Check the highlighted cells - they were hard to read.",
+                        "Some digits were not read confidently.",
                     )
                 }
 
-            else -> repair(readings, printed, grid, weak, solved)
+            else -> repair(readings, grid, weak, core)
         }
     }
 
     /**
-     * The printed givens, found before anything else is decided.
+     * The printed digits, found before anything else is decided.
      *
-     * Everything downstream depends on this. Once the print is known, whatever is taller
-     * is handwriting and whatever is shorter is a candidate mark, so the thresholds come
-     * from the photograph in hand instead of from a constant that has to suit every
-     * photograph at once.
+     * Take the seventeen blobs most alike in height and in ink, preferring the darkest
+     * such group. Printed digits are toner and everything else on the page is pencil, so
+     * on a puzzle covered in annotations - where the marks are numerous enough that
+     * seventeen of *them* are more uniform in size than the print - darkness is what
+     * still tells the two apart. Measured over the corpus this picks the printed digits
+     * on every photograph, including the one where size alone picks the marks.
      *
-     * Printed digits are the one population whose properties are guaranteed: they share
-     * a font, a size and an ink, so they are near-identical to one another, while
-     * handwriting varies and marks are small and scattered. And a puzzle with a single
-     * solution needs at least seventeen of them, a floor nothing else on the page
-     * reaches. So take the seventeen blobs most alike in height *and* darkness.
-     *
-     * Measured across the corpus that window is 17 out of 17 printed givens on every
-     * photograph, and the threshold it yields admits no mark and misses no digit.
-     *
-     * Height alone is not enough. Three schemes built on it each regressed photographs
-     * that read perfectly: the widest gap is the one between print and handwriting, the
-     * densest cluster is the handwriting on a completed puzzle, and the lowest cluster of
-     * seventeen straddles the mark/print boundary even when a clear gap is demanded.
-     * Requiring agreement on ink as well as size is what makes it hold.
+     * Height alone is not enough, and three schemes built on it each regressed
+     * photographs that read perfectly: the widest gap is the one between print and
+     * handwriting, the densest cluster is the handwriting on a completed puzzle, and the
+     * lowest cluster of seventeen straddles the mark/print boundary.
      */
-    internal fun printedCoreCandidates(blobs: List<Blob?>): List<PrintedCore> {
-        val present = blobs.filterNotNull()
-            .filter { it.heightRatio >= MARK_FLOOR }
-            .sortedBy { it.heightRatio }
-        if (present.size < MIN_PRINTED) return emptyList()
+    internal fun findPrintedCore(blobs: List<Blob>): PrintedCore? {
+        val present = blobs.filter { it.heightRatio >= MARK_FLOOR }.sortedBy { it.heightRatio }
+        if (present.size < MIN_GIVENS) return null
 
-        val scored = (0..present.size - MIN_PRINTED).map { start ->
-            val window = present.subList(start, start + MIN_PRINTED)
+        var best: List<Blob>? = null
+        var bestScore = Double.MAX_VALUE
+        for (start in 0..present.size - MIN_GIVENS) {
+            val window = present.subList(start, start + MIN_GIVENS)
             val heightSpread = window.last().heightRatio - window.first().heightRatio
-            val darknessSpread = window.maxOf { it.darkness } - window.minOf { it.darkness }
-            val score = heightSpread + darknessSpread / 255.0 * DARKNESS_WEIGHT
-            score to PrintedCore(window.first().heightRatio, window.last().heightRatio)
+            val darknessSpread = (window.maxOf { it.darkness } - window.minOf { it.darkness }) / 255.0
+            val lightness = median(window.map { it.darkness }) / 255.0
+            val score = heightSpread + darknessSpread * DARKNESS_SPREAD_WEIGHT +
+                lightness * LIGHTNESS_WEIGHT
+            if (score < bestScore) {
+                bestScore = score
+                best = window
+            }
         }
 
-        // Overlapping windows describe the same population, so keep one per distinct
-        // starting height rather than burning the budget on near-duplicates.
-        return scored.sortedBy { it.first }
-            .map { it.second }
-            .distinctBy { Math.round(it.minHeight * 100) }
-            .take(MAX_CORE_CANDIDATES)
+        val window = best ?: return null
+        return PrintedCore(
+            height = median(window.map { it.heightRatio }),
+            darkness = median(window.map { it.darkness }),
+            strokeWidth = median(window.map { it.strokeWidth }),
+        )
     }
-
-    /** The single most likely printed core, ignoring the solver. Exposed for diagnosis. */
-    internal fun findPrintedCore(blobs: List<Blob?>): PrintedCore? =
-        printedCoreCandidates(blobs).firstOrNull()
 
     /**
-     * Which cells hold printed digits, judged against the core.
+     * What one blob is, measured against the printed digits of the same photograph.
      *
-     * Decided by size rather than darkness: one corpus photograph has handwriting drawn
-     * as dark as the print beside it, so no ink threshold separates the two.
+     * Printed digits vary in height by no more than 5% of their own median across the
+     * whole corpus, so the printed band can be tight, and handwriting is never less than
+     * 15% taller than the print. The only things that reach into either band are large
+     * candidate marks - a ringed pair of digits, say - and those are given away by where
+     * they sit: candidate marks are written along the top of a cell, answers in the
+     * middle of it. Measured, no mark reaching digit size sits lower than 0.14 of a cell
+     * above centre, no printed digit higher than 0.15, and no answer higher than 0.10.
      */
-    private fun printedCells(readings: List<CellReading>, core: PrintedCore?): Set<Int> {
-        val filled = readings.filter { it.digit != null }
-        if (filled.isEmpty()) return emptySet()
+    private fun classify(blob: Blob, core: PrintedCore): Ink {
+        val relative = blob.heightRatio / core.height
+        return when {
+            relative in PRINTED_MIN..PRINTED_MAX && blob.verticalOffset >= PRINTED_TOP_LIMIT ->
+                Ink.PRINTED
 
-        // Without a core there were too few digits to identify the print, so fall back
-        // to treating the smallest consistent group as printed.
-        val ceiling = (core?.maxHeight ?: filled.minOf { it.heightRatio }) + PRINTED_TOLERANCE
-
-        // A grid whose printed set is everything is legitimate: an unsolved puzzle, or a
-        // printed solution.
-        return filled.filter { it.heightRatio <= ceiling }.map { it.index }.toSet()
+            relative >= ANSWER_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT -> Ink.ANSWER
+            else -> Ink.MARK
+        }
     }
 
-    private fun assemble(readings: List<CellReading>, printed: Set<Int>): Grid {
+    private fun assemble(readings: List<CellReading>): Grid {
         var grid = Grid.Empty
         for (reading in readings) {
             val digit = reading.digit ?: continue
             grid = grid.with(
                 reading.index,
-                if (reading.index in printed) Cell.given(digit) else Cell.guess(digit),
+                if (reading.ink == Ink.PRINTED) Cell.given(digit) else Cell.guess(digit),
             )
         }
         return grid
     }
 
     /**
-     * The solver disagrees with the reader, so the reader is wrong somewhere.
+     * The printed digits do not make a puzzle, so the reading of them is wrong somewhere.
      *
-     * Cells are tried in order of how little the classifier trusted them, each swapped
-     * for its runner-up, and the first reading that yields a unique puzzle wins. A
-     * bounded search: this runs on a phone while the user waits.
+     * Only printed digits can be at fault: the solver works from the givens alone, so no
+     * handwritten answer, right or wrong, changes the outcome.
+     *
+     * Removing a given is tried before changing one. The observed failure is a false
+     * positive - a clump of candidate marks that happens to match the print in size -
+     * and removing a *real* given almost never yields a unique puzzle, while changing one
+     * can quietly produce a different puzzle that solves cleanly. That is how an earlier
+     * version turned a correctly read 1 into a 7 and reported success.
+     *
+     * Suspects are ranked by how far they sit from the printed core, so the least
+     * print-like digit is questioned first.
      */
     private fun repair(
         readings: List<CellReading>,
-        printed: Set<Int>,
         original: Grid,
         weak: Set<Int>,
-        solved: SolveResult,
+        core: PrintedCore,
     ): ReadResult {
-        val givens = original.givensOnly()
-        val givenCount = givens.givenCount
-
-        // Fewer than 17 givens cannot produce a unique puzzle - a proven bound - so a
-        // read below it is definitely wrong and usually means printed digits were
-        // classified as handwriting.
-        if (givenCount in 1 until MIN_GIVENS && !original.isComplete) {
-            return ReadResult.Unreadable(
-                "Only $givenCount printed digits were found, which is too few for a puzzle.",
-                weak,
-            )
-        }
-
-        val candidates = readings
-            .filter { it.digit != null }
-            .sortedBy { it.margin }
+        val suspects = readings
+            .filter { it.ink == Ink.PRINTED && it.digit != null }
+            .sortedByDescending { deviation(it, core) }
             .take(REPAIR_CELLS)
 
-        for (reading in candidates) {
-            val probabilities = reading.probabilities ?: continue
+        for (suspect in suspects) {
+            val without = original.with(suspect.index, Cell.Empty)
+            if (Solver.solve(without) is SolveResult.Unique) {
+                return ReadResult.NeedsConfirmation(
+                    without, readings, weak + suspect.index,
+                    "One cell looked like a printed digit but is not.",
+                )
+            }
+        }
+
+        for (suspect in suspects.sortedBy { it.margin }) {
+            val probabilities = suspect.probabilities ?: continue
             val ranked = probabilities.indices.sortedByDescending { probabilities[it] }
             for (alternative in ranked.drop(1).take(REPAIR_ALTERNATIVES)) {
-                val digit = alternative + 1
-                val cell = if (reading.index in printed) Cell.given(digit) else Cell.guess(digit)
-                val attempt = original.with(reading.index, cell)
+                val attempt = original.with(suspect.index, Cell.given(alternative + 1))
                 if (Solver.solve(attempt) is SolveResult.Unique) {
                     return ReadResult.NeedsConfirmation(
-                        attempt, readings, weak + reading.index,
-                        "One cell was corrected automatically - please check it.",
+                        attempt, readings, weak + suspect.index,
+                        "One printed digit was corrected automatically.",
                     )
                 }
             }
         }
 
-        val reason = when (solved) {
-            is SolveResult.Multiple -> "The puzzle has more than one solution, so a printed digit was probably missed."
-            else -> "The digits read do not make a valid puzzle."
-        }
-        val uncertain = weak + candidates.map { it.index }
+        val reason = "The printed digits do not make a solvable puzzle."
+        val uncertain = weak + suspects.map { it.index }
         return if (uncertain.size <= CONFIRMABLE_CELLS) {
             ReadResult.NeedsConfirmation(original, readings, uncertain, reason)
         } else {
@@ -267,55 +264,63 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
         }
     }
 
-    /** The printed givens on this page, in blob-height terms. */
-    internal data class PrintedCore(val minHeight: Double, val maxHeight: Double) {
-        /** At or above this a blob is a digit; below it, a candidate mark. */
-        val digitThreshold: Double get() = minHeight - PRINTED_MARGIN
-    }
+    /** How unlike the printed core a reading is, in units of the core's own spread. */
+    private fun deviation(reading: CellReading, core: PrintedCore): Double =
+        abs(reading.heightRatio / core.height - 1.0) / 0.05 +
+            abs(reading.darkness - core.darkness) / 40.0
+
+    /** The printed digits of one photograph: one font, one ink, one size. */
+    internal data class PrintedCore(
+        val height: Double,
+        val darkness: Double,
+        val strokeWidth: Double,
+    )
 
     companion object {
 
+        private fun median(values: List<Double>): Double {
+            val sorted = values.sorted()
+            return sorted[sorted.size / 2]
+        }
+
         /** Below this a blob is speckle or a mark, and never joins the printed search. */
-        private const val MARK_FLOOR = 0.30
-
-        /** The proven minimum number of givens for a puzzle with one solution. */
-        private const val MIN_PRINTED = 17
-
-        /** How much agreement on ink counts next to agreement on size. */
-        private const val DARKNESS_WEIGHT = 0.5
-
-        /**
-         * How far under the shortest printed digit the digit threshold sits. Measured
-         * across the corpus, 0.03 misses no digit and admits no mark, where 0.02 misses
-         * one and 0.04 leaves less room above the marks.
-         */
-        private const val PRINTED_MARGIN = 0.03
-
-        /** How much taller than the printed core a digit may be and still be printed. */
-        private const val PRINTED_TOLERANCE = 0.05
-
-        /** Used only when there are too few digits to identify a printed core at all. */
-        private const val FALLBACK_THRESHOLD = 0.53
-
-        /**
-         * How many candidate printed cores to try before giving up.
-         *
-         * Each costs a full read, on the order of a tenth of a second, and on every
-         * corpus photograph but the most heavily annotated one the first candidate is
-         * already right.
-         */
-        private const val MAX_CORE_CANDIDATES = 6
-
-        /** Below this, there is not enough on the page to be worth confirming. */
-        private const val MIN_FILLED_CELLS = 17
+        private const val MARK_FLOOR = 0.25
 
         /** The proven minimum number of givens for a puzzle with one solution. */
         private const val MIN_GIVENS = 17
 
+        /** How much agreement on ink counts next to agreement on size. */
+        private const val DARKNESS_SPREAD_WEIGHT = 0.5
+
+        /**
+         * How much being the darkest group counts. Print is toner and everything else is
+         * pencil, so this is what separates the print from a page of candidate marks.
+         */
+        private const val LIGHTNESS_WEIGHT = 1.0
+
+        /**
+         * The printed band, as a multiple of the core height. Measured across the corpus,
+         * printed digits fall in 0.93 to 1.05 and handwriting starts at 1.15.
+         */
+        private const val PRINTED_MIN = 0.90
+        private const val PRINTED_MAX = 1.09
+
+        /** A written answer is at least this much taller than the print. */
+        private const val ANSWER_MIN = 1.10
+
+        /**
+         * How far above the centre of its cell a blob may sit and still be a digit.
+         *
+         * Candidate marks are written along the top edge. The printed test can afford the
+         * looser limit because its height band already excludes almost everything.
+         */
+        private const val PRINTED_TOP_LIMIT = -0.18
+        private const val ANSWER_TOP_LIMIT = -0.12
+
         /** Gap between the top two probabilities below which a cell counts as weak. */
         private const val CONFIDENT_MARGIN = 0.60f
 
-        private const val REPAIR_CELLS = 12
+        private const val REPAIR_CELLS = 8
         private const val REPAIR_ALTERNATIVES = 2
 
         /** More uncertain cells than this and a retake beats confirming one by one. */

@@ -10,9 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,76 +38,72 @@ fun HistoryScreen(
     onDelete: (HistoryEntry) -> Unit,
     onClose: () -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().systemBarsPadding().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { Text("History", style = MaterialTheme.typography.headlineSmall) }
-
-        if (entries.isEmpty()) {
-            item {
-                Text(
-                    "Puzzles you photograph are kept here, so you can pick one up again later.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+    Column(modifier = Modifier.fillMaxSize()) {
+        AppBar(title = "History", onBack = onClose)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (entries.isEmpty()) {
+                item {
+                    Text(
+                        "Puzzles you photograph are kept here, so you can pick one up again later.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
-        }
 
-        for ((day, group) in History.byDay(entries)) {
-            item {
-                Text(
-                    day,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            items@ for (entry in group) {
-                item(key = entry.id) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpen(entry) }
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(modifier = Modifier.size(64.dp)) {
-                            history.loadPhoto(entry)?.let {
-                                Image(
-                                    bitmap = it.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
-                                )
+            for ((day, group) in History.byDay(entries)) {
+                item {
+                    Text(
+                        day,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                items@ for (entry in group) {
+                    item(key = entry.id) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpen(entry) }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(modifier = Modifier.size(64.dp)) {
+                                history.loadPhoto(entry)?.let {
+                                    Image(
+                                        bitmap = it.asImageBitmap(),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                }
                             }
+                            Column(modifier = Modifier.fillMaxWidth(0.6f)) {
+                                Text(History.timeOf(entry), style = MaterialTheme.typography.titleMedium)
+                                Text(summarise(entry), style = MaterialTheme.typography.bodySmall)
+                            }
+                            TextButton(onClick = { onDelete(entry) }) { Text("Delete") }
                         }
-                        Column(modifier = Modifier.fillMaxWidth(0.6f)) {
-                            Text(History.timeOf(entry), style = MaterialTheme.typography.titleMedium)
-                            Text(summarise(entry), style = MaterialTheme.typography.bodySmall)
-                        }
-                        TextButton(onClick = { onDelete(entry) }) { Text("Delete") }
                     }
                 }
             }
-        }
 
-        item {
-            Button(onClick = onClose, modifier = Modifier.padding(top = 12.dp)) {
-                Text("Back to the camera")
-            }
+        }
         }
     }
-}
 
-/** A line telling you which puzzle this is without opening it. */
-private fun summarise(entry: HistoryEntry): String {
-    val given = entry.grid.givenCount
-    val written = entry.grid.filledCount - given
-    val progress = when {
-        entry.grid.isComplete -> "finished"
-        written == 0 -> "not started"
-        else -> "$written written in"
-    }
-    val wrong = (AnswerChecker.check(entry.grid) as? AnswerCheck.Checked)?.incorrect?.size ?: 0
-    return if (wrong > 0) "$given printed, $progress, $wrong wrong" else "$given printed, $progress"
+    /** A line telling you which puzzle this is without opening it. */
+    private fun summarise(entry: HistoryEntry): String {
+        val given = entry.grid.givenCount
+        val written = entry.grid.filledCount - given
+        val progress = when {
+            entry.grid.isComplete -> "finished"
+            written == 0 -> "not started"
+            else -> "$written written in"
+        }
+        val wrong = (AnswerChecker.check(entry.grid) as? AnswerCheck.Checked)?.incorrect?.size ?: 0
+        return if (wrong > 0) "$given printed, $progress, $wrong wrong" else "$given printed, $progress"
 }

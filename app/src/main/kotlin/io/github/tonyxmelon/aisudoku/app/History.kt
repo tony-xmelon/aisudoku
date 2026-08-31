@@ -43,6 +43,15 @@ class History(context: Context) {
         return HistoryEntry(id, image, grid)
     }
 
+    /**
+     * Records a correction, so a puzzle reopened later is where the user left it rather
+     * than where recognition first put it.
+     */
+    fun update(id: Long, grid: Grid) {
+        val text = File(directory, "$id.txt")
+        if (text.isFile) text.writeText(encode(grid))
+    }
+
     /** Newest first. */
     fun list(): List<HistoryEntry> =
         directory.listFiles { f: File -> f.extension == "txt" }

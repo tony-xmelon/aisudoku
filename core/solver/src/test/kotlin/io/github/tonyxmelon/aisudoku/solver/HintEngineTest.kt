@@ -19,19 +19,13 @@ class HintEngineTest {
     }
 
     @Test
-    fun `explained names the technique and its evidence without giving the digit away`() {
+    fun `explained names the technique, its evidence, and the digit`() {
         val hint = assertIs<Hint.Explained>(ExplainedHintEngine.nextHint(Puzzles.EASY))
+        val truth = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.EASY)).solution
         assertTrue(hint.technique.isNotBlank())
         assertTrue(hint.explanation.isNotBlank())
         assertTrue(hint.supportingCells.isNotEmpty())
-    }
-
-    @Test
-    fun `an explained hint can be pressed for the answer`() {
-        val hint = assertIs<Hint.Explained>(ExplainedHintEngine.nextHint(Puzzles.EASY))
-        val reveal = assertIs<Hint.Reveal>(hint.answer)
-        val truth = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.EASY)).solution
-        assertEquals(truth[reveal.index].digit, reveal.digit)
+        assertEquals(truth[hint.index].digit, hint.digit)
     }
 
     @Test
@@ -54,14 +48,46 @@ class HintEngineTest {
         assertNull(ExplainedHintEngine.nextHint(Puzzles.CONTRADICTORY))
     }
 
+    /**
+     * The bug this guards against was reported from a phone: the hint pointed at a cell
+     * the user had already written 9 in and explained that it could only be a 9.
+     */
     @Test
-    fun `a hint never lands on a cell the user has already filled in`() {
+    fun `no hint lands on a cell the user has already filled in`() {
         val truth = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.EASY)).solution
         var grid = Puzzles.EASY
         for (i in 0 until 81) {
             if (!grid[i].isFilled && i % 3 == 0) grid = grid.with(i, Cell.guess(truth[i].digit!!))
         }
-        val hint = assertIs<Hint.Reveal>(RevealHintEngine.nextHint(grid))
-        assertEquals(Cell.Empty, grid[hint.index])
+        for (engine in listOf(RevealHintEngine, ExplainedHintEngine)) {
+            val hint = engine.nextHint(grid)!!
+            assertEquals(Cell.Empty, grid[hint.index], "$engine landed on a filled cell")
+        }
+    }
+
+    /** Every cell answered correctly but for one: the hint has to be that one cell. */
+    @Test
+    fun `a hint reasons from the answers the user got right`() {
+        val truth = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.EASY)).solution
+        var grid = Puzzles.EASY
+        val open = (0 until 81).filter { !grid[it].isFilled }
+        for (i in open.drop(1)) grid = grid.with(i, Cell.guess(truth[i].digit!!))
+
+        val hint = ExplainedHintEngine.nextHint(grid)!!
+        assertEquals(open.first(), hint.index)
+        assertEquals(truth[open.first()].digit, hint.digit)
+    }
+
+    /** A wrong answer must not be reasoned from, or the advice built on it is wrong too. */
+    @Test
+    fun `a wrong answer is ignored rather than believed`() {
+        val truth = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.EASY)).solution
+        val open = (0 until 81).filter { !Puzzles.EASY[it].isFilled }
+        val spoiled = open.first()
+        val wrong = (1..9).first { it != truth[spoiled].digit }
+        val grid = Puzzles.EASY.with(spoiled, Cell.guess(wrong))
+
+        val hint = ExplainedHintEngine.nextHint(grid)!!
+        assertEquals(truth[hint.index].digit, hint.digit, "the hint must agree with the solution")
     }
 }

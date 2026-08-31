@@ -10,28 +10,45 @@ import io.github.tonyxmelon.aisudoku.solver.RevealHintEngine
 import io.github.tonyxmelon.aisudoku.solver.SolveResult
 import io.github.tonyxmelon.aisudoku.solver.Solver
 
-/** Which help the user has asked for. */
-enum class OverlayMode { NONE, HINT, CHECK, SOLUTION }
+/** Which help the user has asked for. Exactly one at a time, so nothing has to blend. */
+enum class OverlayMode { NONE, HINT, CHECK, SOLUTION, READING }
 
-/** Whether a hint names the technique or just gives the digit. */
+/** Whether a hint names the technique behind it or only gives the digit. */
 enum class HintStyle { REVEAL, EXPLAIN }
 
-enum class OverlayRole { FILLED, CORRECT, INCORRECT, HINT }
+/**
+ * What a digit drawn on the photograph means.
+ *
+ * One role per colour, and no two roles are ever drawn on the same cell. The first
+ * version tinted uncertain cells yellow and wrong ones red, so a cell that was both came
+ * out orange, and orange meant nothing. Doubt is now drawn as a ring around the cell
+ * instead of a fill, which can sit over any of these without inventing a new colour.
+ */
+enum class OverlayRole { SOLUTION, CORRECT, INCORRECT, HINT }
 
 data class OverlayDigit(val digit: Int, val role: OverlayRole)
 
 /** What the overlay should draw, in cell coordinates. */
 data class Overlay(
     val digits: Map<Int, OverlayDigit>,
-    val highlighted: Set<Int>,
+    /** Cells that are evidence for the current hint. */
+    val evidence: Set<Int>,
 )
+
+/** One entry in the key shown under the photograph. */
+enum class LegendKey { CORRECT, INCORRECT, SOLUTION, HINT, EVIDENCE, UNCERTAIN, PRINTED, WRITTEN, MARKS }
+
+/** How worried the status line should look. */
+enum class Tone { NEUTRAL, GOOD, BAD }
+
+data class Status(val text: String, val tone: Tone)
 
 /**
  * Everything the puzzle screen derives from a grid.
  *
- * Kept free of Android types on purpose: this is the part with rules in it, so it is
- * the part worth testing, and a `Bitmap` in the same class would have made that need
- * an instrumented device.
+ * Kept free of Android types on purpose: this is the part with rules in it, so it is the
+ * part worth testing, and a `Bitmap` in the same class would have made that need a
+ * device.
  */
 object PuzzleLogic {
 
@@ -40,79 +57,104 @@ object PuzzleLogic {
         HintStyle.EXPLAIN -> ExplainedHintEngine.nextHint(grid)
     }
 
-    fun overlay(
-        grid: Grid,
-        mode: OverlayMode,
-        style: HintStyle,
-        revealedHintDigit: Boolean,
-    ): Overlay {
+    /** True when there is still something to hint at. Drives whether the button is live. */
+    fun canHint(grid: Grid, style: HintStyle): Boolean = hint(grid, style) != null
+
+    fun overlay(grid: Grid, mode: OverlayMode, style: HintStyle): Overlay {
         val digits = mutableMapOf<Int, OverlayDigit>()
-        var highlighted = emptySet<Int>()
+        var evidence = emptySet<Int>()
 
         when (mode) {
             OverlayMode.NONE -> Unit
 
-            // Every cell that is not printed, so a finished puzzle shows the whole
-            // answer rather than the handful of cells recognition happened to miss.
+            // Every cell that is not printed, so a finished puzzle shows the whole answer
+            // rather than the handful of cells recognition happened to miss.
             OverlayMode.SOLUTION -> (Solver.solve(grid) as? SolveResult.Unique)?.let { solved ->
                 for (i in 0 until 81) {
                     if (grid[i].source != CellSource.GIVEN) {
-                        digits[i] = OverlayDigit(solved.solution[i].digit!!, OverlayRole.FILLED)
+                        digits[i] = OverlayDigit(solved.solution[i].digit!!, OverlayRole.SOLUTION)
                     }
                 }
             }
 
             OverlayMode.CHECK -> (AnswerChecker.check(grid) as? AnswerCheck.Checked)?.let { checked ->
                 for (i in checked.correct) digits[i] = OverlayDigit(grid[i].digit!!, OverlayRole.CORRECT)
-                // The digit carried here is what the app *read*, not what is on the
-                // paper. Drawing it is the whole point: a misread then looks like a
-                // misread instead of the app calling a correct answer wrong.
+                // The digit carried here is what the app *read*, not what is on the paper.
+                // Drawing it is the whole point: a misread then looks like a misread
+                // instead of the app calling a correct answer wrong.
                 for (i in checked.incorrect) digits[i] = OverlayDigit(grid[i].digit!!, OverlayRole.INCORRECT)
             }
 
-            OverlayMode.HINT -> {
-                when (val h = hint(grid, style)) {
-                    is Hint.Reveal -> digits[h.index] = OverlayDigit(h.digit, OverlayRole.HINT)
+            // Drawn from the readings rather than from the grid, so it can show what
+            // was thrown away as well as what was kept.
+            OverlayMode.READING -> Unit
 
-                    is Hint.Explained -> {
-                        highlighted = h.supportingCells
-                        // An explained hint withholds the digit until asked a second time.
-                        if (revealedHintDigit) {
-                            h.answer?.let { digits[it.index] = OverlayDigit(it.digit, OverlayRole.HINT) }
-                        }
-                    }
-
-                    null -> Unit
-                }
+            OverlayMode.HINT -> hint(grid, style)?.let { h ->
+                digits[h.index] = OverlayDigit(h.digit, OverlayRole.HINT)
+                if (h is Hint.Explained) evidence = h.supportingCells - h.index
             }
         }
-        return Overlay(digits, highlighted)
+        return Overlay(digits, evidence)
     }
 
-    /** One line describing the state of the puzzle, for the status area. */
-    fun status(grid: Grid): String = when (Solver.solve(grid)) {
+    /** The key for whatever is currently drawn. Shown only for the active mode. */
+    fun legend(mode: OverlayMode, hasUncertain: Boolean): List<LegendKey> {
+        val keys = when (mode) {
+            OverlayMode.NONE -> emptyList()
+            OverlayMode.CHECK -> listOf(LegendKey.CORRECT, LegendKey.INCORRECT)
+            OverlayMode.SOLUTION -> listOf(LegendKey.SOLUTION)
+            OverlayMode.HINT -> listOf(LegendKey.HINT, LegendKey.EVIDENCE)
+            OverlayMode.READING -> listOf(LegendKey.PRINTED, LegendKey.WRITTEN, LegendKey.MARKS)
+        }
+        return if (hasUncertain) keys + LegendKey.UNCERTAIN else keys
+    }
+
+    /** One short line about the puzzle. Instructions belong next to the control they explain. */
+    fun status(grid: Grid): Status = when (Solver.solve(grid)) {
         is SolveResult.Unique -> {
-            val checked = AnswerChecker.check(grid) as? AnswerCheck.Checked
-            val wrong = checked?.incorrect?.size ?: 0
+            val wrong = (AnswerChecker.check(grid) as? AnswerCheck.Checked)?.incorrect?.size ?: 0
             val empty = (0 until 81).count { !grid[it].isFilled }
             when {
-                // The number shown on a red cell is what the app read. Saying so is what
-                // stops a misread looking like the app calling a right answer wrong.
-                wrong > 0 -> {
-                    val cells = if (wrong == 1) "1 cell disagrees" else "$wrong cells disagree"
-                    "$cells with the solution. The number shown on a red cell is what the " +
-                        "app read - if that is not what you wrote, tap it to fix."
-                }
+                wrong > 0 -> Status(
+                    if (wrong == 1) "1 answer disagrees with the solution."
+                    else "$wrong answers disagree with the solution.",
+                    Tone.BAD,
+                )
 
-                empty > 0 -> {
-                    val cells = if (empty == 1) "1 cell" else "$empty cells"
-                    "Read correctly so far, with $cells still empty."
-                }
-                else -> "Solved, and every answer is right."
+                empty == 1 -> Status("One cell to go.", Tone.NEUTRAL)
+                empty > 0 -> Status("$empty cells to go.", Tone.NEUTRAL)
+                else -> Status("Solved, and every answer is right.", Tone.GOOD)
             }
         }
 
-        is SolveResult.None -> "These digits do not make a solvable puzzle - fix a cell or retake."
-        is SolveResult.Multiple -> "More than one solution, so a printed digit was probably missed."
+        is SolveResult.None ->
+            Status("These printed digits do not make a solvable puzzle.", Tone.BAD)
+
+        is SolveResult.Multiple ->
+            Status("More than one solution, so a printed digit was missed.", Tone.BAD)
+    }
+
+    /** The sentence under the controls, explaining whatever is on screen right now. */
+    fun guidance(grid: Grid, mode: OverlayMode, style: HintStyle): String? = when (mode) {
+        OverlayMode.NONE -> null
+
+        OverlayMode.SOLUTION -> "Blue digits are the solution. Tap any cell to correct what was read."
+
+        OverlayMode.READING -> "What the app made of each square, and the bar showing how " +
+            "sure it was. Tap a square for the detail."
+
+        OverlayMode.CHECK ->
+            if ((AnswerChecker.check(grid) as? AnswerCheck.Checked)?.incorrect.isNullOrEmpty()) {
+                "Everything you have written so far is right."
+            } else {
+                "A red cell shows the digit the app read there. If that is not what you " +
+                    "wrote, tap the cell to fix it."
+            }
+
+        OverlayMode.HINT -> when (val h = hint(grid, style)) {
+            is Hint.Explained -> "${h.technique}. ${h.explanation}"
+            is Hint.Reveal -> "Row ${h.index / 9 + 1}, column ${h.index % 9 + 1}."
+            null -> "Nothing left to work out."
+        }
     }
 }

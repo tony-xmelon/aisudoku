@@ -6,6 +6,7 @@ import io.github.tonyxmelon.aisudoku.solver.SolveResult
 import io.github.tonyxmelon.aisudoku.solver.Solver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -25,21 +26,29 @@ class PuzzleLogicTest {
 
     private val solution = assertIs<SolveResult.Unique>(Solver.solve(puzzle)).solution
 
+    private fun finished(): Grid {
+        var out = puzzle
+        for (i in 0 until 81) {
+            if (!out[i].isFilled) out = out.with(i, Cell.guess(solution[i].digit!!))
+        }
+        return out
+    }
+
     @Test
     fun `no overlay draws nothing`() {
-        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.NONE, HintStyle.EXPLAIN, false)
+        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.NONE, HintStyle.EXPLAIN)
         assertTrue(overlay.digits.isEmpty())
-        assertTrue(overlay.highlighted.isEmpty())
+        assertTrue(overlay.evidence.isEmpty())
     }
 
     @Test
     fun `the solution fills every empty cell and touches no given`() {
-        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.SOLUTION, HintStyle.EXPLAIN, false)
+        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.SOLUTION, HintStyle.EXPLAIN)
         assertEquals(81 - puzzle.filledCount, overlay.digits.size)
         for ((index, drawn) in overlay.digits) {
             assertTrue(!puzzle[index].isFilled, "cell $index was already filled")
             assertEquals(solution[index].digit, drawn.digit)
-            assertEquals(OverlayRole.FILLED, drawn.role)
+            assertEquals(OverlayRole.SOLUTION, drawn.role)
         }
     }
 
@@ -49,81 +58,92 @@ class PuzzleLogicTest {
         val wrongDigit = (1..9).first { it != solution[empty].digit }
 
         val right = puzzle.with(empty, Cell.guess(solution[empty].digit!!))
-        val rightOverlay = PuzzleLogic.overlay(right, OverlayMode.CHECK, HintStyle.EXPLAIN, false)
-        assertEquals(OverlayRole.CORRECT, rightOverlay.digits[empty]?.role)
+        assertEquals(
+            OverlayRole.CORRECT,
+            PuzzleLogic.overlay(right, OverlayMode.CHECK, HintStyle.EXPLAIN).digits[empty]?.role,
+        )
 
         val wrong = puzzle.with(empty, Cell.guess(wrongDigit))
-        val wrongOverlay = PuzzleLogic.overlay(wrong, OverlayMode.CHECK, HintStyle.EXPLAIN, false)
-        assertEquals(OverlayRole.INCORRECT, wrongOverlay.digits[empty]?.role)
+        val overlay = PuzzleLogic.overlay(wrong, OverlayMode.CHECK, HintStyle.EXPLAIN)
+        assertEquals(OverlayRole.INCORRECT, overlay.digits[empty]?.role)
+        // What is drawn on a red cell is what the app READ, not the true digit. Without
+        // that, a misreading looks exactly like the app marking a right answer wrong.
+        assertEquals(wrongDigit, overlay.digits[empty]?.digit)
     }
 
     @Test
-    fun `an explained hint highlights its evidence and withholds the digit`() {
-        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN, false)
-        assertTrue(overlay.highlighted.isNotEmpty(), "an explanation must point at something")
-        assertTrue(overlay.digits.isEmpty(), "the digit must not be given away until asked")
-    }
-
-    @Test
-    fun `asking again reveals the digit, and it is the right one`() {
-        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN, true)
+    fun `an explained hint gives the digit and points at its evidence`() {
+        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)
         assertEquals(1, overlay.digits.size)
         val (index, drawn) = overlay.digits.entries.single()
         assertEquals(solution[index].digit, drawn.digit)
         assertEquals(OverlayRole.HINT, drawn.role)
+        assertFalse(index in overlay.evidence, "the answer is not its own evidence")
     }
 
     @Test
-    fun `the plain hint style gives the digit straight away`() {
-        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.REVEAL, false)
+    fun `the plain hint style gives the digit with no evidence`() {
+        val overlay = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.REVEAL)
         assertEquals(1, overlay.digits.size)
+        assertTrue(overlay.evidence.isEmpty())
         val (index, drawn) = overlay.digits.entries.single()
         assertEquals(solution[index].digit, drawn.digit)
     }
 
     @Test
     fun `the status line distinguishes unfinished, wrong, solved and unreadable`() {
-        assertTrue(PuzzleLogic.status(puzzle).contains("still empty"), PuzzleLogic.status(puzzle))
+        assertEquals(Tone.NEUTRAL, PuzzleLogic.status(puzzle).tone)
+        assertTrue(PuzzleLogic.status(puzzle).text.contains("cells to go"))
 
         val empty = (0 until 81).first { !puzzle[it].isFilled }
         val wrongDigit = (1..9).first { it != solution[empty].digit }
-        val withMistake = PuzzleLogic.status(puzzle.with(empty, Cell.guess(wrongDigit)))
-        assertTrue(withMistake.contains("1 cell disagrees"), withMistake)
-        // The wording has to say the number shown is what was *read*, because without
-        // that a misreading looks exactly like the app marking a correct answer wrong.
-        assertTrue(withMistake.contains("what the app read"), withMistake)
+        val mistake = PuzzleLogic.status(puzzle.with(empty, Cell.guess(wrongDigit)))
+        assertEquals(Tone.BAD, mistake.tone)
+        assertTrue(mistake.text.contains("1 answer disagrees"), mistake.text)
 
-        var finished = puzzle
-        for (i in 0 until 81) {
-            if (!finished[i].isFilled) finished = finished.with(i, Cell.guess(solution[i].digit!!))
-        }
-        assertTrue(PuzzleLogic.status(finished).contains("every answer is right"), PuzzleLogic.status(finished))
+        val done = PuzzleLogic.status(finished())
+        assertEquals(Tone.GOOD, done.tone)
+        assertTrue(done.text.contains("every answer is right"), done.text)
 
         val broken = Grid.Empty.with(0, Cell.given(5)).with(1, Cell.given(5))
-        assertTrue(PuzzleLogic.status(broken).contains("not make a solvable puzzle"))
+        assertTrue(PuzzleLogic.status(broken).text.contains("not make a solvable puzzle"))
     }
 
+    /**
+     * Reported from the phone: Solve showed a single digit on a completed puzzle,
+     * because only cells the app had read as empty were being drawn.
+     */
     @Test
     fun `solving a finished puzzle overlays every written cell, not just the empty ones`() {
-        // Reported from the phone: Solve showed a single digit on a completed puzzle,
-        // because only cells the app read as empty were being drawn.
-        var finished = puzzle
-        for (i in 0 until 81) {
-            if (!finished[i].isFilled) finished = finished.with(i, Cell.guess(solution[i].digit!!))
-        }
-        val overlay = PuzzleLogic.overlay(finished, OverlayMode.SOLUTION, HintStyle.EXPLAIN, false)
+        val overlay = PuzzleLogic.overlay(finished(), OverlayMode.SOLUTION, HintStyle.EXPLAIN)
         assertEquals(81 - puzzle.givenCount, overlay.digits.size)
-        assertTrue(overlay.digits.values.all { it.role == OverlayRole.FILLED })
+        assertTrue(overlay.digits.values.all { it.role == OverlayRole.SOLUTION })
+    }
+
+    /**
+     * Reported from the phone: Hint pointed at a cell the user had already written 9 in
+     * and explained that it could only be a 9.
+     */
+    @Test
+    fun `a finished puzzle has no hint left to give`() {
+        val done = finished()
+        for (style in HintStyle.entries) {
+            assertFalse(PuzzleLogic.canHint(done, style), "$style still offered a hint")
+            assertTrue(PuzzleLogic.overlay(done, OverlayMode.HINT, style).digits.isEmpty())
+        }
     }
 
     @Test
-    fun `a finished puzzle has no hint left to give`() {
-        var finished = puzzle
+    fun `a hint never lands on a cell that already has something written in it`() {
+        var grid = puzzle
         for (i in 0 until 81) {
-            if (!finished[i].isFilled) finished = finished.with(i, Cell.guess(solution[i].digit!!))
+            if (!grid[i].isFilled && i % 2 == 0) grid = grid.with(i, Cell.guess(solution[i].digit!!))
         }
-        assertTrue(PuzzleLogic.hint(finished, HintStyle.REVEAL) == null)
-        assertTrue(PuzzleLogic.overlay(finished, OverlayMode.HINT, HintStyle.REVEAL, false).digits.isEmpty())
+        for (style in HintStyle.entries) {
+            val overlay = PuzzleLogic.overlay(grid, OverlayMode.HINT, style)
+            val index = overlay.digits.keys.single()
+            assertFalse(grid[index].isFilled, "$style pointed at a filled cell")
+        }
     }
 
     @Test
@@ -139,6 +159,19 @@ class PuzzleLogicTest {
             "...419..5",
             "....8..79",
         )
-        assertTrue(PuzzleLogic.status(ambiguous).contains("More than one solution"))
+        assertTrue(PuzzleLogic.status(ambiguous).text.contains("More than one solution"))
+    }
+
+    @Test
+    fun `the key names exactly what is drawn, and doubt is listed whenever it applies`() {
+        assertEquals(emptyList(), PuzzleLogic.legend(OverlayMode.NONE, hasUncertain = false))
+        assertEquals(
+            listOf(LegendKey.CORRECT, LegendKey.INCORRECT),
+            PuzzleLogic.legend(OverlayMode.CHECK, hasUncertain = false),
+        )
+        assertEquals(
+            listOf(LegendKey.SOLUTION, LegendKey.UNCERTAIN),
+            PuzzleLogic.legend(OverlayMode.SOLUTION, hasUncertain = true),
+        )
     }
 }

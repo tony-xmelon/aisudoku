@@ -37,3 +37,7 @@ tools/recognizer/*.pt
 tools/recognizer/*.onnx
 tools/recognizer/digits.bin
 tools/recognizer/digits.json
+
+# Screenshots the user sends as feedback. Same policy as the corpus: they are
+# photographs of a real page, so they stay on this machine.
+feedback/

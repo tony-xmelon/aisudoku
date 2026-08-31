@@ -1,5 +1,6 @@
 package io.github.tonyxmelon.aisudoku.recognize
 
+import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.vision.CorpusFixtures
 import io.github.tonyxmelon.aisudoku.vision.GateVerdict
 import io.github.tonyxmelon.aisudoku.vision.OpenCvNatives
@@ -11,12 +12,9 @@ import kotlin.test.assertTrue
 /**
  * Measures the Kotlin pipeline against the hand-labelled corpus.
  *
- * The numbers here must track the Python prototype in `tools/recognizer/`. If Kotlin
+ * These numbers must track the Python prototype in `tools/recognizer/`. If Kotlin
  * inference drifts from the PyTorch model that produced the weights, everything
- * downstream is quietly wrong, and only a comparison like this would notice.
- *
- * Python measured: printed givens 100%, handwriting 84.5%, triage 143/143 givens and
- * 84/84 guesses found with one false positive in 259 empty cells.
+ * downstream is quietly wrong and only a comparison like this would notice.
  */
 class RecognitionAccuracyTest {
 
@@ -26,80 +24,86 @@ class RecognitionAccuracyTest {
         OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }
     }
 
+    /**
+     * The structural half of the problem: which cells hold print, which hold an answer,
+     * and which hold nothing but pencilled candidate marks.
+     *
+     * This is stricter than it looks. One corpus photograph has candidate marks as tall
+     * as the printed digits, including ringed pairs taller than any of them, so nothing
+     * about it can be settled by size alone.
+     */
     @Test
-    fun `triage finds every digit and almost no empty cell`() {
+    fun `every cell is sorted into print, handwriting or pencil marks`() {
         setUp()
-        var givenFound = 0
-        var givenTotal = 0
-        var guessFound = 0
-        var guessTotal = 0
-        var emptyMisread = 0
-        var emptyTotal = 0
+        val reader = GridReader()
+        var right = 0
+        var total = 0
+        val wrong = StringBuilder()
 
         for (file in CorpusFixtures.photos) {
             val truth = CorpusLabels.forPhoto(file.name) ?: continue
             val verdict = assertIs<GateVerdict.Usable>(StructuralGate.assess(CorpusFixtures.load(file)))
-            verdict.cells.forEachIndexed { index, cell ->
-                val analysis = CellAnalyzer.analyse(cell)
-                when (truth[index].source) {
-                    CorpusLabels.Source.GIVEN -> {
-                        givenTotal++; if (analysis.hasDigit) givenFound++
-                    }
-                    CorpusLabels.Source.GUESS -> {
-                        guessTotal++; if (analysis.hasDigit) guessFound++
-                    }
-                    CorpusLabels.Source.EMPTY -> {
-                        emptyTotal++; if (analysis.hasDigit) emptyMisread++
-                    }
+            val grid = when (val result = reader.read(verdict.cells)) {
+                is ReadResult.Accepted -> result.grid
+                is ReadResult.NeedsConfirmation -> result.grid
+                is ReadResult.Unreadable -> null
+            } ?: continue
+
+            for (i in 0 until 81) {
+                total++
+                val expected = truth[i].source
+                val actual = when (grid[i].source) {
+                    CellSource.GIVEN -> CorpusLabels.Source.GIVEN
+                    CellSource.GUESS -> CorpusLabels.Source.GUESS
+                    CellSource.EMPTY -> CorpusLabels.Source.EMPTY
+                }
+                if (actual == expected) {
+                    right++
+                } else {
+                    wrong.append("\n  ${file.name} r${i / 9 + 1}c${i % 9 + 1}: $expected read as $actual")
                 }
             }
         }
-        println("triage: givens $givenFound/$givenTotal, guesses $guessFound/$guessTotal, " +
-            "empty misread $emptyMisread/$emptyTotal")
-
-        assertTrue(givenFound == givenTotal, "missed a printed digit: $givenFound/$givenTotal")
-        assertTrue(guessFound >= guessTotal * 0.95, "missed handwriting: $guessFound/$guessTotal")
-        assertTrue(emptyMisread <= emptyTotal * 0.03, "too many empty cells read as digits: $emptyMisread")
+        println("triage: $right/$total cells sorted correctly")
+        assertTrue(right == total, "cells sorted wrongly:$wrong")
     }
 
     @Test
     fun `the classifier reproduces the accuracy measured in Python`() {
         setUp()
         val classifier = DigitClassifier.load()
-        var givenRight = 0
-        var givenTotal = 0
-        var guessRight = 0
-        var guessTotal = 0
+        var printedRight = 0
+        var printedTotal = 0
+        var handRight = 0
+        var handTotal = 0
         val misreads = mutableMapOf<String, Int>()
 
         for (file in CorpusFixtures.photos) {
             val truth = CorpusLabels.forPhoto(file.name) ?: continue
             val verdict = assertIs<GateVerdict.Usable>(StructuralGate.assess(CorpusFixtures.load(file)))
-            verdict.cells.forEachIndexed { index, cell ->
+            CellAnalyzer.inspect(verdict.cells).forEachIndexed { index, ink ->
                 val expected = truth[index].digit ?: return@forEachIndexed
-                val analysis = CellAnalyzer.analyse(cell)
-                val normalised = analysis.normalised ?: return@forEachIndexed
-                val probabilities = classifier.classify(normalised)
+                val probabilities = classifier.classify((ink ?: return@forEachIndexed).normalised)
                 val predicted = probabilities.indices.maxBy { probabilities[it] } + 1
 
                 val correct = predicted == expected
                 if (truth[index].source == CorpusLabels.Source.GIVEN) {
-                    givenTotal++; if (correct) givenRight++
+                    printedTotal++; if (correct) printedRight++
                 } else {
-                    guessTotal++; if (correct) guessRight++
+                    handTotal++; if (correct) handRight++
                 }
                 if (!correct) {
-                    val key = "$expected->$predicted (${truth[index].source})"
+                    val key = "$expected->$predicted"
                     misreads[key] = (misreads[key] ?: 0) + 1
                 }
             }
         }
-        println("classifier: givens $givenRight/$givenTotal, guesses $guessRight/$guessTotal")
+        println("classifier: printed $printedRight/$printedTotal, handwriting $handRight/$handTotal")
         println("misreads: " + misreads.entries.sortedByDescending { it.value }.joinToString())
 
-        // Python measured 100% on printed digits. Anything less means Kotlin inference
-        // has drifted from the model that was trained.
-        assertTrue(givenRight == givenTotal, "printed digits must be perfect: $givenRight/$givenTotal")
-        assertTrue(guessRight >= guessTotal * 0.78, "handwriting regressed: $guessRight/$guessTotal")
+        // Anything less than perfect on printed digits means Kotlin inference has
+        // drifted from the model that was trained.
+        assertTrue(printedRight == printedTotal, "printed digits must be perfect: $printedRight/$printedTotal")
+        assertTrue(handRight >= handTotal * 0.90, "handwriting regressed: $handRight/$handTotal")
     }
 }

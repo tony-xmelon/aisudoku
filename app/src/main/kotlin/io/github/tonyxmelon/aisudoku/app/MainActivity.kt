@@ -6,19 +6,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +39,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Draw behind the status and navigation bars, and let each screen inset its own
+        // content. The camera wants the preview under them; nothing else does.
+        enableEdgeToEdge()
 
         // The vision module never links against a platform, so the loader is injected.
         OpenCvNatives.ensureLoaded {
@@ -76,11 +79,24 @@ private fun AppRoot() {
     var entries by remember { mutableStateOf(history.list()) }
     var screen by remember { mutableStateOf(Screen.CAMERA) }
 
+    // Which history entry the puzzle on screen belongs to, so corrections are written
+    // back to it. Without this, reopening a puzzle undoes every fix the user made.
+    var entryId by remember { mutableStateOf<Long?>(null) }
+
+    fun editPuzzle(updated: PuzzleState) {
+        puzzle = updated
+        entryId?.let { history.update(it, updated.grid) }
+    }
+
     fun applySettings(updated: Settings) {
         settings = updated
         Settings.save(context, updated)
         // A puzzle already on screen should follow the setting rather than keep the old one.
-        puzzle = puzzle?.copy(hintStyle = updated.hintStyle, revealedHintDigit = false)
+        puzzle = puzzle?.copy(hintStyle = updated.hintStyle)
+    }
+
+    fun leaveOverlay() {
+        screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
     }
 
     when {
@@ -89,7 +105,7 @@ private fun AppRoot() {
         screen == Screen.SETTINGS -> SettingsScreen(
             settings = settings,
             onChange = ::applySettings,
-            onClose = { screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA },
+            onClose = ::leaveOverlay,
         )
 
         screen == Screen.HISTORY -> HistoryScreen(
@@ -97,11 +113,12 @@ private fun AppRoot() {
             entries = entries,
             onOpen = { entry ->
                 history.loadPhoto(entry)?.let { photo ->
+                    entryId = entry.id
                     puzzle = PuzzleState(
                         photo = photo,
                         grid = entry.grid,
                         uncertainCells = emptySet(),
-                        message = null,
+                        readingNote = null,
                         hintStyle = settings.hintStyle,
                     )
                     screen = Screen.PUZZLE
@@ -111,13 +128,13 @@ private fun AppRoot() {
                 history.delete(entry)
                 entries = history.list()
             },
-            onClose = { screen = Screen.CAMERA },
+            onClose = ::leaveOverlay,
         )
 
         screen == Screen.PUZZLE && puzzle != null -> PuzzleScreen(
             state = puzzle!!,
-            onChange = { puzzle = it },
-            onRetake = { puzzle = null; screen = Screen.CAMERA },
+            onChange = ::editPuzzle,
+            onRetake = { puzzle = null; entryId = null; screen = Screen.CAMERA },
             onSettings = { screen = Screen.SETTINGS },
             onHistory = { entries = history.list(); screen = Screen.HISTORY },
         )
@@ -126,7 +143,7 @@ private fun AppRoot() {
             autoCapture = settings.autoCapture,
             onRead = { state ->
                 // Saved as soon as it is read, so a puzzle is never lost by backing out.
-                history.save(state.photo, state.grid)
+                entryId = history.save(state.photo, state.grid).id
                 entries = history.list()
                 puzzle = state.copy(hintStyle = settings.hintStyle)
                 screen = Screen.PUZZLE
@@ -139,7 +156,7 @@ private fun AppRoot() {
 
 @Composable
 private fun PermissionScreen(onRequest: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().systemBarsPadding(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -152,14 +169,5 @@ private fun PermissionScreen(onRequest: () -> Unit) {
             )
             Button(onClick = onRequest) { Text("Allow camera") }
         }
-    }
-}
-
-/** The bar of secondary destinations, shared by the camera and puzzle screens. */
-@Composable
-fun NavigationRow(onHistory: () -> Unit, onSettings: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        TextButton(onClick = onHistory) { Text("History") }
-        TextButton(onClick = onSettings) { Text("Settings") }
     }
 }

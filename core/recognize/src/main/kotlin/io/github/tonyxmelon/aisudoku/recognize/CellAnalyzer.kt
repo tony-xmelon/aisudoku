@@ -14,46 +14,41 @@ data class Blob(
     val width: Int,
     val height: Int,
     val area: Int,
+    /** Blob width over blob height. A digit is taller than it is wide; a ring is not. */
+    val aspect: Double,
     /** Blob height as a fraction of the cell height. The primary size signal. */
     val heightRatio: Double,
     /** Vertical centre offset from the cell centre, as a fraction of cell height. */
     val verticalOffset: Double,
     /** Mean darkness of the blob's pixels, 0 (black) to 255 (white). */
     val darkness: Double,
+    /**
+     * Mean stroke thickness in pixels: ink area over the longer side.
+     *
+     * Printed digits are set in one weight, so this barely varies among them, while a
+     * pencilled candidate mark is a thin scratch. It is the third of the three things
+     * printed digits share - font, colour and size - reduced to a number.
+     */
+    val strokeWidth: Double,
     internal val maskLabel: Int,
 )
 
-/** What a cell contains. */
-data class CellAnalysis(
-    val digit: Blob?,
-    val discardedMarks: Int,
-    /** The digit normalised to a 28x28 MNIST-style bitmap, or null when there is none. */
-    val normalised: FloatArray?,
-    /** The biggest blob found, digit or not. Used when choosing a threshold. */
-    val largestBlob: Blob? = null,
-) {
-    val hasDigit: Boolean get() = digit != null
-
-    override fun equals(other: Any?): Boolean =
-        other is CellAnalysis && other.digit == digit && other.discardedMarks == discardedMarks
-
-    override fun hashCode(): Int = 31 * (digit?.hashCode() ?: 0) + discardedMarks
-}
+/** The ink of one cell: its biggest blob, and that blob ready for the classifier. */
+class CellInk(val blob: Blob, val normalised: FloatArray)
 
 /**
- * Finds the digit in a cell, if there is one, and normalises it for the classifier.
+ * Finds the ink in a cell and measures it, without judging what it is.
  *
- * Every threshold here was measured against the corpus rather than chosen. Two of them
- * corrected assumptions in the design:
+ * Every threshold here was measured against the corpus rather than chosen, and one of
+ * them corrected an assumption in the design: blobs are *not* discarded for touching the
+ * cell border. Doing that loses three quarters of the handwritten digits, because people
+ * write larger than the print and their strokes reach the edge; printed digits never do,
+ * so the mistake is invisible on an unsolved puzzle. Grid-line remnants are identified by
+ * shape instead.
  *
- * Blobs are *not* discarded for touching the cell border. Doing that loses three
- * quarters of the handwritten digits, because people write larger than the print and
- * their strokes reach the edge; printed digits never do, so the mistake is invisible on
- * an unsolved puzzle. Grid-line remnants are identified by shape instead.
- *
- * And handwriting is larger than print, not smaller. Measured blob height over cell
- * height: printed givens 0.56 to 0.64, handwritten answers 0.68 to 1.00, empty cells
- * carrying candidate marks up to 0.51.
+ * Nothing here decides whether a blob is a digit. That takes all 81 cells at once and
+ * belongs to [GridReader], which can measure the printed digits of this photograph and
+ * judge everything else against them.
  */
 object CellAnalyzer {
 
@@ -66,43 +61,20 @@ object CellAnalyzer {
     /** Smallest blob worth considering, in pixels. */
     private const val MIN_BLOB_AREA = 12
 
-    /**
-     * Smallest blob height, as a fraction of cell height, that counts as a digit.
-     *
-     * Measured: the smallest real digit is 0.556 and the largest candidate mark is
-     * 0.505, so this sits in a 0.05 gap. It is the narrowest margin in the pipeline.
-     */
-    const val MIN_DIGIT_HEIGHT_RATIO = 0.53
-
     /** A blob spanning the cell one way while this thin the other is a grid line. */
     private const val LINE_SPAN = 0.80
     private const val LINE_THICKNESS = 0.20
 
     /**
-     * Finds the largest non-line blob in a cell, whatever its size.
+     * The largest blob of every cell, already normalised for the classifier.
      *
-     * Whether that blob is a digit or a pencilled candidate mark is decided by
-     * [io.github.tonyxmelon.aisudoku.recognize.GridReader], which can compare all 81
-     * cells at once and set the threshold from the printed digits actually present. A
-     * fixed threshold here fails on a puzzle covered in annotations, where a large
-     * candidate mark can out-measure the constant.
+     * What each blob *is* - print, an answer, or a candidate mark - is not decided here.
+     * That needs all 81 cells at once, and belongs to [GridReader].
      */
-    fun analyse(cell: GrayImage, minHeightRatio: Double = MIN_DIGIT_HEIGHT_RATIO): CellAnalysis {
+    fun inspect(cells: List<GrayImage>): List<CellInk?> = cells.map { cell ->
         val gray = Mat(cell.height, cell.width, CvType.CV_8UC1).also { it.put(0, 0, cell.pixels) }
-        val blobs = findBlobs(gray, cell)
-
-        val largest = blobs.maxByOrNull { it.area }
-        val digit = largest?.takeIf { it.heightRatio >= minHeightRatio }
-
-        val discarded = blobs.count { it !== digit }
-        val normalised = digit?.let { normalise(gray, it, cell) }
-        return CellAnalysis(digit, discarded, normalised, largestBlob = largest)
-    }
-
-    /** The largest non-line blob in each cell, or null where there is none. */
-    fun largestBlobs(cells: List<GrayImage>): List<Blob?> = cells.map { cell ->
-        val gray = Mat(cell.height, cell.width, CvType.CV_8UC1).also { it.put(0, 0, cell.pixels) }
-        findBlobs(gray, cell).maxByOrNull { it.area }
+        val largest = findBlobs(gray, cell).maxByOrNull { it.area } ?: return@map null
+        CellInk(largest, normalise(gray, largest, cell))
     }
 
     private fun findBlobs(gray: Mat, cell: GrayImage): List<Blob> {
@@ -147,7 +119,9 @@ object CellAnalyzer {
 
             out += Blob(
                 left = left, top = top, width = width, height = height, area = area,
+                aspect = width.toDouble() / height,
                 heightRatio = height.toDouble() / cell.height,
+                strokeWidth = area.toDouble() / maxOf(width, height),
                 verticalOffset = ((top + height / 2.0) - cell.height / 2.0) / cell.height,
                 darkness = meanDarkness(cell, labels, label, left, top, width, height),
                 maskLabel = label,
