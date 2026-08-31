@@ -65,20 +65,39 @@ data class PuzzleState(
      * at a different list.
      */
     val tutorTechnique: String? = null,
+    /**
+     * Squares the user typed in themselves.
+     *
+     * Not derivable from the grid: a digit read from the paper and a digit thumbed in are
+     * the same cell, and only one of them is actually written on the photograph. Kept so
+     * the second kind can be drawn, since otherwise answering a square changes nothing on
+     * screen at all.
+     */
+    val entered: Set<Int> = emptySet(),
 ) {
     // Computed once per state rather than once per read. Every one of these runs the
     // solver, and Compose asks for them again on every recomposition - including one per
     // tap on the photograph. The state is immutable, so caching is free of risk.
     val hint: Hint? by lazy { PuzzleLogic.hint(grid, hintStyle) }
 
-    val status: Status by lazy { PuzzleLogic.status(grid) }
+    /** News about the puzzle, when there is any. Null is the ordinary case. */
+    val status: Status? by lazy { PuzzleLogic.status(grid) }
 
-    val guidance: String? by lazy {
+    /** How much is left, for the counter under the grid. */
+    val progress: String by lazy { PuzzleLogic.progress(grid) }
+
+    val guidance: Guidance? by lazy {
         PuzzleLogic.guidance(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep)
     }
 
     val legend: List<LegendKey>
         get() = PuzzleLogic.legend(computed, overlay, uncertainCells.isNotEmpty())
+
+    /** What to call the evidence colour in the key: the technique it belongs to. */
+    val evidenceLabel: String?
+        get() = PuzzleLogic.evidenceLabel(
+            grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep,
+        )
 
     /**
      * The whole route from here to the answer, in human steps.
@@ -99,7 +118,7 @@ data class PuzzleState(
     val findingCounts: Map<String, Int> by lazy { TechniqueSolver.findingCounts(grid) }
 
     private val computed: Overlay by lazy {
-        PuzzleLogic.overlay(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep)
+        PuzzleLogic.overlay(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep, entered)
     }
 
     fun overlayDigits(): Map<Int, OverlayDigit> = computed.digits
@@ -127,6 +146,22 @@ data class PuzzleState(
         )
     }
 
+    /**
+     * Putting whatever layer is showing away, outright.
+     *
+     * Not the same as pressing its button again: pressing Hint walks further down the
+     * staircase, which is right for a press of Hint and wrong for a press of Back. Back
+     * means undo the last thing that happened on this screen, and the last thing that
+     * happened was the layer appearing.
+     */
+    fun close(): PuzzleState = copy(
+        overlay = OverlayMode.NONE,
+        hintDepth = 0,
+        lessonStep = 0,
+        tutorTechnique = null,
+        selectedCell = null,
+    )
+
     /** Starting the tutor, either on its own route or on one technique the user picked. */
     fun tutor(technique: String? = null): PuzzleState = copy(
         tutorTechnique = technique,
@@ -150,6 +185,9 @@ data class PuzzleState(
         return copy(
             grid = grid.with(index, cell),
             uncertainCells = uncertainCells - index,
+            // A square the user has answered is theirs now, and is drawn as theirs.
+            // Clearing it hands it back.
+            entered = if (digit == null) entered - index else entered + index,
             // The route and the hint were both worked out from a grid that has just
             // changed underneath them.
             hintDepth = 0,

@@ -65,9 +65,13 @@ object Overlays {
     /**
      * The squares that prove a hint.
      *
-     * Shares the handwriting colour, which is safe because the two never appear together:
-     * the rule is that no two things share a colour *within one layer*, not across the
-     * app, and every layer prints its own key.
+     * Shares the handwriting colour. That used to be safe on the grounds that the two
+     * never appeared together; they can now, since a square the user typed is drawn as
+     * handwriting in every layer including the hint. They stay apart by shape rather than
+     * by hue: evidence is a light wash over the whole square, handwriting is a solid fill
+     * with the digit cut out of it, and the key names the evidence after its technique
+     * rather than calling it "Why". The palette has no eighth hue left that is legible on
+     * a photographed page and not already spoken for.
      */
     val evidence = written
 
@@ -83,6 +87,7 @@ object Overlays {
         OverlayRole.CORRECT -> correct
         OverlayRole.INCORRECT -> incorrect
         OverlayRole.HINT -> hint
+        OverlayRole.WRITTEN -> written
     }
 
     fun colour(key: LegendKey): Color = when (key) {
@@ -100,6 +105,11 @@ object Overlays {
     /**
      * One word each, because the key is one line and four of these have to fit across a
      * phone. What a colour means beyond its name belongs in the sentence under it.
+     *
+     * The evidence swatch is the exception: it carries the name of the technique those
+     * squares belong to, which is a real name rather than a category, and is the only
+     * place that name is now printed. "Why" is what it falls back to when there is no
+     * technique behind the highlight to name.
      */
     fun label(key: LegendKey): String = when (key) {
         LegendKey.CORRECT -> "Right"
@@ -126,7 +136,12 @@ object Overlays {
  * any layer asks for.
  */
 @Composable
-fun Legend(keys: List<LegendKey>, modifier: Modifier = Modifier) {
+fun Legend(
+    keys: List<LegendKey>,
+    modifier: Modifier = Modifier,
+    /** What to call the evidence colour. The technique's name, when one is behind it. */
+    evidenceLabel: String? = null,
+) {
     if (keys.isEmpty()) return
     Row(
         modifier = modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -145,7 +160,8 @@ fun Legend(keys: List<LegendKey>, modifier: Modifier = Modifier) {
                     Box(Modifier.size(11.dp).background(colour, RoundedCornerShape(3.dp)))
                 }
                 Text(
-                    Overlays.label(key),
+                    if (key == LegendKey.EVIDENCE) evidenceLabel ?: Overlays.label(key)
+                    else Overlays.label(key),
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                 )

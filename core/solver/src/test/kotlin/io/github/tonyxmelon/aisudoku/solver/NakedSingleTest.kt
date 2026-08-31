@@ -1,8 +1,11 @@
 package io.github.tonyxmelon.aisudoku.solver
 
+import io.github.tonyxmelon.aisudoku.model.Coordinates
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -52,6 +55,63 @@ class NakedSingleTest {
         val deduction = assertIs<Deduction.Placement>(NakedSingle.find(state))
         assertTrue(deduction.explanation.contains("7"), deduction.explanation)
         assertTrue(deduction.explanation.isNotBlank())
+    }
+
+    /**
+     * Reported from the phone, on a square the user had pencilled as 1 or 5: the app said
+     * "naked single, only 5 can go here - every other digit already appears in this row,
+     * column or box", highlighted six squares, and the user asked why it was not a 1.
+     *
+     * It was a fair question. Six squares can only account for six digits, and the
+     * sentence was false: 1 and 6 appeared nowhere near that square. They had been struck
+     * out by earlier steps of the walkthrough, which place nothing and so leave nothing on
+     * the board to point at.
+     */
+    @Test
+    fun `never claims a digit is visible in the row, column or box when it is not`() {
+        val solution = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.HARDEST)).solution
+        val state = assertIs<SolverState>(
+            SolverState.candidatesOnly(progressGrid(Puzzles.HARDEST, solution))
+        )
+        val route = assertNotNull(TechniqueSolver.walkthrough(Puzzles.HARDEST))
+
+        var checked = 0
+        for (step in route.steps) {
+            if (step is Deduction.Placement && step.technique == NakedSingle.name) {
+                val visible = Coordinates.peers[step.index]
+                    .mapNotNull { state.valueAt(it) }
+                    .toSet() - step.digit
+                val gone = (1..9) - step.digit - visible
+
+                if (gone.isEmpty()) {
+                    assertTrue(
+                        step.explanation.contains("every other digit already appears"),
+                        step.explanation,
+                    )
+                } else {
+                    checked++
+                    assertFalse(
+                        step.explanation.contains("every other digit already appears"),
+                        "claimed ${gone.size} digits were visible when they were not: " +
+                            step.explanation,
+                    )
+                    // Named, so the user can see where the hole in the highlight went.
+                    for (digit in gone) {
+                        assertTrue(
+                            step.explanation.contains("$digit"),
+                            "did not account for $digit: " + step.explanation,
+                        )
+                    }
+                    assertEquals(
+                        visible.size,
+                        step.supportingCells.size,
+                        "the highlight should show every digit it claims to: " + step.explanation,
+                    )
+                }
+            }
+            TechniqueSolver.apply(state, step)
+        }
+        assertTrue(checked > 0, "this puzzle no longer exercises the case at all")
     }
 
     @Test

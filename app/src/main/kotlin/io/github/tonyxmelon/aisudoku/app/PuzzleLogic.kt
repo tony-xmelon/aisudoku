@@ -27,7 +27,21 @@ enum class HintStyle { REVEAL, EXPLAIN }
  * yellow and wrong ones red, so a cell that was both came out orange, and orange meant
  * nothing. Doubt is now carried by the confidence bar rather than by the square.
  */
-enum class OverlayRole { SOLUTION, CORRECT, INCORRECT, HINT }
+enum class OverlayRole {
+    SOLUTION,
+    CORRECT,
+    INCORRECT,
+    HINT,
+
+    /**
+     * A digit the user typed in themselves.
+     *
+     * It is on no photograph, so unless it is drawn the square looks exactly as empty
+     * after answering it as before. Drawn the way the reading layer draws handwriting,
+     * because that is what it is - handwriting, just entered with a thumb.
+     */
+    WRITTEN,
+}
 
 data class OverlayDigit(val digit: Int, val role: OverlayRole)
 
@@ -47,6 +61,35 @@ enum class LegendKey { CORRECT, INCORRECT, SOLUTION, HINT, EVIDENCE, UNCERTAIN, 
 enum class Tone { NEUTRAL, GOOD, BAD }
 
 data class Status(val text: String, val tone: Tone)
+
+/**
+ * What to say under the photograph, split into the parts the screen lays out differently.
+ *
+ * One string would be simpler, and it is what this was: the pane joined the technique's
+ * name, its explanation, the whole of its how-to and what the step does into a single
+ * paragraph. On a phone that paragraph is taller than the space under the grid, so all
+ * anyone saw was its first two lines - the least useful two, because they named the
+ * technique the key already names.
+ */
+data class Guidance(
+    /** Why this move is available here. The part worth reading first. */
+    val body: String,
+    /**
+     * How to hunt for this technique on paper, in general.
+     *
+     * Held back behind a control rather than printed: it runs to paragraphs, it is the
+     * same words every time the technique comes round, and it is not what the reader
+     * wants while looking at one square.
+     */
+    val howTo: String? = null,
+    /**
+     * What this step does to the board, said last.
+     *
+     * Last because it is a summary, and because an elimination that fills nothing in
+     * looks like a failed move until the reasoning above it has been read.
+     */
+    val effect: String? = null,
+)
 
 /**
  * Everything the puzzle screen derives from a grid.
@@ -107,6 +150,8 @@ object PuzzleLogic {
         hintDepth: Int = HINT_DEPTHS - 1,
         walkthrough: Walkthrough? = null,
         lessonStep: Int = 0,
+        /** Squares the user typed in, which appear on no photograph. */
+        entered: Set<Int> = emptySet(),
     ): Overlay {
         val digits = mutableMapOf<Int, OverlayDigit>()
         var evidence = emptySet<Int>()
@@ -178,6 +223,20 @@ object PuzzleLogic {
                 evidence = step.supportingCells - setOfNotNull(focus)
             }
         }
+
+        // What the user has written, wherever the layer on top has not already said
+        // something about that square. Check and Solve both draw every answered square
+        // already; the reading layer draws it from the grid when the reading is gone.
+        // The rest - including no layer at all - showed nothing, so answering a square
+        // looked exactly like not answering it.
+        if (mode != OverlayMode.READING) {
+            for (index in entered) {
+                val digit = grid[index].digit ?: continue
+                if (grid[index].source == CellSource.GIVEN) continue
+                if (index in digits) continue
+                digits[index] = OverlayDigit(digit, OverlayRole.WRITTEN)
+            }
+        }
         return Overlay(digits, evidence, focus)
     }
 
@@ -198,26 +257,47 @@ object PuzzleLogic {
         if (OverlayRole.INCORRECT in roles) keys += LegendKey.INCORRECT
         if (OverlayRole.SOLUTION in roles) keys += LegendKey.SOLUTION
         if (OverlayRole.HINT in roles) keys += LegendKey.HINT
+        if (OverlayRole.WRITTEN in roles && mode != OverlayMode.READING) keys += LegendKey.WRITTEN
         if (overlay.evidence.isNotEmpty()) keys += LegendKey.EVIDENCE
         if (hasUncertain) keys += LegendKey.UNCERTAIN
         return keys
     }
 
-    /** One short line about the puzzle. Instructions belong next to the control they explain. */
-    fun status(grid: Grid): Status = when (Solver.solve(grid)) {
+    /** How many squares are still empty, over how many there are in a grid. */
+    fun progress(grid: Grid): String =
+        "${Coordinates.CELL_COUNT - grid.filledCount}/${Coordinates.CELL_COUNT}"
+
+    /**
+     * News about the puzzle, or nothing at all.
+     *
+     * Null when there is none, which is most of the time. It used to say "46 cells to go"
+     * in that case, which is a number rather than news: it cost a line of the pane on
+     * every screen, and the pane is the scarcest space in the app. That number now sits
+     * in small type under the grid, where it is read at a glance and costs nothing.
+     */
+    fun status(grid: Grid): Status? = when (Solver.solve(grid)) {
         is SolveResult.Unique -> {
             val wrong = (AnswerChecker.check(grid) as? AnswerCheck.Checked)?.incorrect?.size ?: 0
-            val empty = (0 until 81).count { !grid[it].isFilled }
             when {
-                wrong > 0 -> Status(
-                    if (wrong == 1) "1 answer disagrees with the solution."
-                    else "$wrong answers disagree with the solution.",
+                // Whether an answer is right is the Check button's business, and marking
+                // one wrong the moment it is written turns every square into a test the
+                // app grades. It stayed silent when you were right and spoke up when you
+                // were not, which is a worse way to be told than being told.
+                !grid.isComplete -> null
+
+                wrong == 0 -> Status("Solved, and every answer is right.", Tone.GOOD)
+
+                // Finished is the one moment correctness is worth saying unasked: there
+                // is nothing left to work on, so "not yet" is the whole news.
+                wrong == 1 -> Status(
+                    "Every square is filled, but one answer disagrees with the solution.",
                     Tone.BAD,
                 )
 
-                empty == 1 -> Status("One cell to go.", Tone.NEUTRAL)
-                empty > 0 -> Status("$empty cells to go.", Tone.NEUTRAL)
-                else -> Status("Solved, and every answer is right.", Tone.GOOD)
+                else -> Status(
+                    "Every square is filled, but $wrong answers disagree with the solution.",
+                    Tone.BAD,
+                )
             }
         }
 
@@ -226,6 +306,39 @@ object PuzzleLogic {
 
         is SolveResult.Multiple ->
             Status("More than one solution, so a printed digit was missed.", Tone.BAD)
+    }
+
+    /**
+     * What to call the evidence squares in the key.
+     *
+     * The key used to label them "Why", which says only that they are a reason - and the
+     * technique's name was then printed again at the top of the pane, where it was the
+     * first thing pushed off the bottom. Naming the swatch after the technique says the
+     * same thing in a place that was being wasted, and gives the pane its line back.
+     *
+     * Deliberately not the technique on the first rung of a hint: that rung highlights the
+     * box precisely so as not to name the technique yet, and a key that named it would
+     * hand over a tread the user has not asked for.
+     */
+    fun evidenceLabel(
+        grid: Grid,
+        mode: OverlayMode,
+        style: HintStyle,
+        hintDepth: Int = HINT_DEPTHS - 1,
+        walkthrough: Walkthrough? = null,
+        lessonStep: Int = 0,
+    ): String? = when (mode) {
+        OverlayMode.LESSON -> walkthrough?.steps?.getOrNull(
+            lessonStep.coerceIn(0, maxOf(0, walkthrough.steps.size - 1))
+        )?.technique
+
+        OverlayMode.HINT -> when {
+            style == HintStyle.REVEAL -> null
+            hintDepth == 0 -> "Box"
+            else -> (hint(grid, style) as? Hint.Explained)?.technique
+        }
+
+        else -> null
     }
 
     /**
@@ -270,7 +383,7 @@ object PuzzleLogic {
             "$shape $ending"
     }
 
-    /** What one step of the route actually does, said before the reasoning behind it. */
+    /** What one step of the route actually does, said after the reasoning behind it. */
     private fun effect(step: Deduction): String = when (step) {
         is Deduction.Placement ->
             "Put ${step.digit} in row ${step.index / 9 + 1}, column ${step.index % 9 + 1}."
@@ -281,7 +394,7 @@ object PuzzleLogic {
         }
     }
 
-    /** The sentence under the controls, explaining whatever is on screen right now. */
+    /** What to say under the controls about whatever is on screen right now. */
     fun guidance(
         grid: Grid,
         mode: OverlayMode,
@@ -289,30 +402,38 @@ object PuzzleLogic {
         hintDepth: Int = HINT_DEPTHS - 1,
         walkthrough: Walkthrough? = null,
         lessonStep: Int = 0,
-    ): String? = when (mode) {
+    ): Guidance? = when (mode) {
         OverlayMode.NONE -> null
 
-        OverlayMode.SOLUTION -> "Blue digits are the solution. Tap any square to correct what was read."
+        OverlayMode.SOLUTION -> Guidance(
+            "Blue digits are the solution. Tap any square to correct what was read."
+        )
 
-        OverlayMode.READING -> "Grey squares hold pencil marks, which the app ignores. The " +
-            "bar under a digit is how sure it was. Tap a square for the detail."
+        OverlayMode.READING -> Guidance(
+            "Grey squares hold pencil marks, which the app ignores. The bar under a digit " +
+                "is how sure it was. Tap a square for the detail."
+        )
 
-        OverlayMode.CHECK ->
+        OverlayMode.CHECK -> Guidance(
             if ((AnswerChecker.check(grid) as? AnswerCheck.Checked)?.incorrect.isNullOrEmpty()) {
                 "Everything you have written so far is right."
             } else {
                 "A red square shows the digit the app read there. If that is not what you " +
                     "wrote, tap the square to fix it."
             }
+        )
 
+        // The technique is named by the key, so it is not named again here. What is left is
+        // the part that is only true of this position, which is what the space is worth
+        // spending on.
         OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
             val step = route.steps[lessonStep.coerceIn(0, route.steps.size - 1)]
-            listOfNotNull(
-                effect(step),
-                "${step.technique}. ${step.explanation}",
-                Techniques.byName(step.technique)?.howTo,
-            ).joinToString("\n\n")
-        } ?: "Nothing more here can be reasoned out by the techniques this app knows."
+            Guidance(
+                body = step.explanation,
+                howTo = Techniques.byName(step.technique)?.howTo,
+                effect = effect(step),
+            )
+        } ?: Guidance("Nothing more here can be reasoned out by the techniques this app knows.")
 
         OverlayMode.HINT -> hintGuidance(grid, style, hintDepth)
     }
@@ -327,22 +448,26 @@ object PuzzleLogic {
      * read while stuck on one square, and a paragraph about the technique in general is
      * the wrong thing to meet at that moment; it is one tap away under Strategies.
      */
-    private fun hintGuidance(grid: Grid, style: HintStyle, depth: Int): String {
-        val hint = hint(grid, style) ?: return "Nothing left to work out."
+    private fun hintGuidance(grid: Grid, style: HintStyle, depth: Int): Guidance {
+        val hint = hint(grid, style) ?: return Guidance("Nothing left to work out.")
         if (style == HintStyle.REVEAL || hint !is Hint.Explained) {
-            return "Row ${hint.index / 9 + 1}, column ${hint.index % 9 + 1}."
+            return Guidance("Row ${hint.index / 9 + 1}, column ${hint.index % 9 + 1}.")
         }
         val rule = Techniques.byName(hint.technique)?.rule.orEmpty()
-        return when (depth) {
-            0 -> "There is a square you can fill in the highlighted box.\n\n" +
-                "Press Hint again to be told which technique finds it."
+        return Guidance(
+            when (depth) {
+                0 -> "There is a square you can fill in the highlighted box.\n\n" +
+                    "Press Hint again to be told which technique finds it."
 
-            1 -> "${hint.technique}. $rule\n\nThe highlighted squares are what " +
-                "proves it.\n\nPress Hint again to be shown which square."
+                // The technique is named in the key, beside the colour of the very squares
+                // that prove it, so what is said here is the rule rather than its name.
+                1 -> "$rule\n\nThe highlighted squares are what proves it.\n\n" +
+                    "Press Hint again to be shown which square."
 
-            2 -> "It is the ringed square.\n\nPress Hint again for the digit."
+                2 -> "It is the ringed square.\n\nPress Hint again for the digit."
 
-            else -> hint.explanation
-        }
+                else -> hint.explanation
+            }
+        )
     }
 }

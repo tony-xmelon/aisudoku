@@ -83,7 +83,7 @@ class PuzzleLogicTest {
         assertEquals(solution[index].digit, drawn.digit)
         assertEquals(OverlayRole.HINT, drawn.role)
         assertFalse(index in overlay.evidence, "the answer is not its own evidence")
-        assertTrue(PuzzleLogic.guidance(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)!!.isNotBlank())
+        assertTrue(PuzzleLogic.guidance(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)!!.body.isNotBlank())
     }
 
     @Test
@@ -96,22 +96,33 @@ class PuzzleLogicTest {
     }
 
     @Test
-    fun `the status line distinguishes unfinished, wrong, solved and unreadable`() {
-        assertEquals(Tone.NEUTRAL, PuzzleLogic.status(puzzle).tone)
-        assertTrue(PuzzleLogic.status(puzzle).text.contains("cells to go"))
+    fun `the status line speaks only when there is news, and the counter carries the rest`() {
+        // A puzzle in progress is not news, and saying "46 cells to go" cost the pane a
+        // line on every screen. The count lives under the grid now.
+        assertNull(PuzzleLogic.status(puzzle))
+        assertEquals("51/81", PuzzleLogic.progress(puzzle))
+        assertEquals("0/81", PuzzleLogic.progress(finished()))
 
+        // Whether an answer is right is the Check button's business. Marking one wrong
+        // the moment it is written made every square a test the app graded, silently when
+        // you were right and out loud when you were not.
         val empty = (0 until 81).first { !puzzle[it].isFilled }
         val wrongDigit = (1..9).first { it != solution[empty].digit }
-        val mistake = PuzzleLogic.status(puzzle.with(empty, Cell.guess(wrongDigit)))
-        assertEquals(Tone.BAD, mistake.tone)
-        assertTrue(mistake.text.contains("1 answer disagrees"), mistake.text)
+        assertNull(PuzzleLogic.status(puzzle.with(empty, Cell.guess(wrongDigit))))
 
-        val done = PuzzleLogic.status(finished())
+        // Finished is the one moment it is worth saying unasked: there is nothing left to
+        // work on, so "not yet" is the whole news.
+        val botched = finished().with(empty, Cell.guess(wrongDigit))
+        val wrong = assertNotNull(PuzzleLogic.status(botched))
+        assertEquals(Tone.BAD, wrong.tone)
+        assertTrue(wrong.text.contains("one answer disagrees"), wrong.text)
+
+        val done = assertNotNull(PuzzleLogic.status(finished()))
         assertEquals(Tone.GOOD, done.tone)
         assertTrue(done.text.contains("every answer is right"), done.text)
 
         val broken = Grid.Empty.with(0, Cell.given(5)).with(1, Cell.given(5))
-        assertTrue(PuzzleLogic.status(broken).text.contains("not make a solvable puzzle"))
+        assertTrue(assertNotNull(PuzzleLogic.status(broken)).text.contains("not make a solvable puzzle"))
     }
 
     /**
@@ -164,7 +175,39 @@ class PuzzleLogicTest {
             "...419..5",
             "....8..79",
         )
-        assertTrue(PuzzleLogic.status(ambiguous).text.contains("More than one solution"))
+        assertTrue(assertNotNull(PuzzleLogic.status(ambiguous)).text.contains("More than one solution"))
+    }
+
+    /**
+     * Reported from the phone: answering a square did nothing visible unless the answer
+     * was wrong, in which case a line appeared saying so. Backwards on both counts - the
+     * digit is on no photograph, so it has to be drawn, and grading it is the Check
+     * button's job.
+     */
+    @Test
+    fun `a digit you type is drawn wherever nothing else speaks for that square`() {
+        val empty = (0 until 81).first { !puzzle[it].isFilled }
+        val wrongDigit = (1..9).first { it != solution[empty].digit }
+        val answered = puzzle.with(empty, Cell.guess(wrongDigit))
+        val typed = setOf(empty)
+
+        val plain = PuzzleLogic.overlay(answered, OverlayMode.NONE, HintStyle.EXPLAIN, entered = typed)
+        assertEquals(wrongDigit, plain.digits[empty]?.digit)
+        assertEquals(OverlayRole.WRITTEN, plain.digits[empty]?.role)
+        assertEquals(listOf(LegendKey.WRITTEN), PuzzleLogic.legend(plain, OverlayMode.NONE, false))
+        assertNull(PuzzleLogic.status(answered), "answering a square is not a test")
+
+        // Check and Solve already have something to say about an answered square, and
+        // what they say wins.
+        val checked = PuzzleLogic.overlay(answered, OverlayMode.CHECK, HintStyle.EXPLAIN, entered = typed)
+        assertEquals(OverlayRole.INCORRECT, checked.digits[empty]?.role)
+        val solved = PuzzleLogic.overlay(answered, OverlayMode.SOLUTION, HintStyle.EXPLAIN, entered = typed)
+        assertEquals(OverlayRole.SOLUTION, solved.digits[empty]?.role)
+
+        // The reading layer draws it from the grid itself, so a second copy would land on
+        // top of the first.
+        val read = PuzzleLogic.overlay(answered, OverlayMode.READING, HintStyle.EXPLAIN, entered = typed)
+        assertTrue(read.digits.isEmpty(), "the reading layer draws its own")
     }
 
     private fun keys(grid: Grid, mode: OverlayMode, unsure: Boolean = false) =
@@ -319,12 +362,41 @@ class PuzzleLogicTest {
     @Test
     fun `a walked step explains itself and says how to find the next one unaided`() {
         val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
-        val text = assertNotNull(
+        val said = assertNotNull(
             PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
                 walkthrough = route, lessonStep = 0)
         )
         val technique = assertNotNull(Techniques.byName(route.steps[0].technique))
-        assertTrue(text.contains(technique.name), text)
-        assertTrue(text.contains(technique.howTo), "a step should carry the technique's how-to")
+        assertEquals(route.steps[0].explanation, said.body)
+        assertEquals(technique.howTo, said.howTo, "a step should carry the technique's how-to")
+        assertTrue(assertNotNull(said.effect).isNotBlank(), "a step should say what it does")
+
+        // The name is not printed in the pane any more, because the key beside the
+        // photograph carries it - next to the colour of the squares it is talking about.
+        assertFalse(said.body.startsWith(technique.name), said.body)
+        assertEquals(
+            technique.name,
+            PuzzleLogic.evidenceLabel(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = route, lessonStep = 0),
+        )
+    }
+
+    @Test
+    fun `the key does not name the technique before the hint has offered it`() {
+        // The first rung highlights the box precisely so as not to name the technique. A
+        // key that named it there would hand over the tread the user has not pressed for.
+        assertEquals(
+            "Box",
+            PuzzleLogic.evidenceLabel(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN, hintDepth = 0),
+        )
+        for (depth in 1 until PuzzleLogic.HINT_DEPTHS) {
+            val named = PuzzleLogic.evidenceLabel(
+                puzzle, OverlayMode.HINT, HintStyle.EXPLAIN, hintDepth = depth,
+            )
+            assertNotNull(Techniques.byName(assertNotNull(named)), "rung $depth named no technique")
+        }
+        // Nothing is highlighted in the plain style, so there is nothing to name.
+        assertNull(PuzzleLogic.evidenceLabel(puzzle, OverlayMode.HINT, HintStyle.REVEAL))
+        assertNull(PuzzleLogic.evidenceLabel(puzzle, OverlayMode.CHECK, HintStyle.EXPLAIN))
     }
 }

@@ -55,6 +55,7 @@ fun HistoryList(
     onOpen: (HistoryEntry) -> Unit,
     onDelete: (HistoryEntry) -> Unit,
     onStrategies: () -> Unit,
+    onCamera: () -> Unit,
     onClose: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<HistoryEntry?>(null) }
@@ -79,6 +80,29 @@ fun HistoryList(
                 )
                 IconButton(onClick = onClose) {
                     Icon(Icons.Filled.Close, contentDescription = "Close")
+                }
+            }
+        }
+
+        // The way to a new puzzle, above the old ones. The camera also has its own icon
+        // in the bar, but this is the menu you open when the question is "which puzzle" -
+        // and "a new one" is one of the answers to that question.
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onCamera)
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(CameraIcon, contentDescription = null)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("New photo", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Photograph another puzzle.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
         }

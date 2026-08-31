@@ -8,6 +8,53 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+BACK NAVIGATES INSTEAD OF CLOSING THE APP, ANSWERING A SQUARE SHOWS SOMETHING,
+and a naked single no longer claims things that are not true.
+
+BACK IS A STACK. It used to be one press from the door on almost every screen.
+It now undoes the last thing that appeared - the history drawer, then a screen
+you opened, then a layer over the puzzle, then the puzzle itself - and only
+leaves from the camera with nothing behind it. Written as an actual stack rather
+than a rule per screen, because "back from the puzzle shows the camera" and
+"back from the camera shows the puzzle" are each sensible alone and together are
+a loop with no way out of the app at all.
+
+"WHY IS IT NOT A 1?" A fair question with no answer on the screen. A naked
+single said "every other digit already appears in this row, column or box" and
+highlighted six squares. Six squares can only account for six digits, and the
+sentence was false: the missing two had been struck out by earlier steps, which
+place nothing and so leave nothing on the board to point at. It now says what
+the highlight actually accounts for, names the digits that went earlier, and
+says which step took them: "4 and 6 were ruled out of this square earlier, not
+by anything you can see around it. Press Back to see how: 4 at step 13 and 6 at
+step 14." Nine of the eighty-seven steps on the hardest puzzle in the test set
+were making the false claim.
+
+A DIGIT YOU TYPE IS NOW DRAWN. It is on no photograph, so the square used to
+look exactly as empty after answering it as before - unless the answer was
+wrong, in which case a line appeared saying so. Backwards on both counts. Your
+answer is now drawn the way the reading layer draws handwriting, on that square
+only, and nothing grades it. Whether it is right is what the Check button is
+for. The one exception is a finished grid, where there is nothing left to work
+on and "not yet" is the whole news.
+
+ROOM TO READ. The pane under the grid was two lines tall and everything went in
+it. "46 cells to go" is now a small 46/81 in the corner under the grid where it
+belongs. The technique's name has moved into the key, beside the colour of the
+squares it is talking about, so it is not printed twice. The long "how to spot
+one" folds behind a control instead of burying the reasoning for the step in
+front of you. The route's opening remark is said once at step one rather than
+under every step. And the two button rows each applied their own system-bar
+inset, which left a bar of dead screen between them.
+
+Read, Check, Hint, Solve, in the order you would use them, moved to the foot of
+the screen. New photo is now in the menu above your puzzles as well as in the
+bar.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE TUTOR NOW FINISHES ANY PUZZLE IT CAN READ.
 
 Two things were needed.

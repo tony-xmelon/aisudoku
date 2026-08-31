@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -111,9 +112,11 @@ fun PuzzleScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                contentAlignment = Alignment.Center,
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
                     modifier = Modifier
@@ -141,6 +144,18 @@ fun PuzzleScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
+
+                // How many squares are still empty, in the corner under the grid it
+                // counts. It was a sentence in the pane below, where it was the only
+                // thing said most of the time and cost a line that the reasoning needed.
+                Text(
+                    state.progress,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    modifier = Modifier.width(photoSide).padding(top = 2.dp),
+                )
             }
 
             Controls(state, onChange, modifier = Modifier.weight(1f))
@@ -179,26 +194,47 @@ private fun Controls(
                 ReadingBanner(state, onChange)
             }
 
-            Text(
-                state.status.text,
-                style = MaterialTheme.typography.titleMedium,
-                color = when (state.status.tone) {
-                    Tone.GOOD -> Overlays.correct
-                    Tone.BAD -> Overlays.incorrect
-                    Tone.NEUTRAL -> Color.Unspecified
-                },
-            )
-
-            Legend(state.legend)
-
-            state.guidance?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
+            // Only when there is something to say. Silence is the ordinary case.
+            state.status?.let { status ->
+                Text(
+                    status.text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = when (status.tone) {
+                        Tone.GOOD -> Overlays.correct
+                        Tone.BAD -> Overlays.incorrect
+                        Tone.NEUTRAL -> Color.Unspecified
+                    },
+                )
             }
 
-            // The tutor's opening remark, said once it has been started. Meeting it on
-            // arrival from the camera made the scan end in a paragraph of instruction
-            // nobody had asked for yet.
-            if (state.overlay == OverlayMode.LESSON && state.tutorTechnique == null) {
+            // The key names the technique, so the pane does not have to.
+            Legend(state.legend, evidenceLabel = state.evidenceLabel)
+
+            state.guidance?.let { guidance ->
+                Text(guidance.body, style = MaterialTheme.typography.bodyMedium)
+
+                guidance.howTo?.let { howTo ->
+                    HowTo(howTo, technique = state.evidenceLabel)
+                }
+
+                // Last, because it is the summary of a move whose reasoning is above it.
+                guidance.effect?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // The tutor's opening remark, and only that: on the first step of its own
+            // route, once the tutor has been started. It was being reprinted under every
+            // step of the walk, where a paragraph about the route as a whole was pushing
+            // the reasoning for the step in front of you off the bottom of the pane.
+            if (state.overlay == OverlayMode.LESSON &&
+                state.tutorTechnique == null &&
+                state.lessonStep == 0
+            ) {
                 state.outlook?.let {
                     Text(
                         it,
@@ -209,21 +245,58 @@ private fun Controls(
             }
         }
 
-        // Pinned, so they are in the same place whatever is being said above them.
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        // Pinned, so they are in the same place whatever is being said above them. One
+        // block with one lot of system-bar inset: both rows used to apply their own, which
+        // left a bar of dead screen between them that the pane above could have used.
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            ModeButton("Hint", OverlayMode.HINT, state, onChange, Modifier.weight(1f), state.hint != null)
-            ModeButton("Check", OverlayMode.CHECK, state, onChange, Modifier.weight(1f))
-            ModeButton("Solve", OverlayMode.SOLUTION, state, onChange, Modifier.weight(1f))
-            ModeButton("Read", OverlayMode.READING, state, onChange, Modifier.weight(1f))
-        }
+            WalkthroughRow(state, onChange)
 
-        WalkthroughRow(state, onChange)
+            // Read, Check, Hint, Solve: the order you would use them in. Read is what to
+            // press first, when the question is still whether the app got the puzzle
+            // right, and Solve is the one that ends the exercise.
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ModeButton("Read", OverlayMode.READING, state, onChange, Modifier.weight(1f))
+                ModeButton("Check", OverlayMode.CHECK, state, onChange, Modifier.weight(1f))
+                ModeButton("Hint", OverlayMode.HINT, state, onChange, Modifier.weight(1f), state.hint != null)
+                ModeButton("Solve", OverlayMode.SOLUTION, state, onChange, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/**
+ * The long "how to hunt for one of these" text, folded away until asked for.
+ *
+ * It runs to paragraphs, it is the same words every time that technique comes round, and
+ * printed in full it pushed this position's own reasoning off the bottom of the pane. It
+ * stays open while the tutor walks steps of the same technique and closes when the
+ * technique changes, which is when it would have become the wrong text.
+ */
+@Composable
+private fun HowTo(text: String, technique: String?) {
+    var open by remember(technique) { mutableStateOf(false) }
+    TextButton(
+        onClick = { open = !open },
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+    ) {
+        Text(
+            if (open) "Hide how to spot one" else "How to spot one",
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+    if (open) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -241,14 +314,7 @@ private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) 
     if (route.isEmpty) return
 
     if (state.overlay != OverlayMode.LESSON) {
-        Button(
-            onClick = { onChange(state.tutor()) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 10.dp),
-        ) {
+        Button(onClick = { onChange(state.tutor()) }, modifier = Modifier.fillMaxWidth()) {
             Text("Start Tutor")
         }
         return
@@ -257,11 +323,7 @@ private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) 
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 10.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         OutlinedButton(
             onClick = { onChange(state.stepTo(state.lessonStep - 1)) },
@@ -587,6 +649,14 @@ private fun DrawScope.drawOverlayInLayer(state: PuzzleState, measurer: TextMeasu
 
             OverlayRole.SOLUTION, OverlayRole.HINT ->
                 drawCentred(measurer, squares, index, digit.digit.toString(), colour)
+
+            // Exactly what the reading layer does with handwriting, because it is the
+            // same statement: there is a digit here and this is what it says. Drawn on
+            // one square rather than on all eighty-one.
+            OverlayRole.WRITTEN -> {
+                squares.fill(this, index, colour.copy(alpha = 0.52f))
+                drawReadDigit(measurer, squares, index, digit.digit)
+            }
         }
     }
 

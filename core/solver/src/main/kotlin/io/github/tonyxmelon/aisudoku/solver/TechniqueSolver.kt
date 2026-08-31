@@ -104,8 +104,9 @@ object TechniqueSolver {
         while (guard++ <= Coordinates.CELL_COUNT * 10) {
             val reasoned = nextDeduction(state)
             val step = reasoned ?: triedOut(state, solution)?.also { triedOut++ } ?: break
+            val told = crossReferenced(step, state, steps)
             if (!apply(state, step)) break
-            steps += step
+            steps += told
         }
 
         // Trying candidates out is not a technique and should not be reported as the
@@ -118,6 +119,42 @@ object TechniqueSolver {
             hardestTechnique = hardest?.technique,
             triedOut = triedOut,
         )
+    }
+
+    /**
+     * Pointing back at the step that ruled a digit out, when the board no longer can.
+     *
+     * A naked single whose square was cleared by an earlier elimination has nothing on
+     * the board to point at for those digits: no neighbour holds them, because nothing
+     * was placed - a pointing pair or an x-wing simply struck them out. The technique
+     * says so honestly on its own, but only the route knows *which* step did it, and
+     * being able to go back and look at that step is the difference between a list of
+     * sixty facts and a chain of reasoning.
+     */
+    private fun crossReferenced(
+        step: Deduction,
+        state: SolverState,
+        sofar: List<Deduction>,
+    ): Deduction {
+        if (step !is Deduction.Placement || step.technique != NakedSingle.name) return step
+
+        val seen = Coordinates.peers[step.index].mapNotNull { state.valueAt(it) }.toSet()
+        val missing = (1..9) - step.digit - seen
+        if (missing.isEmpty()) return step
+
+        val where = missing.mapNotNull { digit ->
+            val at = sofar.indexOfLast {
+                it is Deduction.Elimination && it.digit == digit && step.index in it.fromCells
+            }
+            if (at < 0) null else "$digit at step ${at + 1}"
+        }
+        if (where.isEmpty()) return step
+
+        val said = when (where.size) {
+            1 -> where[0]
+            else -> where.dropLast(1).joinToString(", ") + " and " + where.last()
+        }
+        return step.copy(explanation = step.explanation + " Press Back to see how: $said.")
     }
 
     /** The name given to a square that no technique here could justify. */

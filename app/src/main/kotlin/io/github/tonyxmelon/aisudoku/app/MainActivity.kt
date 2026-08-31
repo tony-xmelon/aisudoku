@@ -43,9 +43,6 @@ import io.github.tonyxmelon.aisudoku.vision.OpenCvNatives
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 
-/** Which screen is showing. History is a drawer over whichever of these is up. */
-private enum class Screen { CAMERA, PUZZLE, SETTINGS, ABOUT, STRATEGIES }
-
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,7 +93,8 @@ private fun AppRoot() {
     var settings by remember { mutableStateOf(Settings.load(context)) }
     var puzzle by remember { mutableStateOf<PuzzleState?>(null) }
     var entries by remember { mutableStateOf(history.list()) }
-    var screen by remember { mutableStateOf(Screen.CAMERA) }
+    var nav by remember { mutableStateOf(Navigation(Screen.CAMERA)) }
+    val screen = nav.screen
 
     // Which history entry the puzzle on screen belongs to, so corrections are written
     // back to it. Without this, reopening a puzzle undoes every fix the user made.
@@ -125,14 +123,30 @@ private fun AppRoot() {
         puzzle = puzzle?.copy(hintStyle = updated.hintStyle)
     }
 
-    fun leaveOverlay() {
-        screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
+    fun go(target: Screen) {
+        nav = nav.go(target)
     }
 
-    fun newPhoto() {
+    /** The close button on a screen you opened. The same thing Back does there. */
+    fun leaveOverlay() {
+        nav = nav.back() ?: nav.reset(if (puzzle != null) Screen.PUZZLE else Screen.CAMERA)
+    }
+
+    /**
+     * Going to the camera without throwing the puzzle away.
+     *
+     * Keeping it is what makes Back from the camera mean "never mind" rather than "leave
+     * the app". A photograph that is actually taken replaces it.
+     */
+    fun takePhoto() {
+        go(Screen.CAMERA)
+    }
+
+    /** The puzzle on screen is gone - deleted - so there is nothing to go back to. */
+    fun discardPuzzle() {
         puzzle = null
         entryId = null
-        screen = Screen.CAMERA
+        nav = nav.reset(Screen.CAMERA)
     }
 
     if (!hasCamera) {
@@ -140,16 +154,28 @@ private fun AppRoot() {
         return
     }
 
-    // Back has to mean something everywhere it can. Without this the drawer had no way
-    // out at all on a narrow phone, where the sheet is as wide as the screen and leaves
-    // no scrim to tap, and back from settings or about left the app entirely.
-    BackHandler(enabled = drawer.isOpen) { closeDrawer() }
+    // Back has to mean something everywhere it can. Every one of these was, at some
+    // point, a press that closed the app instead: the drawer has no scrim to tap on a
+    // narrow phone, and settings, about, the tutor and the puzzle itself all sat one
+    // press from the door.
+    //
+    // What Back undoes is the last thing that appeared: the drawer, then a screen you
+    // opened, then a layer over the puzzle, then the puzzle itself. Only on the camera
+    // with nothing behind it does Back leave, which is the one place Android expects to
+    // be let out of. The conditions are exclusive, but they are still written
+    // outermost-first: the dispatcher runs the last enabled handler declared, so the
+    // drawer - the topmost thing on screen whenever it is open - goes at the bottom.
+    BackHandler(enabled = !drawer.isOpen && nav.canGoBack) {
+        nav.back()?.let { nav = it }
+    }
     BackHandler(
         enabled = !drawer.isOpen &&
-            screen in setOf(Screen.ABOUT, Screen.SETTINGS, Screen.STRATEGIES),
+            screen == Screen.PUZZLE &&
+            puzzle?.overlay?.let { it != OverlayMode.NONE } == true,
     ) {
-        screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
+        puzzle = puzzle?.close()
     }
+    BackHandler(enabled = drawer.isOpen) { closeDrawer() }
 
     ModalNavigationDrawer(
         drawerState = drawer,
@@ -176,7 +202,7 @@ private fun AppRoot() {
                                 readingNote = null,
                                 hintStyle = settings.hintStyle,
                             )
-                            screen = Screen.PUZZLE
+                            go(Screen.PUZZLE)
                         }
                         scope.launch { drawer.close() }
                     },
@@ -184,10 +210,14 @@ private fun AppRoot() {
                         history.delete(entry)
                         entries = history.list()
                         // The puzzle on screen has just been thrown away, so leave it.
-                        if (entryId == entry.id) newPhoto()
+                        if (entryId == entry.id) discardPuzzle()
+                    },
+                    onCamera = {
+                        takePhoto()
+                        closeDrawer()
                     },
                     onStrategies = {
-                        screen = Screen.STRATEGIES
+                        go(Screen.STRATEGIES)
                         closeDrawer()
                     },
                     onClose = ::closeDrawer,
@@ -200,7 +230,7 @@ private fun AppRoot() {
                 findings = puzzle?.let { TechniqueSolver.findingCounts(it.grid) }.orEmpty(),
                 onExplore = { technique ->
                     puzzle = puzzle?.tutor(technique)
-                    screen = Screen.PUZZLE
+                    leaveOverlay()
                 },
                 onClose = ::leaveOverlay,
             )
@@ -217,9 +247,9 @@ private fun AppRoot() {
                 state = puzzle!!,
                 onChange = ::editPuzzle,
                 onMenu = ::openDrawer,
-                onRetake = ::newPhoto,
-                onSettings = { screen = Screen.SETTINGS },
-                onAbout = { screen = Screen.ABOUT },
+                onRetake = ::takePhoto,
+                onSettings = { go(Screen.SETTINGS) },
+                onAbout = { go(Screen.ABOUT) },
             )
 
             else -> CameraScreen(
@@ -229,11 +259,11 @@ private fun AppRoot() {
                     entryId = history.save(state.photo, state.grid).id
                     entries = history.list()
                     puzzle = state.copy(hintStyle = settings.hintStyle)
-                    screen = Screen.PUZZLE
+                    go(Screen.PUZZLE)
                 },
                 onMenu = ::openDrawer,
-                onSettings = { screen = Screen.SETTINGS },
-                onAbout = { screen = Screen.ABOUT },
+                onSettings = { go(Screen.SETTINGS) },
+                onAbout = { go(Screen.ABOUT) },
             )
         }
     }
