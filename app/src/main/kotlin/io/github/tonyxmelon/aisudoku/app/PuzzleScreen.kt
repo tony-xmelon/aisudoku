@@ -148,42 +148,52 @@ private fun Controls(
     onChange: (PuzzleState) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        if (state.uncertainCells.isNotEmpty()) {
-            ReadingBanner(state, onChange)
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Everything whose height depends on what is being said goes above the buttons and
+        // scrolls in its own space. A banner appearing used to push the buttons down the
+        // screen, out from under the thumb that was about to press one.
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (state.uncertainCells.isNotEmpty()) {
+                ReadingBanner(state, onChange)
+            }
+
+            Text(
+                state.status.text,
+                style = MaterialTheme.typography.titleMedium,
+                color = when (state.status.tone) {
+                    Tone.GOOD -> Overlays.correct
+                    Tone.BAD -> Overlays.incorrect
+                    Tone.NEUTRAL -> Color.Unspecified
+                },
+            )
+
+            Legend(state.legend)
+
+            state.guidance?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
+            }
         }
 
-        Text(
-            state.status.text,
-            style = MaterialTheme.typography.titleMedium,
-            color = when (state.status.tone) {
-                Tone.GOOD -> Overlays.correct
-                Tone.BAD -> Overlays.incorrect
-                Tone.NEUTRAL -> Color.Unspecified
-            },
-        )
-
-        Legend(state.legend)
-
-        state.guidance?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium)
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        // Pinned, so they are in the same place whatever is being said above them.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
             ModeButton("Hint", OverlayMode.HINT, state, onChange, Modifier.weight(1f), state.hint != null)
             ModeButton("Check", OverlayMode.CHECK, state, onChange, Modifier.weight(1f))
             ModeButton("Solve", OverlayMode.SOLUTION, state, onChange, Modifier.weight(1f))
             ModeButton("Read", OverlayMode.READING, state, onChange, Modifier.weight(1f))
         }
-
-        Box(Modifier.size(8.dp))
     }
 }
 
@@ -266,8 +276,11 @@ private fun CellEditor(state: PuzzleState, index: Int, onChange: (PuzzleState) -
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // The sheet insets its top but not its bottom, so its last button was landing
+            // underneath the system navigation buttons.
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp)
-            .padding(bottom = 32.dp),
+            .padding(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -275,11 +288,19 @@ private fun CellEditor(state: PuzzleState, index: Int, onChange: (PuzzleState) -
             style = MaterialTheme.typography.titleMedium,
         )
         val report = state.reports?.getOrNull(index)
+        val corrected = state.reports != null && report == null
         Text(
-            report?.describe() ?: when {
-                !cell.isFilled -> "Read as empty."
-                cell.source == CellSource.GIVEN -> "Read as a printed ${cell.digit}."
-                else -> "Read as a handwritten ${cell.digit}."
+            when {
+                report != null -> report.describe()
+                corrected -> when {
+                    !cell.isFilled -> "You cleared this square."
+                    cell.source == CellSource.GIVEN -> "You set this to a printed ${cell.digit}."
+                    else -> "You set this to a handwritten ${cell.digit}."
+                }
+
+                !cell.isFilled -> "Empty."
+                cell.source == CellSource.GIVEN -> "A printed ${cell.digit}."
+                else -> "A handwritten ${cell.digit}."
             },
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -473,7 +494,7 @@ private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, sq
         // cut away again. Pencil marks stay faint - there are forty of them on a busy page
         // and they are the least interesting thing on it.
         val marks = ink == Ink.MARK
-        squares.fill(this, index, colour.copy(alpha = if (marks) 0.24f else 0.44f))
+        squares.fill(this, index, colour.copy(alpha = if (marks) 0.30f else 0.52f))
 
         if (digit != null) drawReadDigit(measurer, squares, index, digit)
 

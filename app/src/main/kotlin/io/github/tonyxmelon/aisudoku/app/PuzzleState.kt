@@ -41,9 +41,12 @@ data class PuzzleState(
     val lines: GridLines = GridLines.EVEN,
     /**
      * What the reader made of each square, when this puzzle came from a photograph.
-     * Null for a puzzle reopened from history, where only the grid was kept.
+     *
+     * The whole list is null for a puzzle reopened from history, where only the grid was
+     * kept. A single entry is null once the user has corrected that square: the reading
+     * is then no longer what is there, and saying otherwise is worse than saying nothing.
      */
-    val reports: List<CellReport>? = null,
+    val reports: List<CellReport?>? = null,
     val overlay: OverlayMode = OverlayMode.NONE,
     val hintStyle: HintStyle = HintStyle.EXPLAIN,
     val selectedCell: Int? = null,
@@ -75,7 +78,14 @@ data class PuzzleState(
             source == CellSource.GIVEN -> Cell.given(digit)
             else -> Cell.guess(digit)
         }
-        return copy(grid = grid.with(index, cell), uncertainCells = uncertainCells - index)
+        return copy(
+            grid = grid.with(index, cell),
+            uncertainCells = uncertainCells - index,
+            // The reader's account of this square is now out of date - the user has just
+            // overruled it - so it goes. Keeping it left the reading layer colouring the
+            // square as whatever it had been read as, after being told it is empty.
+            reports = reports?.mapIndexed { i, report -> if (i == index) null else report },
+        )
     }
 
     /** The user has looked at everything the reader flagged and is happy with it. */

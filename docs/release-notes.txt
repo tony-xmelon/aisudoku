@@ -1,3 +1,18 @@
+THE BUTTONS NO LONGER MOVE. Hint, Check, Solve and Read are pinned above the
+system buttons, and everything whose height depends on what is being said now
+scrolls in its own space above them. A banner appearing used to push them down
+the screen, out from under the thumb about to press one.
+
+FIXED: the cell editor's last button landed underneath the system navigation
+buttons. The sheet insets its top but not its bottom.
+
+FIXED: telling the app a square is empty left it coloured in the Read layer as
+whatever it had been read as. The reader's account of a square is now discarded
+the moment you overrule it, and the editor says "You cleared this square"
+instead of claiming to have read it that way.
+
+The tint is a little stronger, so the knocked-out digits read more clearly.
+
 FIXED: the square the app was unsure about was marked with a hairline at the
 bottom of one square out of eighty-one, which is not something anyone is going
 to find. On a flagged square the bar is now three times as thick.
