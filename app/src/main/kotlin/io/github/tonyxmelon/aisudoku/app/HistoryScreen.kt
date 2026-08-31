@@ -95,7 +95,7 @@ fun HistoryList(
             ) {
                 Icon(CameraIcon, contentDescription = null)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("New photo", style = MaterialTheme.typography.titleSmall)
+                    Text("New sudoku", style = MaterialTheme.typography.titleSmall)
                     Text(
                         "Photograph another puzzle.",
                         style = MaterialTheme.typography.bodySmall,

@@ -410,10 +410,18 @@ object PuzzleLogic {
             "$shape $ending"
     }
 
-    /** What one step of the route actually does, said after the reasoning behind it. */
-    private fun effect(step: Deduction): String = when (step) {
-        is Deduction.Placement ->
-            "Put ${step.digit} in row ${step.index / 9 + 1}, column ${step.index % 9 + 1}."
+    /**
+     * What a step does to the board, when the board does not already show it.
+     *
+     * Nothing for a placement. The digit is drawn in its square with a ring round it, and
+     * "Put 5 in row 2, column 6" is the same fact again in words, taking a line of the
+     * pane to tell you where to look at the thing you are already looking at.
+     *
+     * An elimination is the opposite case: nothing on the board changes at all, so unless
+     * it is said, the step looks like a move that failed.
+     */
+    private fun effect(step: Deduction): String? = when (step) {
+        is Deduction.Placement -> null
 
         is Deduction.Elimination -> {
             val squares = if (step.fromCells.size == 1) "one square" else "${step.fromCells.size} squares"

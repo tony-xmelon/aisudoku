@@ -2,8 +2,11 @@ package io.github.tonyxmelon.aisudoku.app
 
 import io.github.tonyxmelon.aisudoku.model.Cell
 import io.github.tonyxmelon.aisudoku.model.Grid
+import io.github.tonyxmelon.aisudoku.solver.Deduction
+import io.github.tonyxmelon.aisudoku.solver.Difficulty
 import io.github.tonyxmelon.aisudoku.solver.SolveResult
 import io.github.tonyxmelon.aisudoku.solver.Solver
+import io.github.tonyxmelon.aisudoku.solver.Walkthrough
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -404,7 +407,34 @@ class PuzzleLogicTest {
         val technique = assertNotNull(Techniques.byName(route.steps[0].technique))
         assertEquals(route.steps[0].explanation, said.body)
         assertEquals(technique.howTo, said.howTo, "a step should carry the technique's how-to")
-        assertTrue(assertNotNull(said.effect).isNotBlank(), "a step should say what it does")
+
+        // A placement is drawn in its square with a ring round it, so "put 5 in row 2,
+        // column 6" is the same fact again in words, costing a line to say where to look
+        // at what you are already looking at.
+        assertIs<Deduction.Placement>(route.steps[0])
+        assertNull(said.effect)
+
+        // An elimination is the opposite: nothing on the board changes, so without a word
+        // about it the step looks like a move that failed.
+        val cleared = Walkthrough(
+            steps = listOf(
+                Deduction.Elimination(
+                    technique = "Pointing pair",
+                    difficulty = Difficulty.MEDIUM,
+                    explanation = "The only places for 4 in this box lie in one column.",
+                    supportingCells = setOf(0, 9),
+                    digit = 4,
+                    fromCells = setOf(18),
+                )
+            ),
+            hardest = Difficulty.MEDIUM,
+            finishes = false,
+        )
+        val about = assertNotNull(
+            PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = cleared, lessonStep = 0)
+        )
+        assertEquals("This fills nothing in. It rules 4 out of one square.", about.effect)
 
         // The name is not printed in the pane any more, because the key beside the
         // photograph carries it - next to the colour of the squares it is talking about.

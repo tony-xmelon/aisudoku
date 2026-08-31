@@ -1,30 +1,21 @@
-The tutor is a sheet you pull up and push away, and the menu is sorted out.
+The tutor now rests at the foot of the screen instead of hiding behind a button.
 
-THE TUTOR HAS A DOOR. It used to be a row of buttons that was always there and
-could only be left by pressing Next until the route ran out - sixty presses on a
-hard puzzle. It is now a sheet: swipe it down to leave, swipe sideways to step,
-and it covers the buttons while it is up because that is what the screen is for.
-The photograph above it never moves.
+A LIP YOU PULL UP. The tutor sits at the very bottom as the same panel it will
+become, collapsed and labelled, with the four layer buttons above it. Drag it up,
+flick it, or tap it. What it is is legible before you touch it, and the gesture
+that opens it is the one that closes it again.
 
-A PROGRESS LINE YOU CAN AIM AT. Sixty steps drawn one mark each comes out finer
-than a fingertip and says nothing about what the marks are. The line now shows
-one block per run of the same technique - usually about a dozen - each as wide
-as the run is long, and tapping one jumps there. The shape of the puzzle is in
-it: a wide block is a long grind of one technique, a narrow one is a move that
-only worked once. Under it, which technique you are in and how far through.
-Chevrons either side of the counter land on one step exactly, since swiping is
-quick but coarse.
+IT NO LONGER RESIZES. Open, it takes the whole area under the photograph and
+keeps it, whatever the step in front of you happens to say. It used to be as tall
+as its contents, so every step moved everything on screen.
 
-FIVE BUTTONS, ONE ROW. Read, Check, Hint, Solve, Tutor - the order you would use
-them in. The tutor used to need a row of its own even when it was not running,
-and both rows applied their own system-bar inset, leaving a band of dead screen
-between them.
+TWO LINES BACK. "How to spot one" had a line to itself; it is now a question mark
+at the end of the header, costing no lines at all. And "Put 5 in row 2, column 6"
+is gone: the digit is drawn in its square with a ring round it, so the sentence
+was telling you where to look at the thing you were already looking at. The line
+that says an elimination fills nothing in stays, because that one is describing
+something you cannot see - a step where the board does not change at all.
 
-SIX DESTINATIONS, THREE KINDS OF THING. The drawer was holding all of them. It
-now answers only the question it is for - which puzzle - with New photo at the
-top and your puzzles below. Strategies, Settings and About are the app talking
-about itself: they are read once and then rarely, so they sit behind one
-overflow icon instead of two icons in the bar and a row in the drawer. The
-camera keeps its own icon, being the thing you press most.
+New photo is now New sudoku.
 
 The full history is in docs/changelog.md.

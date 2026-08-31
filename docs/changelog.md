@@ -8,6 +8,29 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE TUTOR NOW RESTS AT THE FOOT OF THE SCREEN INSTEAD OF HIDING BEHIND A BUTTON.
+A LIP YOU PULL UP. The tutor sits at the very bottom as the same panel it will
+become, collapsed and labelled, with the four layer buttons above it. Drag it up,
+flick it, or tap it. What it is is legible before you touch it, and the gesture
+that opens it is the one that closes it again.
+
+IT NO LONGER RESIZES. Open, it takes the whole area under the photograph and
+keeps it, whatever the step in front of you happens to say. It used to be as tall
+as its contents, so every step moved everything on screen.
+
+TWO LINES BACK. "How to spot one" had a line to itself; it is now a question mark
+at the end of the header, costing no lines at all. And "Put 5 in row 2, column 6"
+is gone: the digit is drawn in its square with a ring round it, so the sentence
+was telling you where to look at the thing you were already looking at. The line
+that says an elimination fills nothing in stays, because that one is describing
+something you cannot see - a step where the board does not change at all.
+
+New photo is now New sudoku.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE TUTOR IS A SHEET YOU PULL UP AND PUSH AWAY, AND THE MENU IS SORTED OUT.
 THE TUTOR HAS A DOOR. It used to be a row of buttons that was always there and
 could only be left by pressing Next until the route ran out - sixty presses on a
