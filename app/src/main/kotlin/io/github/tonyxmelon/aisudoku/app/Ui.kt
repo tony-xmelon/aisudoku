@@ -17,11 +17,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -216,6 +223,59 @@ fun AppBar(
             }
         }
         actions()
+    }
+}
+
+/**
+ * Strategies, Settings and About, behind one icon.
+ *
+ * These three are the app talking about itself. They are read once and then rarely, and
+ * each was costing a permanent slot: two icons in the bar and a row in the drawer that
+ * had nothing to do with puzzles. Behind an overflow they cost one icon between them, the
+ * title gets its width back, and the drawer answers only the question it is for - which
+ * puzzle.
+ */
+@Composable
+fun OverflowMenu(
+    onStrategies: () -> Unit,
+    onSettings: () -> Unit,
+    onAbout: () -> Unit,
+    /** True over the camera preview, where a plain icon would vanish into the picture. */
+    glass: Boolean = false,
+) {
+    var open by remember { mutableStateOf(false) }
+
+    Box {
+        if (glass) {
+            GlassIconButton({ open = true }, Icons.Filled.MoreVert, "More")
+        } else {
+            IconButton(onClick = { open = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "More")
+            }
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Strategies") },
+                onClick = {
+                    open = false
+                    onStrategies()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Settings") },
+                onClick = {
+                    open = false
+                    onSettings()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("About") },
+                onClick = {
+                    open = false
+                    onAbout()
+                },
+            )
+        }
     }
 }
 

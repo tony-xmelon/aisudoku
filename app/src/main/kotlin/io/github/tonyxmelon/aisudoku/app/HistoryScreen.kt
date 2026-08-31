@@ -13,13 +13,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -54,7 +52,6 @@ fun HistoryList(
     currentId: Long?,
     onOpen: (HistoryEntry) -> Unit,
     onDelete: (HistoryEntry) -> Unit,
-    onStrategies: () -> Unit,
     onCamera: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -113,28 +110,6 @@ fun HistoryList(
                     "Puzzles you photograph are kept here, so you can pick one up again later.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-            }
-        }
-
-        // Somewhere to go and read the techniques on purpose, rather than only meeting
-        // them one at a time in a hint.
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onStrategies)
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Strategies", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "The four ways of reasoning, and how to spot each one.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
             }
         }
 

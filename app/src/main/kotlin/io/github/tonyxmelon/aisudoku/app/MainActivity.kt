@@ -216,10 +216,6 @@ private fun AppRoot() {
                         takePhoto()
                         closeDrawer()
                     },
-                    onStrategies = {
-                        go(Screen.STRATEGIES)
-                        closeDrawer()
-                    },
                     onClose = ::closeDrawer,
                 )
             }
@@ -248,6 +244,7 @@ private fun AppRoot() {
                 onChange = ::editPuzzle,
                 onMenu = ::openDrawer,
                 onRetake = ::takePhoto,
+                onStrategies = { go(Screen.STRATEGIES) },
                 onSettings = { go(Screen.SETTINGS) },
                 onAbout = { go(Screen.ABOUT) },
             )
@@ -262,6 +259,7 @@ private fun AppRoot() {
                     go(Screen.PUZZLE)
                 },
                 onMenu = ::openDrawer,
+                onStrategies = { go(Screen.STRATEGIES) },
                 onSettings = { go(Screen.SETTINGS) },
                 onAbout = { go(Screen.ABOUT) },
             )

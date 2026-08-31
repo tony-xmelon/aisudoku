@@ -29,9 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -77,6 +75,7 @@ fun CameraScreen(
     autoCapture: Boolean,
     onRead: (PuzzleState) -> Unit,
     onMenu: () -> Unit,
+    onStrategies: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
 ) {
@@ -225,9 +224,7 @@ fun CameraScreen(
             ) {
                 GlassIconButton(onMenu, Icons.Filled.Menu, "Your puzzles")
                 Box(Modifier.weight(1f))
-                GlassIconButton(onSettings, Icons.Filled.Settings, "Settings")
-                Box(Modifier.size(8.dp))
-                GlassIconButton(onAbout, Icons.Filled.Info, "About")
+                OverflowMenu(onStrategies, onSettings, onAbout, glass = true)
             }
 
             BoxWithConstraints(

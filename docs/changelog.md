@@ -8,6 +8,38 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE TUTOR IS A SHEET YOU PULL UP AND PUSH AWAY, AND THE MENU IS SORTED OUT.
+THE TUTOR HAS A DOOR. It used to be a row of buttons that was always there and
+could only be left by pressing Next until the route ran out - sixty presses on a
+hard puzzle. It is now a sheet: swipe it down to leave, swipe sideways to step,
+and it covers the buttons while it is up because that is what the screen is for.
+The photograph above it never moves.
+
+A PROGRESS LINE YOU CAN AIM AT. Sixty steps drawn one mark each comes out finer
+than a fingertip and says nothing about what the marks are. The line now shows
+one block per run of the same technique - usually about a dozen - each as wide
+as the run is long, and tapping one jumps there. The shape of the puzzle is in
+it: a wide block is a long grind of one technique, a narrow one is a move that
+only worked once. Under it, which technique you are in and how far through.
+Chevrons either side of the counter land on one step exactly, since swiping is
+quick but coarse.
+
+FIVE BUTTONS, ONE ROW. Read, Check, Hint, Solve, Tutor - the order you would use
+them in. The tutor used to need a row of its own even when it was not running,
+and both rows applied their own system-bar inset, leaving a band of dead screen
+between them.
+
+SIX DESTINATIONS, THREE KINDS OF THING. The drawer was holding all of them. It
+now answers only the question it is for - which puzzle - with New photo at the
+top and your puzzles below. Strategies, Settings and About are the app talking
+about itself: they are read once and then rarely, so they sit behind one
+overflow icon instead of two icons in the bar and a row in the drawer. The
+camera keeps its own icon, being the thing you press most.
+
+The full history is in docs/changelog.md.
+
+---
+
 BACK NAVIGATES INSTEAD OF CLOSING THE APP, ANSWERING A SQUARE SHOWS SOMETHING,
 and a naked single no longer claims things that are not true.
 

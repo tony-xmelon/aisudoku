@@ -1,44 +1,30 @@
-Back navigates instead of closing the app, answering a square shows something,
-and a naked single no longer claims things that are not true.
+The tutor is a sheet you pull up and push away, and the menu is sorted out.
 
-BACK IS A STACK. It used to be one press from the door on almost every screen.
-It now undoes the last thing that appeared - the history drawer, then a screen
-you opened, then a layer over the puzzle, then the puzzle itself - and only
-leaves from the camera with nothing behind it. Written as an actual stack rather
-than a rule per screen, because "back from the puzzle shows the camera" and
-"back from the camera shows the puzzle" are each sensible alone and together are
-a loop with no way out of the app at all.
+THE TUTOR HAS A DOOR. It used to be a row of buttons that was always there and
+could only be left by pressing Next until the route ran out - sixty presses on a
+hard puzzle. It is now a sheet: swipe it down to leave, swipe sideways to step,
+and it covers the buttons while it is up because that is what the screen is for.
+The photograph above it never moves.
 
-"WHY IS IT NOT A 1?" A fair question with no answer on the screen. A naked
-single said "every other digit already appears in this row, column or box" and
-highlighted six squares. Six squares can only account for six digits, and the
-sentence was false: the missing two had been struck out by earlier steps, which
-place nothing and so leave nothing on the board to point at. It now says what
-the highlight actually accounts for, names the digits that went earlier, and
-says which step took them: "4 and 6 were ruled out of this square earlier, not
-by anything you can see around it. Press Back to see how: 4 at step 13 and 6 at
-step 14." Nine of the eighty-seven steps on the hardest puzzle in the test set
-were making the false claim.
+A PROGRESS LINE YOU CAN AIM AT. Sixty steps drawn one mark each comes out finer
+than a fingertip and says nothing about what the marks are. The line now shows
+one block per run of the same technique - usually about a dozen - each as wide
+as the run is long, and tapping one jumps there. The shape of the puzzle is in
+it: a wide block is a long grind of one technique, a narrow one is a move that
+only worked once. Under it, which technique you are in and how far through.
+Chevrons either side of the counter land on one step exactly, since swiping is
+quick but coarse.
 
-A DIGIT YOU TYPE IS NOW DRAWN. It is on no photograph, so the square used to
-look exactly as empty after answering it as before - unless the answer was
-wrong, in which case a line appeared saying so. Backwards on both counts. Your
-answer is now drawn the way the reading layer draws handwriting, on that square
-only, and nothing grades it. Whether it is right is what the Check button is
-for. The one exception is a finished grid, where there is nothing left to work
-on and "not yet" is the whole news.
+FIVE BUTTONS, ONE ROW. Read, Check, Hint, Solve, Tutor - the order you would use
+them in. The tutor used to need a row of its own even when it was not running,
+and both rows applied their own system-bar inset, leaving a band of dead screen
+between them.
 
-ROOM TO READ. The pane under the grid was two lines tall and everything went in
-it. "46 cells to go" is now a small 46/81 in the corner under the grid where it
-belongs. The technique's name has moved into the key, beside the colour of the
-squares it is talking about, so it is not printed twice. The long "how to spot
-one" folds behind a control instead of burying the reasoning for the step in
-front of you. The route's opening remark is said once at step one rather than
-under every step. And the two button rows each applied their own system-bar
-inset, which left a bar of dead screen between them.
-
-Read, Check, Hint, Solve, in the order you would use them, moved to the foot of
-the screen. New photo is now in the menu above your puzzles as well as in the
-bar.
+SIX DESTINATIONS, THREE KINDS OF THING. The drawer was holding all of them. It
+now answers only the question it is for - which puzzle - with New photo at the
+top and your puzzles below. Strategies, Settings and About are the app talking
+about itself: they are read once and then rarely, so they sit behind one
+overflow icon instead of two icons in the bar and a row in the drawer. The
+camera keeps its own icon, being the thing you press most.
 
 The full history is in docs/changelog.md.

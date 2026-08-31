@@ -10,6 +10,7 @@ import kotlin.test.assertFalse
 import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
 import io.github.tonyxmelon.aisudoku.solver.Techniques
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -348,6 +349,40 @@ class PuzzleLogicTest {
         // The square the current step is about is singled out, and it is one being placed.
         val focus = assertNotNull(at(0).focus)
         assertTrue(!puzzle[focus].isFilled)
+    }
+
+    /**
+     * What the tutor's progress line is drawn from. Sixty marks is finer than a fingertip
+     * and says nothing about what the marks are; a dozen blocks can be hit, and the shape
+     * of the puzzle shows in their widths.
+     */
+    @Test
+    fun `the progress line groups the route into runs of one technique`() {
+        val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
+        val chapters = PuzzleLogic.chapters(route)
+
+        assertTrue(chapters.isNotEmpty())
+        assertTrue(
+            chapters.size < route.steps.size,
+            "${chapters.size} blocks for ${route.steps.size} steps is no grouping at all",
+        )
+
+        // Every step belongs to exactly one block, in order, and each block tells the
+        // truth about which technique its steps use.
+        var next = 0
+        for (chapter in chapters) {
+            assertEquals(next, chapter.from)
+            for (i in chapter.from until chapter.until) {
+                assertEquals(chapter.technique, route.steps[i].technique)
+            }
+            next = chapter.until
+        }
+        assertEquals(route.steps.size, next, "the line must cover the whole route")
+
+        // Neighbouring blocks differ, or they would have been one block.
+        for ((a, b) in chapters.zipWithNext()) assertNotEquals(a.technique, b.technique)
+
+        assertEquals(emptyList(), PuzzleLogic.chapters(null))
     }
 
     @Test

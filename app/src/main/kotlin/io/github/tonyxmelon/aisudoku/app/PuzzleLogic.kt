@@ -57,6 +57,19 @@ data class Overlay(
 /** One entry in the key shown under the photograph. */
 enum class LegendKey { CORRECT, INCORRECT, SOLUTION, HINT, EVIDENCE, UNCERTAIN, PRINTED, WRITTEN, MARKS }
 
+/**
+ * A run of consecutive steps that all use the same technique.
+ *
+ * What the route's progress line is drawn from. Sixty steps is far too many to draw one
+ * mark each - the marks come out finer than a fingertip and say nothing about what they
+ * are. Grouped into runs there are usually a dozen or so, each wide enough to hit, and
+ * the shape of the puzzle becomes visible: a long block of eliminations is where it is
+ * stuck, a run of naked singles is where it opens up.
+ */
+data class Chapter(val technique: String, val from: Int, val count: Int) {
+    val until: Int get() = from + count
+}
+
 /** How worried the status line should look. */
 enum class Tone { NEUTRAL, GOOD, BAD }
 
@@ -339,6 +352,20 @@ object PuzzleLogic {
         }
 
         else -> null
+    }
+
+    /** The route's steps grouped into runs of one technique, in order. */
+    fun chapters(walkthrough: Walkthrough?): List<Chapter> {
+        val out = mutableListOf<Chapter>()
+        for ((i, step) in walkthrough?.steps.orEmpty().withIndex()) {
+            val last = out.lastOrNull()
+            if (last != null && last.technique == step.technique) {
+                out[out.lastIndex] = last.copy(count = last.count + 1)
+            } else {
+                out += Chapter(step.technique, i, 1)
+            }
+        }
+        return out
     }
 
     /**
