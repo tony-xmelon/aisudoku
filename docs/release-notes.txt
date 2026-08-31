@@ -15,6 +15,13 @@ confidence bar is a hairline along the bottom edge.
 The same treatment is now used on a red square in Check, because it is the same
 statement: this is what I saw there.
 
+THE AMBER RING IS GONE. Its bottom edge sat straight across the confidence bar -
+two marks for one fact, and the coarser of the two was hiding the finer. The bar
+carries it now: green above nine tenths, amber above six, red below. A square
+the app is unsure about can never come out green, so the colour alone tells you
+which ones it would ask about. In the other layers those squares still show
+their bar, so they are still findable.
+
 NEW PHOTO moved to the top bar as a camera icon, next to settings.
 
 THE TITLE IS GONE. In its place is a menu button that slides your puzzles in over

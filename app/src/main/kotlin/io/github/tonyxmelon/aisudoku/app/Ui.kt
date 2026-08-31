@@ -71,7 +71,11 @@ object Overlays {
      */
     val evidence = written
 
-    /** Doubt is a ring, never a fill, and amber means this and nothing else. */
+    /**
+     * Doubt, which rides on the confidence bar rather than on the square.
+     *
+     * Amber means this and nothing else, anywhere in the app.
+     */
     val uncertain = Color(0xFFFFB300)
 
     fun colour(role: OverlayRole): Color = when (role) {
@@ -99,14 +103,14 @@ object Overlays {
         LegendKey.SOLUTION -> "The solution"
         LegendKey.HINT -> "The answer"
         LegendKey.EVIDENCE -> "The reason"
-        LegendKey.UNCERTAIN -> "The app is unsure"
+        LegendKey.UNCERTAIN -> "Less sure - see the bar"
         LegendKey.PRINTED -> "Printed"
         LegendKey.WRITTEN -> "Handwritten"
         LegendKey.MARKS -> "Pencil marks, ignored"
     }
 
     /** True when this is drawn as an outline on the photograph rather than a fill. */
-    fun outlined(key: LegendKey): Boolean = key == LegendKey.UNCERTAIN
+    fun outlined(key: LegendKey): Boolean = false
 }
 
 /** The key to whatever is drawn on the photograph. Absent when nothing is. */

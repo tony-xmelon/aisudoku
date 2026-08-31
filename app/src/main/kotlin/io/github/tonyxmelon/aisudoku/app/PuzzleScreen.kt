@@ -235,7 +235,7 @@ private fun ReadingBanner(state: PuzzleState, onChange: (PuzzleState) -> Unit) {
             color = Overlays.uncertain,
         )
         Text(
-            "They are ringed on the photo. Tap one to fix it, or accept them all.",
+            "Their bar is amber or red on the photo. Tap one to fix it, or accept them all.",
             style = MaterialTheme.typography.bodySmall,
         )
         FilledTonalButton(onClick = { onChange(state.acceptReading()) }) {
@@ -387,8 +387,22 @@ private fun DrawScope.drawOverlay(state: PuzzleState, measurer: TextMeasurer) {
         }
     }
 
-    for (index in state.uncertainCells) {
-        squares.outline(this, index, Overlays.uncertain, squares.unit * 0.07f, inset = 0.06f)
+    // Confidence, drawn wherever it is worth knowing: on every square in the reading
+    // layer, and on the squares the reader flagged in the others - which is what marks
+    // them now that the ring is gone.
+    //
+    // The ring was amber and sat inset from the square's edge, which put its bottom
+    // stroke straight through the bar that says how unsure the app actually was. Two
+    // marks for one fact, and the coarser of the two hid the finer.
+    state.reports?.let { reports ->
+        val marked = if (state.overlay == OverlayMode.READING) {
+            (0 until 81).filter { reports.getOrNull(it)?.digit != null }
+        } else {
+            state.uncertainCells.sorted()
+        }
+        for (index in marked) {
+            reports.getOrNull(index)?.let { drawConfidence(squares, index, it.confidence) }
+        }
     }
 
     state.selectedCell?.let { index ->
@@ -406,7 +420,8 @@ private fun DrawScope.drawOverlay(state: PuzzleState, measurer: TextMeasurer) {
  *    rather than a solid chip. Candidate marks are written along the top of a square and
  *    the answer through the middle, so the bottom-right corner is the emptiest part of a
  *    real page. A solid chip at the top-right sat exactly on top of the marks;
- *  - the confidence bar is a hairline along the very bottom edge.
+ *  - the confidence bar is a hairline along the very bottom edge, drawn by
+ *    [drawOverlay] so that the squares the reader flagged carry one in every layer.
  *
  * This layer exists because after a read there was otherwise no way to see what the app
  * had decided - only what it had decided to do about it.
@@ -437,10 +452,7 @@ private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, sq
         val marks = ink == Ink.MARK
         squares.fill(this, index, colour.copy(alpha = if (marks) 0.20f else 0.30f))
 
-        if (digit != null) {
-            drawReadDigit(measurer, squares, index, digit)
-            report?.let { drawConfidence(squares, index, it.confidence) }
-        }
+        if (digit != null) drawReadDigit(measurer, squares, index, digit)
     }
 }
 
@@ -451,6 +463,10 @@ private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, sq
  * the page.
  */
 private fun DrawScope.drawConfidence(squares: Squares, index: Int, confidence: Float) {
+    // Green, amber, red by how likely the classifier thought its answer was. A square the
+    // reader flagged can never come out green: it is flagged on the gap between the top
+    // two answers, and those sum with the rest to one, so a nine-tenths answer leaves a
+    // gap too wide to flag.
     val at = squares.topLeft(index)
     val cell = squares.size(index)
     val height = squares.unit * 0.045f
@@ -534,17 +550,6 @@ private class Squares(lines: GridLines, width: Float, height: Float) {
 
     fun fill(scope: DrawScope, index: Int, colour: Color) =
         scope.drawRect(colour, topLeft(index), size(index))
-
-    fun outline(scope: DrawScope, index: Int, colour: Color, width: Float, inset: Float) {
-        val at = topLeft(index)
-        val cell = size(index)
-        scope.drawRect(
-            color = colour,
-            topLeft = at + Offset(cell.width * inset, cell.height * inset),
-            size = Size(cell.width * (1 - inset * 2), cell.height * (1 - inset * 2)),
-            style = Stroke(width = width),
-        )
-    }
 }
 
 /** A digit in the middle of its square. */
