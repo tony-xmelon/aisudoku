@@ -19,10 +19,10 @@ enum class HintStyle { REVEAL, EXPLAIN }
 /**
  * What a digit drawn on the photograph means.
  *
- * One role per colour, and no two roles are ever drawn on the same cell. The first
- * version tinted uncertain cells yellow and wrong ones red, so a cell that was both came
- * out orange, and orange meant nothing. Doubt is now drawn as a ring around the cell
- * instead of a fill, which can sit over any of these without inventing a new colour.
+ * No two roles are ever drawn on the same cell. The first version tinted uncertain cells
+ * yellow and wrong ones red, so a cell that was both came out orange, and orange meant
+ * nothing. Doubt is now drawn as a ring around the cell rather than a fill, which can sit
+ * over any of these without inventing a new colour.
  */
 enum class OverlayRole { SOLUTION, CORRECT, INCORRECT, HINT }
 
@@ -97,16 +97,26 @@ object PuzzleLogic {
         return Overlay(digits, evidence)
     }
 
-    /** The key for whatever is currently drawn. Shown only for the active mode. */
-    fun legend(mode: OverlayMode, hasUncertain: Boolean): List<LegendKey> {
-        val keys = when (mode) {
-            OverlayMode.NONE -> emptyList()
-            OverlayMode.CHECK -> listOf(LegendKey.CORRECT, LegendKey.INCORRECT)
-            OverlayMode.SOLUTION -> listOf(LegendKey.SOLUTION)
-            OverlayMode.HINT -> listOf(LegendKey.HINT, LegendKey.EVIDENCE)
-            OverlayMode.READING -> listOf(LegendKey.PRINTED, LegendKey.WRITTEN, LegendKey.MARKS)
+    /**
+     * The key to whatever is on the photograph right now.
+     *
+     * Derived from the overlay rather than from the mode, so it names what is actually
+     * drawn: no "Wrong" when nothing is wrong, and no "The reason" when the hint had no
+     * technique behind it to point at.
+     */
+    fun legend(overlay: Overlay, mode: OverlayMode, hasUncertain: Boolean): List<LegendKey> {
+        val keys = mutableListOf<LegendKey>()
+        if (mode == OverlayMode.READING) {
+            keys += listOf(LegendKey.PRINTED, LegendKey.WRITTEN, LegendKey.MARKS)
         }
-        return if (hasUncertain) keys + LegendKey.UNCERTAIN else keys
+        val roles = overlay.digits.values.mapTo(mutableSetOf()) { it.role }
+        if (OverlayRole.CORRECT in roles) keys += LegendKey.CORRECT
+        if (OverlayRole.INCORRECT in roles) keys += LegendKey.INCORRECT
+        if (OverlayRole.SOLUTION in roles) keys += LegendKey.SOLUTION
+        if (OverlayRole.HINT in roles) keys += LegendKey.HINT
+        if (overlay.evidence.isNotEmpty()) keys += LegendKey.EVIDENCE
+        if (hasUncertain) keys += LegendKey.UNCERTAIN
+        return keys
     }
 
     /** One short line about the puzzle. Instructions belong next to the control they explain. */

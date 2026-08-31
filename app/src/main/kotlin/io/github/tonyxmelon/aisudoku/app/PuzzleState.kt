@@ -36,7 +36,8 @@ data class PuzzleState(
 
     val guidance: String? by lazy { PuzzleLogic.guidance(grid, overlay, hintStyle) }
 
-    val legend: List<LegendKey> get() = PuzzleLogic.legend(overlay, uncertainCells.isNotEmpty())
+    val legend: List<LegendKey>
+        get() = PuzzleLogic.legend(computed, overlay, uncertainCells.isNotEmpty())
 
     private val computed: Overlay by lazy { PuzzleLogic.overlay(grid, overlay, hintStyle) }
 

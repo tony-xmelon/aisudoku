@@ -79,6 +79,7 @@ class PuzzleLogicTest {
         assertEquals(solution[index].digit, drawn.digit)
         assertEquals(OverlayRole.HINT, drawn.role)
         assertFalse(index in overlay.evidence, "the answer is not its own evidence")
+        assertTrue(PuzzleLogic.guidance(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)!!.isNotBlank())
     }
 
     @Test
@@ -162,16 +163,47 @@ class PuzzleLogicTest {
         assertTrue(PuzzleLogic.status(ambiguous).text.contains("More than one solution"))
     }
 
+    private fun keys(grid: Grid, mode: OverlayMode, unsure: Boolean = false) =
+        PuzzleLogic.legend(PuzzleLogic.overlay(grid, mode, HintStyle.EXPLAIN), mode, unsure)
+
     @Test
-    fun `the key names exactly what is drawn, and doubt is listed whenever it applies`() {
-        assertEquals(emptyList(), PuzzleLogic.legend(OverlayMode.NONE, hasUncertain = false))
+    fun `the key names exactly what is drawn and nothing else`() {
+        assertEquals(emptyList(), keys(puzzle, OverlayMode.NONE))
+
+        // Nothing has been answered yet, so "right" and "wrong" would both be lies.
+        assertEquals(emptyList(), keys(puzzle, OverlayMode.CHECK))
+
+        val empty = (0 until 81).first { !puzzle[it].isFilled }
+        val wrongDigit = (1..9).first { it != solution[empty].digit }
         assertEquals(
-            listOf(LegendKey.CORRECT, LegendKey.INCORRECT),
-            PuzzleLogic.legend(OverlayMode.CHECK, hasUncertain = false),
+            listOf(LegendKey.INCORRECT),
+            keys(puzzle.with(empty, Cell.guess(wrongDigit)), OverlayMode.CHECK),
         )
+        assertEquals(
+            listOf(LegendKey.CORRECT),
+            keys(puzzle.with(empty, Cell.guess(solution[empty].digit!!)), OverlayMode.CHECK),
+        )
+
         assertEquals(
             listOf(LegendKey.SOLUTION, LegendKey.UNCERTAIN),
-            PuzzleLogic.legend(OverlayMode.SOLUTION, hasUncertain = true),
+            keys(puzzle, OverlayMode.SOLUTION, unsure = true),
         )
+        assertEquals(
+            listOf(LegendKey.PRINTED, LegendKey.WRITTEN, LegendKey.MARKS),
+            keys(puzzle, OverlayMode.READING),
+        )
+    }
+
+    @Test
+    fun `a hint with no technique behind it does not claim to show a reason`() {
+        // The plain style never has evidence, so the key must not offer to explain one.
+        val plain = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.REVEAL)
+        assertEquals(listOf(LegendKey.HINT), PuzzleLogic.legend(plain, OverlayMode.HINT, false))
+
+        // A naked single's evidence is the cell itself, so once the answer is taken out
+        // there is nothing left to tint - and nothing left to name either.
+        val explained = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)
+        assertTrue(explained.evidence.isEmpty())
+        assertEquals(listOf(LegendKey.HINT), PuzzleLogic.legend(explained, OverlayMode.HINT, false))
     }
 }

@@ -27,24 +27,45 @@ import androidx.compose.ui.unit.dp
 /**
  * The colours the overlay is drawn in, and what each one means.
  *
- * One meaning per colour, defined once, so the key under the photograph and the drawing
- * on it cannot drift apart.
+ * The rule is that no two things share a colour *within one layer*. Colours do repeat
+ * across layers, and that is fine, because only one layer is ever on screen and each one
+ * prints its own key. Amber is the exception: it means the app's own uncertainty, in
+ * every layer and nowhere else.
+ *
+ * Defined once here so the key under the photograph and the drawing on it cannot drift
+ * apart.
  */
 object Overlays {
 
     val solution = Color(0xFF4FC3F7)
     val correct = Color(0xFF66BB6A)
     val incorrect = Color(0xFFEF5350)
-    val hint = Color(0xFFFFCA28)
-    val evidence = Color(0xFF7E9BE8)
-
-    /** Doubt is a ring, never a fill, so it can sit over any of the above. */
-    val uncertain = Color(0xFFFFB300)
 
     /** The reading layer: what the app decided each square held. */
     val printed = Color(0xFF4DD0E1)
     val written = Color(0xFFBA68C8)
     val marks = Color(0xFF9E9E9E)
+
+    /**
+     * A hint is the solution for one square, so it is drawn in the solution's colour.
+     *
+     * It used to be amber, which is the colour of the app's own doubt - so a hint and a
+     * square the reader was unsure of looked the same. Sharing the solution's colour is
+     * not a compromise: it is the same thing, for one square.
+     */
+    val hint = solution
+
+    /**
+     * The squares that prove a hint.
+     *
+     * Shares the handwriting colour, which is safe because the two never appear together:
+     * the rule is that no two things share a colour *within one layer*, not across the
+     * app, and every layer prints its own key.
+     */
+    val evidence = written
+
+    /** Doubt is a ring, never a fill, and amber means this and nothing else. */
+    val uncertain = Color(0xFFFFB300)
 
     fun colour(role: OverlayRole): Color = when (role) {
         OverlayRole.SOLUTION -> solution
@@ -69,9 +90,9 @@ object Overlays {
         LegendKey.CORRECT -> "Right"
         LegendKey.INCORRECT -> "Wrong"
         LegendKey.SOLUTION -> "The solution"
-        LegendKey.HINT -> "Try this"
+        LegendKey.HINT -> "The answer"
         LegendKey.EVIDENCE -> "The reason"
-        LegendKey.UNCERTAIN -> "Not sure"
+        LegendKey.UNCERTAIN -> "The app is unsure"
         LegendKey.PRINTED -> "Printed"
         LegendKey.WRITTEN -> "Handwritten"
         LegendKey.MARKS -> "Pencil marks, ignored"
