@@ -6,6 +6,7 @@ import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.Hint
 import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
+import io.github.tonyxmelon.aisudoku.solver.Techniques
 import io.github.tonyxmelon.aisudoku.solver.Walkthrough
 
 /**
@@ -56,6 +57,14 @@ data class PuzzleState(
     val hintDepth: Int = 0,
     /** Which step of the walkthrough is being shown. */
     val lessonStep: Int = 0,
+    /**
+     * The technique being browsed, when the user has gone looking at one on purpose.
+     *
+     * Null means the tutor is walking its own route. Set means the user is exploring one
+     * technique's findings in this position instead, which is the same machinery pointed
+     * at a different list.
+     */
+    val tutorTechnique: String? = null,
 ) {
     // Computed once per state rather than once per read. Every one of these runs the
     // solver, and Compose asks for them again on every recomposition - including one per
@@ -77,7 +86,11 @@ data class PuzzleState(
      * Costs a full technique solve, so it is worked out once per state and only when
      * something asks for it - which the button offering it does, on every recomposition.
      */
-    val walkthrough: Walkthrough? by lazy { TechniqueSolver.walkthrough(grid) }
+    val walkthrough: Walkthrough? by lazy {
+        val chosen = tutorTechnique?.let { Techniques.byName(it) }
+        if (chosen != null) TechniqueSolver.findings(grid, chosen)
+        else TechniqueSolver.walkthrough(grid)
+    }
 
     /** What the route ahead asks of you, said before you set off. */
     val outlook: String? by lazy { PuzzleLogic.outlook(walkthrough) }
@@ -110,6 +123,14 @@ data class PuzzleState(
             selectedCell = null,
         )
     }
+
+    /** Starting the tutor, either on its own route or on one technique the user picked. */
+    fun tutor(technique: String? = null): PuzzleState = copy(
+        tutorTechnique = technique,
+        overlay = OverlayMode.LESSON,
+        lessonStep = 0,
+        selectedCell = null,
+    )
 
     /** Moving through the walkthrough. Clamped, so the ends are simply inert. */
     fun stepTo(step: Int): PuzzleState {

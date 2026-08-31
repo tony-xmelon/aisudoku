@@ -21,7 +21,8 @@ object HiddenSingle : Technique {
         "accept five other digits too, so nothing about it looks forced. Look at the digit " +
         "instead of the square, and it appears immediately."
 
-    override fun find(state: SolverState): Deduction? {
+    override fun findAll(state: SolverState): List<Deduction> {
+        val out = mutableListOf<Deduction>()
         for ((unitIndex, unit) in Coordinates.units.withIndex()) {
             for (digit in 1..9) {
                 if (unit.any { state.valueAt(it) == digit }) continue  // already placed here
@@ -32,7 +33,7 @@ object HiddenSingle : Technique {
                 val index = places[0]
                 if (state.isReported(index)) continue
 
-                return Deduction.Placement(
+                out += Deduction.Placement(
                     technique = name,
                     difficulty = difficulty,
                     explanation = "$digit has to go here: it is the only cell in this " +
@@ -43,7 +44,7 @@ object HiddenSingle : Technique {
                 )
             }
         }
-        return null
+        return out
     }
 
     /** Units are stored as nine rows, then nine columns, then nine boxes. */

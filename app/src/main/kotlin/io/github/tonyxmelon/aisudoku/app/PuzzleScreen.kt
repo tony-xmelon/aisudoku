@@ -186,9 +186,10 @@ private fun Controls(
                 Text(it, style = MaterialTheme.typography.bodyMedium)
             }
 
-            // Said only when nothing else is being said, so it reads as an opening
-            // remark rather than as one more thing competing for attention.
-            if (state.overlay == OverlayMode.NONE) {
+            // The tutor's opening remark, said once it has been started. Meeting it on
+            // arrival from the camera made the scan end in a paragraph of instruction
+            // nobody had asked for yet.
+            if (state.overlay == OverlayMode.LESSON && state.tutorTechnique == null) {
                 state.outlook?.let {
                     Text(
                         it,
@@ -232,14 +233,14 @@ private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) 
 
     if (state.overlay != OverlayMode.LESSON) {
         Button(
-            onClick = { onChange(state.show(OverlayMode.LESSON)) },
+            onClick = { onChange(state.tutor()) },
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 10.dp),
         ) {
-            Text("Walk me through it")
+            Text("Start Tutor")
         }
         return
     }
@@ -259,13 +260,28 @@ private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) 
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
         ) { Text("Back", maxLines = 1) }
 
-        Text(
-            "Step ${state.lessonStep + 1} of ${route.steps.size}",
-            style = MaterialTheme.typography.labelLarge,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
+        Column(
             modifier = Modifier.weight(1f),
-        )
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                "Step ${state.lessonStep + 1} of ${route.steps.size}",
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+            // Which list is being walked. Without it, browsing one technique and walking
+            // the route look identical once you are three steps in.
+            state.tutorTechnique?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
+        }
 
         if (state.lessonStep < route.steps.size - 1) {
             Button(
@@ -274,7 +290,7 @@ private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) 
             ) { Text("Next", maxLines = 1) }
         } else {
             Button(
-                onClick = { onChange(state.show(OverlayMode.LESSON)) },
+                onClick = { onChange(state.copy(tutorTechnique = null).show(OverlayMode.LESSON)) },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             ) { Text("Done", maxLines = 1) }
         }

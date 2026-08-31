@@ -1,3 +1,30 @@
+THE TUTOR NOW KNOWS TWELVE TECHNIQUES, up from four.
+
+New: naked pair, hidden pair, naked triple, hidden triple, X-wing, Y-wing,
+XYZ-wing and swordfish - alongside the naked and hidden singles, pointing pairs
+and box line reductions it already had. Each carries the same two things: the
+rule in one sentence, and how to go hunting for it while holding a pencil.
+
+START TUTOR. The walkthrough no longer greets you with a paragraph the moment a
+scan finishes. There is a button, and pressing it starts the tutor.
+
+BROWSE ANY TECHNIQUE. Open Strategies from the menu and every technique says how
+many places it applies in the puzzle you have open right now. Tap it and you
+step through them one at a time on the photo, exactly like the tutor's own route
+- except these are alternatives rather than a sequence, so the board does not
+fill in as you go. Seeing the same pattern four times in one grid is what turns
+a definition into something you can spot.
+
+A word on trust: twelve techniques are too many to check by eye, so there is now
+a test that audits every deduction all twelve can make, at every position the
+solver passes through, against the known answer - 2972 of them. It caught a real
+bug in the swordfish, which was eliminating a digit that belonged where it sat.
+
+And an honest limit: none of the twelve can touch the very hardest puzzles.
+Inkala's 2012 puzzle defeats all of them from the first move. Those need chains
+and colouring, which this app cannot yet explain, and it will tell you so rather
+than pretend.
+
 A TRAINING APP, NOT JUST A SOLVER.
 
 HINTS NOW COME IN STEPS. Press Hint and it shows you the box to look in, and

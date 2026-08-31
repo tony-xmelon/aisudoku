@@ -21,7 +21,8 @@ object PointingPair : Technique {
         "along the same line outside the box.\n\nThis places nothing by itself. It " +
         "clears candidates out of the way so that a single appears somewhere else."
 
-    override fun find(state: SolverState): Deduction? {
+    override fun findAll(state: SolverState): List<Deduction> {
+        val out = mutableListOf<Deduction>()
         for (box in 0 until 9) {
             val boxCells = Coordinates.boxIndices[box]
             for (digit in 1..9) {
@@ -33,17 +34,17 @@ object PointingPair : Technique {
                 val row = Coordinates.rowOf(places[0])
                 if (places.all { Coordinates.rowOf(it) == row }) {
                     eliminationAlong(state, places, digit, Coordinates.rowIndices[row], "row")
-                        ?.let { return it }
+                        ?.let { out += it }
                 }
 
                 val col = Coordinates.colOf(places[0])
                 if (places.all { Coordinates.colOf(it) == col }) {
                     eliminationAlong(state, places, digit, Coordinates.colIndices[col], "column")
-                        ?.let { return it }
+                        ?.let { out += it }
                 }
             }
         }
-        return null
+        return out
     }
 
     private fun eliminationAlong(

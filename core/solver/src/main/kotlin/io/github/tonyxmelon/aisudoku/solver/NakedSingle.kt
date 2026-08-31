@@ -21,20 +21,18 @@ object NakedSingle : Technique {
         "to set up. Everything harder is a way of getting some square down to a single " +
         "candidate, so when a harder technique pays off, look here next."
 
-    override fun find(state: SolverState): Deduction? {
-        for (index in 0 until Coordinates.CELL_COUNT) {
-            val digit = state.candidatesAt(index).single ?: continue
-            if (state.isReported(index)) continue
-            return Deduction.Placement(
+    override fun findAll(state: SolverState): List<Deduction> =
+        (0 until Coordinates.CELL_COUNT).mapNotNull { index ->
+            val digit = state.candidatesAt(index).single ?: return@mapNotNull null
+            if (state.isReported(index)) return@mapNotNull null
+            Deduction.Placement(
                 technique = name,
                 difficulty = difficulty,
-                explanation = "Only $digit can go here — every other digit already appears " +
+                explanation = "Only $digit can go here - every other digit already appears " +
                     "in this row, column or box.",
                 supportingCells = setOf(index),
                 index = index,
                 digit = digit,
             )
         }
-        return null
-    }
 }

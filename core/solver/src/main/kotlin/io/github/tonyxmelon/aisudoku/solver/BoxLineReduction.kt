@@ -23,15 +23,21 @@ object BoxLineReduction : Technique {
         "rows or columns of it you were not looking at.\n\nLike the pointing pair, this " +
         "places nothing on its own; it makes room for something that does."
 
-    override fun find(state: SolverState): Deduction? {
+    override fun findAll(state: SolverState): List<Deduction> {
+        val out = mutableListOf<Deduction>()
         for (line in 0 until 9) {
-            findIn(state, Coordinates.rowIndices[line], "row")?.let { return it }
-            findIn(state, Coordinates.colIndices[line], "column")?.let { return it }
+            out += findIn(state, Coordinates.rowIndices[line], "row")
+            out += findIn(state, Coordinates.colIndices[line], "column")
         }
-        return null
+        return out
     }
 
-    private fun findIn(state: SolverState, lineCells: List<Int>, lineName: String): Deduction.Elimination? {
+    private fun findIn(
+        state: SolverState,
+        lineCells: List<Int>,
+        lineName: String,
+    ): List<Deduction.Elimination> {
+        val out = mutableListOf<Deduction.Elimination>()
         for (digit in 1..9) {
             if (lineCells.any { state.valueAt(it) == digit }) continue
 
@@ -47,7 +53,7 @@ object BoxLineReduction : Technique {
                 .toSet()
             if (targets.isEmpty()) continue
 
-            return Deduction.Elimination(
+            out += Deduction.Elimination(
                 technique = name,
                 difficulty = difficulty,
                 explanation = "In this $lineName, $digit can only go inside one box. " +
@@ -58,6 +64,6 @@ object BoxLineReduction : Technique {
                 fromCells = targets,
             )
         }
-        return null
+        return out
     }
 }

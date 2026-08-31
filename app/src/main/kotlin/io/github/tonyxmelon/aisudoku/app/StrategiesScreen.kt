@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,15 +22,23 @@ import io.github.tonyxmelon.aisudoku.solver.Technique
 import io.github.tonyxmelon.aisudoku.solver.Techniques
 
 /**
- * The four ways of reasoning this app knows, and how to spot each one.
+ * Every way of reasoning this app knows, and how to spot each one.
  *
- * The same text the hints and the walkthrough quote, gathered in one place so it can be
- * read on purpose rather than only met in passing. Written to be read while holding a
- * pencil: the app can already finish any puzzle it can read, so the only reason to name a
- * technique is so the user can find the next one without it.
+ * The same text the hints and the tutor quote, gathered in one place so it can be read on
+ * purpose rather than only met in passing. Written to be read while holding a pencil: the
+ * app can already finish any puzzle it can read, so the only reason to name a technique is
+ * so the user can find the next one without it.
+ *
+ * Each one also offers to show every place it applies in the puzzle currently open, which
+ * teaches far more than the paragraph above it does.
  */
 @Composable
-fun StrategiesScreen(onClose: () -> Unit) {
+fun StrategiesScreen(
+    /** How many places each technique applies in the puzzle on screen, if there is one. */
+    findings: Map<String, Int>,
+    onExplore: (String) -> Unit,
+    onClose: () -> Unit,
+) {
     Column(modifier = Modifier.fillMaxSize()) {
         AppBar(title = "Strategies", onBack = onClose)
         LazyColumn(
@@ -38,21 +47,30 @@ fun StrategiesScreen(onClose: () -> Unit) {
         ) {
             item {
                 Text(
-                    "Every sudoku that has one answer can be reached by reasoning; guessing " +
-                        "is never required and rarely helps. These are the four kinds of " +
-                        "reasoning this app can recognise and explain, easiest first.",
+                    "Every sudoku with one answer can be reached by reasoning; guessing is " +
+                        "never required and rarely helps. These are the ways of reasoning " +
+                        "this app can recognise and explain, easiest first. Where one of " +
+                        "them applies to the puzzle you have open, it will show you every " +
+                        "place it does.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
 
             items@ for (technique in Techniques.all) {
-                item(key = technique.name) { Strategy(technique) }
+                item(key = technique.name) {
+                    Strategy(
+                        technique = technique,
+                        available = findings[technique.name],
+                        onExplore = { onExplore(technique.name) },
+                    )
+                }
             }
 
             item {
                 Text(
-                    "Harder puzzles need more than these. When the app says it has run out " +
-                        "of techniques, that is what has happened - not that the puzzle is " +
+                    "Harder puzzles still need more than these - chains and colouring, " +
+                        "which this app cannot yet explain. When it says it has run out of " +
+                        "techniques, that is what has happened, not that the puzzle is " +
                         "unsolvable.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -63,7 +81,7 @@ fun StrategiesScreen(onClose: () -> Unit) {
 }
 
 @Composable
-private fun Strategy(technique: Technique) {
+private fun Strategy(technique: Technique, available: Int?, onExplore: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -93,14 +111,33 @@ private fun Strategy(technique: Technique) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        // Reading about a technique teaches far less than being shown four of them on the
+        // grid in front of you, so every one that applies right now offers to do that.
+        when {
+            available == null -> Unit
+
+            available == 0 -> Text(
+                "None on your puzzle at the moment.",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            else -> FilledTonalButton(onClick = onExplore) {
+                Text(
+                    if (available == 1) "Show me the one on your puzzle"
+                    else "Show me all $available on your puzzle"
+                )
+            }
+        }
     }
 }
 
 private fun label(difficulty: Difficulty) = when (difficulty) {
-    Difficulty.EASY -> "Easiest"
-    Difficulty.MEDIUM -> "Middling"
-    Difficulty.HARD -> "Hardest"
-    Difficulty.VERY_HARD -> "Beyond this app"
+    Difficulty.EASY -> "Gentle"
+    Difficulty.MEDIUM -> "Moderate"
+    Difficulty.HARD -> "Hard"
+    Difficulty.VERY_HARD -> "Very hard"
 }
 
 private fun colour(difficulty: Difficulty) = when (difficulty) {

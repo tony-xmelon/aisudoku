@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
 import io.github.tonyxmelon.aisudoku.vision.OpenCvNatives
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
@@ -195,7 +196,14 @@ private fun AppRoot() {
         },
     ) {
         when {
-            screen == Screen.STRATEGIES -> StrategiesScreen(onClose = ::leaveOverlay)
+            screen == Screen.STRATEGIES -> StrategiesScreen(
+                findings = puzzle?.let { TechniqueSolver.findingCounts(it.grid) }.orEmpty(),
+                onExplore = { technique ->
+                    puzzle = puzzle?.tutor(technique)
+                    screen = Screen.PUZZLE
+                },
+                onClose = ::leaveOverlay,
+            )
 
             screen == Screen.ABOUT -> AboutScreen(onClose = ::leaveOverlay)
 

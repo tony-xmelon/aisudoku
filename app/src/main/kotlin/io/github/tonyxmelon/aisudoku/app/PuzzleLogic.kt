@@ -6,7 +6,6 @@ import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.AnswerCheck
 import io.github.tonyxmelon.aisudoku.solver.AnswerChecker
 import io.github.tonyxmelon.aisudoku.solver.Deduction
-import io.github.tonyxmelon.aisudoku.solver.Difficulty
 import io.github.tonyxmelon.aisudoku.solver.ExplainedHintEngine
 import io.github.tonyxmelon.aisudoku.solver.Hint
 import io.github.tonyxmelon.aisudoku.solver.RevealHintEngine
@@ -167,9 +166,12 @@ object PuzzleLogic {
 
             OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
                 val at = lessonStep.coerceIn(0, route.steps.size - 1)
-                // Everything up to and including this step, so the board fills in as the
-                // route is walked and each move is seen from the position it was made in.
-                for (i in 0..at) {
+                // On a route, everything up to and including this step, so the board
+                // fills in as it is walked and each move is seen from the position it was
+                // made in. When browsing one technique the steps are alternatives from a
+                // single position, so only the one being looked at is drawn.
+                val from = if (route.cumulative) 0 else at
+                for (i in from..at) {
                     val step = route.steps[i] as? Deduction.Placement ?: continue
                     digits[step.index] = OverlayDigit(step.digit, OverlayRole.SOLUTION)
                 }
@@ -237,20 +239,14 @@ object PuzzleLogic {
     fun outlook(walkthrough: Walkthrough?): String? {
         if (walkthrough == null || walkthrough.isEmpty) return null
         val steps = if (walkthrough.steps.size == 1) "one step" else "${walkthrough.steps.size} steps"
-        val hardest = describe(walkthrough.hardest)
+        val hardest = walkthrough.hardestTechnique?.lowercase() ?: "nothing unusual"
         return if (walkthrough.finishes) {
-            "From here it is $steps, and the hardest thing you need is $hardest."
+            "From here it is $steps, and the hardest thing you need is a $hardest."
         } else {
-            "$steps can be reasoned out from here, needing $hardest. After that this app " +
-                "runs out of techniques, and the rest needs one it has not been taught."
+            "$steps can be reasoned out from here, the hardest being a $hardest. After " +
+                "that this app runs out of techniques, and the rest needs one it has not " +
+                "been taught."
         }
-    }
-
-    private fun describe(difficulty: Difficulty): String = when (difficulty) {
-        Difficulty.EASY -> "a naked single"
-        Difficulty.MEDIUM -> "a hidden single"
-        Difficulty.HARD -> "a pointing pair or a box line reduction"
-        Difficulty.VERY_HARD -> "more than this app can explain"
     }
 
     /** The sentence under the controls, explaining whatever is on screen right now. */

@@ -95,9 +95,9 @@ class WalkthroughTest {
     fun `every technique carries teaching material, and can be found by name`() {
         for (technique in Techniques.all) {
             assertTrue(technique.rule.isNotBlank(), "${technique.name} has no rule")
-            assertTrue(technique.howTo.length > 80, "${technique.name} has no real how-to")
+            assertTrue(technique.howTo.length > 150, "${technique.name} has no real how-to")
             assertEquals(technique, Techniques.byName(technique.name))
         }
-        assertNull(Techniques.byName("Swordfish"))
+        assertNull(Techniques.byName("Jellyfish"), "an unknown technique must not resolve")
     }
 }

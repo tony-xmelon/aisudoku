@@ -50,6 +50,16 @@ data class Walkthrough(
      * saying so is better than pretending otherwise.
      */
     val finishes: Boolean,
+    /** What to name when telling the user what this puzzle is going to ask of them. */
+    val hardestTechnique: String? = null,
+    /**
+     * True for a route, where each step builds on the last, and false for a browse, where
+     * the steps are alternatives all available from the same position.
+     *
+     * The difference shows: a route fills the board in as it is walked, and a browse must
+     * not, or the second example is being shown in a position the first one created.
+     */
+    val cumulative: Boolean = true,
 ) {
     val isEmpty: Boolean get() = steps.isEmpty()
 }
@@ -65,17 +75,46 @@ object TechniqueSolver {
      */
     fun walkthrough(grid: Grid): Walkthrough? {
         val solution = (Solver.solve(grid) as? SolveResult.Unique)?.solution ?: return null
-        return when (val outcome = solve(progressGrid(grid, solution))) {
-            is TechniqueOutcome.Solved -> Walkthrough(outcome.steps, outcome.difficulty, true)
-
-            is TechniqueOutcome.Stuck -> Walkthrough(
-                outcome.steps,
-                outcome.steps.maxOfOrNull { it.difficulty } ?: Difficulty.EASY,
-                finishes = false,
-            )
-
-            TechniqueOutcome.Invalid -> null
+        val outcome = solve(progressGrid(grid, solution))
+        val steps = when (outcome) {
+            is TechniqueOutcome.Solved -> outcome.steps
+            is TechniqueOutcome.Stuck -> outcome.steps
+            TechniqueOutcome.Invalid -> return null
         }
+        val hardest = steps.maxByOrNull { it.difficulty.ordinal }
+        return Walkthrough(
+            steps = steps,
+            hardest = hardest?.difficulty ?: Difficulty.EASY,
+            finishes = outcome is TechniqueOutcome.Solved,
+            hardestTechnique = hardest?.technique,
+        )
+    }
+
+    /**
+     * Every place one technique applies in the position the user is in.
+     *
+     * These are alternatives, not a route: all of them are available at once, and taking
+     * any one of them would change the others. That is exactly what makes them worth
+     * browsing - seeing the same pattern four times in one grid is how it stops being a
+     * definition and starts being something you can spot.
+     */
+    fun findings(grid: Grid, technique: Technique): Walkthrough? {
+        val solution = (Solver.solve(grid) as? SolveResult.Unique)?.solution ?: return null
+        val state = SolverState.candidatesOnly(progressGrid(grid, solution)) ?: return null
+        return Walkthrough(
+            steps = technique.findAll(state),
+            hardest = technique.difficulty,
+            finishes = false,
+            hardestTechnique = technique.name,
+            cumulative = false,
+        )
+    }
+
+    /** How many places each technique applies right now. For the strategy list. */
+    fun findingCounts(grid: Grid): Map<String, Int> {
+        val solution = (Solver.solve(grid) as? SolveResult.Unique)?.solution ?: return emptyMap()
+        val state = SolverState.candidatesOnly(progressGrid(grid, solution)) ?: return emptyMap()
+        return ALL_TECHNIQUES.associate { it.name to it.findAll(state).size }
     }
 
     fun solve(grid: Grid): TechniqueOutcome {
