@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -82,11 +83,80 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 import io.github.tonyxmelon.aisudoku.BuildConfig
 import io.github.tonyxmelon.aisudoku.model.CellSource
+import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.recognize.Ink
 import io.github.tonyxmelon.aisudoku.solver.Techniques
 import io.github.tonyxmelon.aisudoku.solver.Walkthrough
+
+/**
+ * A forcing chain: the assumption, what it forces, and the wall it hits.
+ *
+ * The one argument in the app whose order is the argument, so it is the one drawn with
+ * arrows. Every square on the trail carries the digit it is forced to hold; the squares
+ * at the end - one that can hold nothing, or a whole unit with nowhere left to put some
+ * digit - are red, because that is the impossibility the whole trail was built to reach.
+ *
+ * Order of drawing matters. The digits are punched out last so that they cut cleanly
+ * through both the tint and any arrow crossing them, which is what keeps a trail of eight
+ * arrows legible on a photograph of a page.
+ */
+private fun DrawScope.drawChain(chain: Chain, squares: Squares, measurer: TextMeasurer) {
+    for (index in chain.deadEnd) {
+        squares.fill(this, index, Overlays.incorrect.copy(alpha = 0.34f))
+    }
+    for (link in chain.links) {
+        squares.fill(this, link.index, Overlays.evidence.copy(alpha = 0.45f))
+    }
+
+    // One arrow per square, drawn from whatever forced it. The trail branches - the wall
+    // usually rests on more than one line of consequence - so this is a tree and not a
+    // line, and drawing it as a line would be drawing an argument that was not made.
+    val on = chain.links.mapTo(mutableSetOf()) { it.index }
+    for (link in chain.links) {
+        val parent = link.from ?: continue
+        if (parent in on) drawArrow(squares.centre(parent), squares.centre(link.index), squares.unit)
+    }
+
+    // And into the wall itself, when the wall is one square. A whole unit has no centre
+    // worth pointing at, and the block of red says where it is well enough.
+    val wall = chain.deadEnd.singleOrNull()
+    if (wall != null && chain.deadEndFrom != null) {
+        drawArrow(squares.centre(chain.deadEndFrom!!), squares.centre(wall), squares.unit)
+    }
+
+    for (link in chain.links) drawReadDigit(measurer, squares, link.index, link.digit)
+}
+
+/** One arrow, stopping short at both ends so it does not run over the digits it joins. */
+private fun DrawScope.drawArrow(from: Offset, to: Offset, unit: Float) {
+    val step = to - from
+    val length = hypot(step.x, step.y)
+    if (length < 1f) return
+
+    val direction = Offset(step.x / length, step.y / length)
+    val clear = unit * 0.34f
+    if (length <= clear * 2f + unit * 0.1f) return
+
+    val start = from + direction * clear
+    val end = to - direction * clear
+    val colour = Color.White.copy(alpha = 0.92f)
+    drawLine(colour, start, end, strokeWidth = unit * 0.045f, cap = StrokeCap.Round)
+
+    val head = unit * 0.2f
+    val back = Offset(-direction.x, -direction.y)
+    for (turn in listOf(0.45f, -0.45f)) {
+        val wing = Offset(
+            back.x * cos(turn) - back.y * sin(turn),
+            back.x * sin(turn) + back.y * cos(turn),
+        )
+        drawLine(colour, end, end + wing * head, strokeWidth = unit * 0.045f, cap = StrokeCap.Round)
+    }
+}
 
 /**
  * The straightened photograph with help drawn on top.
@@ -881,6 +951,8 @@ private fun DrawScope.drawOverlayInLayer(state: PuzzleState, measurer: TextMeasu
         squares.fill(this, index, Overlays.evidence.copy(alpha = 0.28f))
     }
 
+    state.chain()?.let { drawChain(it, squares, measurer) }
+
     for ((index, digit) in state.overlayDigits()) {
         val colour = Overlays.colour(digit.role)
         when (digit.role) {
@@ -1090,6 +1162,11 @@ private class Squares(lines: GridLines, width: Float, height: Float) {
     val unit: Float = minOf(width, height) / 9f
 
     fun topLeft(index: Int) = Offset(xs[index % 9], ys[index / 9])
+
+    fun centre(index: Int) = Offset(
+        (xs[index % 9] + xs[index % 9 + 1]) / 2f,
+        (ys[index / 9] + ys[index / 9 + 1]) / 2f,
+    )
 
     fun size(index: Int) = Size(
         xs[index % 9 + 1] - xs[index % 9],

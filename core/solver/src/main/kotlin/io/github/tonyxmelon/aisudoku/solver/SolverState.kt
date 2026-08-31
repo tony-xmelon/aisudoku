@@ -91,6 +91,17 @@ class SolverState private constructor(private val candidates: IntArray) {
     }
 
     /**
+     * Sets [index] to hold [digit] and nothing else, touching no other cell at all.
+     *
+     * For tracing a chain of consequences by hand. [place] does the peer removals too,
+     * but reports only that *some* peer was emptied - and a chain that cannot say which
+     * square it broke has nothing to draw an arrow at.
+     */
+    fun fixOnly(index: Int, digit: Int) {
+        candidates[index] = CandidateSet.NONE.plus(digit).bits
+    }
+
+    /**
      * Fixes [digit] in [index] and removes it from the cell's peers, without cascading
      * any further consequences. The non-propagating counterpart of [assign].
      */

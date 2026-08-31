@@ -107,6 +107,7 @@ object Overlays {
         LegendKey.PRINTED -> printed
         LegendKey.WRITTEN -> written
         LegendKey.MARKS -> marks
+        LegendKey.DEAD_END -> incorrect
     }
 
     /**
@@ -128,6 +129,7 @@ object Overlays {
         LegendKey.PRINTED -> "Printed"
         LegendKey.WRITTEN -> "Written"
         LegendKey.MARKS -> "Marks"
+        LegendKey.DEAD_END -> "Dead end"
     }
 
     /** True when this is drawn as an outline on the photograph rather than a fill. */

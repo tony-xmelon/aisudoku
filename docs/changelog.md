@@ -8,6 +8,34 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+A FORCING CHAIN NOW SHOWS ITS WORKING.
+It was the one technique that asked you to take its word for it. "Suppose this
+square were 3. Following that through the grid leaves some square with no digit
+at all" - and then a single highlighted square, which is not an argument, it is
+an assertion. The chain was computed and thrown away.
+
+It is kept now, and drawn. Every square the assumption forces is tinted and
+carries the digit it is forced to hold, with an arrow from whatever forced it.
+The wall at the end is red: either one square left with nothing it can hold, or
+a whole unit with nowhere left to put some digit, and the text says which.
+
+The trail is a tree, not a line. The first version drew the single path back
+from whatever hit the wall, which looked like an argument and was not one - the
+wall leans on side branches too, and replaying only that path did not reach it.
+What is drawn now is every placement the conclusion actually rests on and
+nothing else. There is a test that replays each trail square by square and fails
+if the wall it claims is not there.
+
+Six of the eleven chains on the hardest puzzle in the test set come with a
+picture, of five to nine squares. The rest are still made - the full propagation
+refutes more than a trail can show - just without one. An argument of more than
+a dozen squares is not drawn at all: fifteen arrows over a photograph of a page
+is a scribble, not an explanation.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE TUTOR NOW RESTS AT THE FOOT OF THE SCREEN INSTEAD OF HIDING BEHIND A BUTTON.
 A LIP YOU PULL UP. The tutor sits at the very bottom as the same panel it will
 become, collapsed and labelled, with the four layer buttons above it. Drag it up,

@@ -1,21 +1,26 @@
-The tutor now rests at the foot of the screen instead of hiding behind a button.
+A forcing chain now shows its working.
 
-A LIP YOU PULL UP. The tutor sits at the very bottom as the same panel it will
-become, collapsed and labelled, with the four layer buttons above it. Drag it up,
-flick it, or tap it. What it is is legible before you touch it, and the gesture
-that opens it is the one that closes it again.
+It was the one technique that asked you to take its word for it. "Suppose this
+square were 3. Following that through the grid leaves some square with no digit
+at all" - and then a single highlighted square, which is not an argument, it is
+an assertion. The chain was computed and thrown away.
 
-IT NO LONGER RESIZES. Open, it takes the whole area under the photograph and
-keeps it, whatever the step in front of you happens to say. It used to be as tall
-as its contents, so every step moved everything on screen.
+It is kept now, and drawn. Every square the assumption forces is tinted and
+carries the digit it is forced to hold, with an arrow from whatever forced it.
+The wall at the end is red: either one square left with nothing it can hold, or
+a whole unit with nowhere left to put some digit, and the text says which.
 
-TWO LINES BACK. "How to spot one" had a line to itself; it is now a question mark
-at the end of the header, costing no lines at all. And "Put 5 in row 2, column 6"
-is gone: the digit is drawn in its square with a ring round it, so the sentence
-was telling you where to look at the thing you were already looking at. The line
-that says an elimination fills nothing in stays, because that one is describing
-something you cannot see - a step where the board does not change at all.
+The trail is a tree, not a line. The first version drew the single path back
+from whatever hit the wall, which looked like an argument and was not one - the
+wall leans on side branches too, and replaying only that path did not reach it.
+What is drawn now is every placement the conclusion actually rests on and
+nothing else. There is a test that replays each trail square by square and fails
+if the wall it claims is not there.
 
-New photo is now New sudoku.
+Six of the eleven chains on the hardest puzzle in the test set come with a
+picture, of five to nine squares. The rest are still made - the full propagation
+refutes more than a trail can show - just without one. An argument of more than
+a dozen squares is not drawn at all: fifteen arrows over a photograph of a page
+is a scribble, not an explanation.
 
 The full history is in docs/changelog.md.

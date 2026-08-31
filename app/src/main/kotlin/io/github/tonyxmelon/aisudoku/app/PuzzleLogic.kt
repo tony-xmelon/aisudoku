@@ -5,6 +5,7 @@ import io.github.tonyxmelon.aisudoku.model.Coordinates
 import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.AnswerCheck
 import io.github.tonyxmelon.aisudoku.solver.AnswerChecker
+import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.solver.Deduction
 import io.github.tonyxmelon.aisudoku.solver.ExplainedHintEngine
 import io.github.tonyxmelon.aisudoku.solver.Hint
@@ -52,10 +53,30 @@ data class Overlay(
     val evidence: Set<Int>,
     /** The one square being pointed at: ringed, but not necessarily answered. */
     val focus: Int? = null,
+    /**
+     * The trail of a forcing chain, when that is the step being shown.
+     *
+     * Drawn instead of the flat evidence highlight, not as well as it: a chain's squares
+     * mean something in order, and tinting them all the same says the opposite.
+     */
+    val chain: Chain? = null,
 )
 
 /** One entry in the key shown under the photograph. */
-enum class LegendKey { CORRECT, INCORRECT, SOLUTION, HINT, EVIDENCE, UNCERTAIN, PRINTED, WRITTEN, MARKS }
+enum class LegendKey {
+    CORRECT,
+    INCORRECT,
+    SOLUTION,
+    HINT,
+    EVIDENCE,
+    UNCERTAIN,
+    PRINTED,
+    WRITTEN,
+    MARKS,
+
+    /** Where a forcing chain runs out of room: the wall the assumption walks into. */
+    DEAD_END,
+}
 
 /**
  * A run of consecutive steps that all use the same technique.
@@ -169,6 +190,7 @@ object PuzzleLogic {
         val digits = mutableMapOf<Int, OverlayDigit>()
         var evidence = emptySet<Int>()
         var focus: Int? = null
+        var chain: Chain? = null
 
         when (mode) {
             OverlayMode.NONE -> Unit
@@ -233,7 +255,16 @@ object PuzzleLogic {
                 }
                 val step = route.steps[at]
                 focus = (step as? Deduction.Placement)?.index
-                evidence = step.supportingCells - setOfNotNull(focus)
+
+                // A chain draws its own squares, in order and with arrows between them.
+                // The flat highlight would say "these all matter equally", which is the
+                // one thing a chain is not.
+                chain = (step as? Deduction.Elimination)?.chain
+                evidence = if (chain != null) {
+                    emptySet()
+                } else {
+                    step.supportingCells - setOfNotNull(focus)
+                }
             }
         }
 
@@ -250,7 +281,7 @@ object PuzzleLogic {
                 digits[index] = OverlayDigit(digit, OverlayRole.WRITTEN)
             }
         }
-        return Overlay(digits, evidence, focus)
+        return Overlay(digits, evidence, focus, chain)
     }
 
     /**
@@ -271,7 +302,8 @@ object PuzzleLogic {
         if (OverlayRole.SOLUTION in roles) keys += LegendKey.SOLUTION
         if (OverlayRole.HINT in roles) keys += LegendKey.HINT
         if (OverlayRole.WRITTEN in roles && mode != OverlayMode.READING) keys += LegendKey.WRITTEN
-        if (overlay.evidence.isNotEmpty()) keys += LegendKey.EVIDENCE
+        if (overlay.evidence.isNotEmpty() || overlay.chain != null) keys += LegendKey.EVIDENCE
+        if (overlay.chain?.deadEnd?.isNotEmpty() == true) keys += LegendKey.DEAD_END
         if (hasUncertain) keys += LegendKey.UNCERTAIN
         return keys
     }

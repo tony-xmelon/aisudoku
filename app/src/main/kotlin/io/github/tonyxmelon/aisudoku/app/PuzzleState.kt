@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import io.github.tonyxmelon.aisudoku.model.Cell
 import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
+import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.solver.Hint
 import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
 import io.github.tonyxmelon.aisudoku.solver.Techniques
@@ -129,6 +130,9 @@ data class PuzzleState(
     fun evidenceCells(): Set<Int> = computed.evidence
 
     fun focusCell(): Int? = computed.focus
+
+    /** The forcing chain being walked, when the step showing is one. */
+    fun chain(): Chain? = computed.chain
 
     /**
      * Turning a layer on, or - for a hint - pushing the one already showing one step
