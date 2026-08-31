@@ -82,13 +82,46 @@ class WalkthroughTest {
     }
 
     /**
-     * The four techniques do not finish Arto Inkala's 2012 puzzle - they find nothing at
-     * all on it. Saying so is the honest outcome, and the walkthrough has to survive it.
+     * The whole point of the tutor: somebody holding an unfinished puzzle needs to be
+     * walked to the end of it, not told the app gave up. Inkala's 2012 puzzle defeats
+     * every pattern-based technique here from the very first move, so this is the case
+     * that proves the route always arrives.
      */
     @Test
-    fun `a puzzle beyond the known techniques reports how far reasoning gets`() {
+    fun `even the hardest puzzle is walked all the way to the end`() {
         val route = assertNotNull(TechniqueSolver.walkthrough(Puzzles.HARDEST))
-        assertTrue(!route.finishes)
+        assertTrue(route.finishes, "the route stopped short")
+
+        val solution = assertIs<SolveResult.Unique>(Solver.solve(Puzzles.HARDEST)).solution
+        var grid = Puzzles.HARDEST
+        for (step in route.steps) {
+            if (step !is Deduction.Placement) continue
+            assertEquals(solution[step.index].digit, step.digit, "step at ${step.index} is wrong")
+            grid = grid.with(step.index, Cell.guess(step.digit))
+        }
+        assertTrue(grid.isComplete, "walking every step should fill the grid in")
+
+        val named = route.steps.count { it.technique != TechniqueSolver.TRIED_OUT }
+        println(
+            "hardest: ${route.steps.size} steps, $named reasoned, ${route.triedOut} tried out, " +
+                "hardest technique ${route.hardestTechnique}"
+        )
+    }
+
+    /** Every puzzle the fixtures know about, walked to the end. */
+    @Test
+    fun `every solvable puzzle is walked to a complete grid`() {
+        for ((label, puzzle) in listOf("easy" to Puzzles.EASY, "hardest" to Puzzles.HARDEST)) {
+            val route = assertNotNull(TechniqueSolver.walkthrough(puzzle), label)
+            assertTrue(route.finishes, "$label stopped short")
+            var grid = puzzle
+            for (step in route.steps.filterIsInstance<Deduction.Placement>()) {
+                grid = grid.with(step.index, Cell.guess(step.digit))
+            }
+            assertTrue(grid.isComplete, "$label was not finished")
+            assertTrue(grid.conflicts().isEmpty(), "$label was finished wrongly")
+            println("$label: ${route.steps.size} steps, ${route.triedOut} tried out")
+        }
     }
 
     @Test

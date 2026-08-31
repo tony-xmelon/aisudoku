@@ -1,3 +1,33 @@
+THE TUTOR NOW FINISHES ANY PUZZLE IT CAN READ.
+
+Two things were needed.
+
+A THIRTEENTH TECHNIQUE: the forcing chain. Every other one recognises a pattern.
+This one does not - it assumes a digit, follows the consequences across the grid,
+and if some square is left with no digit it can hold, the assumption was wrong.
+It is the technique of last resort and the honest name for what people actually
+do at that point. It carried eleven of the eighty-seven steps on the hardest
+puzzle in the test set.
+
+AND A ROUTE THAT DOES NOT STOP. When every technique comes up empty, the tutor
+settles one square by trying its candidates out, says plainly that is what it
+has done, and reasons on from there. It never dresses a lookup up as a
+deduction, and it never leaves you halfway.
+
+On Arto Inkala's 2012 puzzle - the one built to defeat solvers, where not one of
+the thirteen can make a single move from the opening position - the tutor now
+walks all 87 steps to a finished grid. 85 of them are justified by a named
+technique. Two squares are tried out.
+
+There is a test that walks every puzzle in the fixtures to a complete, legal
+grid, and another that fails if more than a quarter of a route is trial rather
+than reasoning. Finding the end is not enough; it has to be mostly taught.
+
+Also fixed on the way: the route used to stop the moment the grid was solved,
+which sounds right and is not. The last placement of a run often collapses
+several squares to a single candidate at once, and those squares were being
+filled in but never explained - six of them on the easy puzzle.
+
 HINTS: THE SECOND PRESS DID NOTHING, and now it does.
 
 A naked single's evidence used to be the square itself, which points at nothing

@@ -4,6 +4,7 @@ import io.github.tonyxmelon.aisudoku.model.Grid
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -45,7 +46,7 @@ class TechniqueSoundnessTest {
                 assertTrue(TechniqueSolver.apply(state, next), "$label: ${next.technique} broke the grid")
                 moves++
             }
-            println("$label: reasoning made $moves moves before running out")
+            println("$label: pattern-based reasoning alone made $moves moves")
         }
         assertTrue(checked > 200, "only $checked deductions audited - the sweep is too thin")
         println("audited $checked deductions:")
@@ -112,20 +113,25 @@ class TechniqueSoundnessTest {
     }
 
     /**
-     * Inkala's 2012 puzzle defeats all twelve of these outright - it is built to need
-     * forcing chains, which none of them are. Recorded rather than asserted away: the day
-     * a technique here does find something on it, that is worth knowing about.
+     * Inkala's 2012 puzzle defeats every technique here at its opening position - not one
+     * of them can make a move. It is built that way.
+     *
+     * The tutor still walks it to the end, by settling one square by trial and reasoning
+     * on from there, and that is the point: a technique list is never going to be
+     * complete, so the route cannot depend on one being.
      */
     @Test
-    fun `the hardest puzzle is beyond every technique here, and says so`() {
-        val originals = listOf(NakedSingle, HiddenSingle, PointingPair, BoxLineReduction)
+    fun `nothing moves on the hardest puzzle, and the tutor finishes it anyway`() {
         val state = assertIs<SolverState>(SolverState.candidatesOnly(Puzzles.HARDEST))
-        assertTrue(
-            originals.all { it.find(state) == null },
-            "the original four were supposed to find nothing here",
-        )
         val found = Techniques.all.filter { it.find(state) != null }
-        println("on Inkala's puzzle, techniques that find anything: " +
+        println("on Inkala's opening position, techniques that find anything: " +
             (found.joinToString { it.name }.ifEmpty { "none" }))
+
+        val route = assertNotNull(TechniqueSolver.walkthrough(Puzzles.HARDEST))
+        assertTrue(route.finishes, "the tutor has to reach the end regardless")
+        assertTrue(
+            route.triedOut < route.steps.size / 4,
+            "too much of this route is trial rather than reasoning: ${route.triedOut} of ${route.steps.size}",
+        )
     }
 }

@@ -68,10 +68,12 @@ fun StrategiesScreen(
 
             item {
                 Text(
-                    "Harder puzzles still need more than these - chains and colouring, " +
-                        "which this app cannot yet explain. When it says it has run out of " +
-                        "techniques, that is what has happened, not that the puzzle is " +
-                        "unsolvable.",
+                    "A technique list is never complete, and the hardest puzzles are built " +
+                        "to defeat whatever is on it. So when every one of these comes up " +
+                        "empty, the tutor settles a single square by trying its candidates " +
+                        "out, says plainly that is what it has done, and carries on " +
+                        "reasoning from there. It always reaches the end of a puzzle, and it " +
+                        "never pretends a lookup was a deduction.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

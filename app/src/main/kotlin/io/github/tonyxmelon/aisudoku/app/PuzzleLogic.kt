@@ -252,11 +252,19 @@ object PuzzleLogic {
             else -> "$places of them fill a square in; the rest clear candidates out of " +
                 "the way first."
         }
-        val ending = if (walkthrough.finishes) {
-            "That is the rest of the puzzle."
-        } else {
-            "After them this app runs out of techniques, and what is left needs one it " +
-                "has not been taught."
+        val ending = when {
+            !walkthrough.finishes ->
+                "They do not reach the end: something here has defeated the app entirely."
+
+            walkthrough.triedOut == 0 -> "That is the rest of the puzzle, start to finish."
+
+            walkthrough.triedOut == 1 -> "That is the rest of the puzzle. One square in it " +
+                "yields to no technique at all and has to be settled by trying its " +
+                "candidates out, which is what makes this a hard one."
+
+            else -> "That is the rest of the puzzle. ${walkthrough.triedOut} squares in it " +
+                "yield to no technique at all and have to be settled by trying their " +
+                "candidates out, which is what makes this a hard one."
         }
         return "$total steps can be reasoned out from here, the hardest a $hardest. " +
             "$shape $ending"

@@ -55,6 +55,7 @@ val ALL_TECHNIQUES: List<Technique> = listOf(
     YWing,
     XyzWing,
     Swordfish,
+    ForcingChain,
 )
 
 /** Looking a technique up by the name a [Deduction] reports. */

@@ -1,5 +1,6 @@
 package io.github.tonyxmelon.aisudoku.solver
 
+import io.github.tonyxmelon.aisudoku.model.Coordinates
 import io.github.tonyxmelon.aisudoku.model.Grid
 
 /** What reasoning alone made of a puzzle. */
@@ -53,6 +54,14 @@ data class Walkthrough(
     /** What to name when telling the user what this puzzle is going to ask of them. */
     val hardestTechnique: String? = null,
     /**
+     * How many squares on the route no technique could justify, and had to be settled by
+     * trying the candidates out instead.
+     *
+     * Zero on almost every puzzle. Not zero is not a failure - it is what makes a puzzle
+     * hard, and saying so is more use than stopping.
+     */
+    val triedOut: Int = 0,
+    /**
      * True for a route, where each step builds on the last, and false for a browse, where
      * the steps are alternatives all available from the same position.
      *
@@ -75,18 +84,78 @@ object TechniqueSolver {
      */
     fun walkthrough(grid: Grid): Walkthrough? {
         val solution = (Solver.solve(grid) as? SolveResult.Unique)?.solution ?: return null
-        val outcome = solve(progressGrid(grid, solution))
-        val steps = when (outcome) {
-            is TechniqueOutcome.Solved -> outcome.steps
-            is TechniqueOutcome.Stuck -> outcome.steps
-            TechniqueOutcome.Invalid -> return null
+        val state = SolverState.candidatesOnly(progressGrid(grid, solution)) ?: return null
+
+        val steps = mutableListOf<Deduction>()
+        var triedOut = 0
+
+        // Reason as far as reasoning goes; when it stops, settle one square by trying its
+        // candidates, and reason on from there. The route therefore always reaches the
+        // end. Stopping halfway with "this app has run out of techniques" is honest but
+        // useless to somebody holding an unfinished puzzle.
+        //
+        // The loop is bounded by the grid: every step either fills a square or removes a
+        // candidate, and there are only so many of each.
+        // Run until there is nothing left to say, rather than until the grid is solved.
+        // The last placement of a run often collapses several squares to a single
+        // candidate at once, and stopping there leaves those squares filled in but never
+        // explained - six of them, on the easy puzzle.
+        var guard = 0
+        while (guard++ <= Coordinates.CELL_COUNT * 10) {
+            val reasoned = nextDeduction(state)
+            val step = reasoned ?: triedOut(state, solution)?.also { triedOut++ } ?: break
+            if (!apply(state, step)) break
+            steps += step
         }
-        val hardest = steps.maxByOrNull { it.difficulty.ordinal }
+
+        // Trying candidates out is not a technique and should not be reported as the
+        // hardest one needed - it is what happens when there is no technique at all.
+        val hardest = steps.filter { it.technique != TRIED_OUT }.maxByOrNull { it.difficulty.ordinal }
         return Walkthrough(
             steps = steps,
             hardest = hardest?.difficulty ?: Difficulty.EASY,
-            finishes = outcome is TechniqueOutcome.Solved,
+            finishes = state.isSolved,
             hardestTechnique = hardest?.technique,
+            triedOut = triedOut,
+        )
+    }
+
+    /** The name given to a square that no technique here could justify. */
+    const val TRIED_OUT = "Tried out"
+
+    /**
+     * Settling one square when nothing can be reasoned about it.
+     *
+     * Takes the square with the fewest candidates left, which is the one a person would
+     * try first, and fills in the answer. The claim it makes is true and follows from
+     * something the app has already established: the puzzle has exactly one solution, so
+     * every other candidate for this square must lead to a dead end.
+     *
+     * It is deliberately named for what it is. Dressing a lookup up as a deduction would
+     * teach the user a technique that does not exist.
+     */
+    private fun triedOut(state: SolverState, solution: Grid): Deduction? {
+        val square = (0 until Coordinates.CELL_COUNT)
+            .filter { state.valueAt(it) == null }
+            .minByOrNull { state.candidatesAt(it).size } ?: return null
+        val answer = solution[square].digit ?: return null
+
+        val others = state.candidatesAt(square).digits().filter { it != answer }
+        val rejected = when {
+            others.isEmpty() -> ""
+            others.size == 1 -> " ${others[0]} leads to a dead end."
+            else -> " ${others.joinToString(", ")} each lead to a dead end."
+        }
+        return Deduction.Placement(
+            technique = TRIED_OUT,
+            difficulty = Difficulty.VERY_HARD,
+            explanation = "No technique here can justify a move from this position, so this " +
+                "square has to be settled by trying its candidates out - which is what the " +
+                "app did to find the solution in the first place. Only $answer survives." +
+                rejected,
+            supportingCells = setOf(square),
+            index = square,
+            digit = answer,
         )
     }
 
