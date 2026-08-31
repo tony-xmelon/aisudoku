@@ -124,6 +124,10 @@ private fun AppRoot() {
         puzzle = puzzle?.copy(hintStyle = updated.hintStyle)
     }
 
+    fun leaveOverlay() {
+        screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
+    }
+
     fun newPhoto() {
         puzzle = null
         entryId = null
@@ -139,8 +143,7 @@ private fun AppRoot() {
     // out at all on a narrow phone, where the sheet is as wide as the screen and leaves
     // no scrim to tap, and back from settings or about left the app entirely.
     BackHandler(enabled = drawer.isOpen) { closeDrawer() }
-    BackHandler(enabled = !drawer.isOpen && screen == Screen.ABOUT) { screen = Screen.SETTINGS }
-    BackHandler(enabled = !drawer.isOpen && screen == Screen.SETTINGS) {
+    BackHandler(enabled = !drawer.isOpen && (screen == Screen.ABOUT || screen == Screen.SETTINGS)) {
         screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
     }
 
@@ -183,13 +186,12 @@ private fun AppRoot() {
         },
     ) {
         when {
-            screen == Screen.ABOUT -> AboutScreen(onClose = { screen = Screen.SETTINGS })
+            screen == Screen.ABOUT -> AboutScreen(onClose = ::leaveOverlay)
 
             screen == Screen.SETTINGS -> SettingsScreen(
                 settings = settings,
                 onChange = ::applySettings,
-                onAbout = { screen = Screen.ABOUT },
-                onClose = { screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA },
+                onClose = ::leaveOverlay,
             )
 
             screen == Screen.PUZZLE && puzzle != null -> PuzzleScreen(
@@ -198,6 +200,7 @@ private fun AppRoot() {
                 onMenu = ::openDrawer,
                 onRetake = ::newPhoto,
                 onSettings = { screen = Screen.SETTINGS },
+                onAbout = { screen = Screen.ABOUT },
             )
 
             else -> CameraScreen(
@@ -211,6 +214,7 @@ private fun AppRoot() {
                 },
                 onMenu = ::openDrawer,
                 onSettings = { screen = Screen.SETTINGS },
+                onAbout = { screen = Screen.ABOUT },
             )
         }
     }

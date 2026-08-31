@@ -2,11 +2,11 @@ package io.github.tonyxmelon.aisudoku.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -97,44 +97,58 @@ object Overlays {
         LegendKey.MARKS -> marks
     }
 
+    /**
+     * One word each, because the key is one line and four of these have to fit across a
+     * phone. What a colour means beyond its name belongs in the sentence under it.
+     */
     fun label(key: LegendKey): String = when (key) {
         LegendKey.CORRECT -> "Right"
         LegendKey.INCORRECT -> "Wrong"
-        LegendKey.SOLUTION -> "The solution"
-        LegendKey.HINT -> "The answer"
-        LegendKey.EVIDENCE -> "The reason"
-        LegendKey.UNCERTAIN -> "Less sure - see the bar"
+        LegendKey.SOLUTION -> "Answer"
+        LegendKey.HINT -> "Answer"
+        LegendKey.EVIDENCE -> "Why"
+        LegendKey.UNCERTAIN -> "Unsure"
         LegendKey.PRINTED -> "Printed"
-        LegendKey.WRITTEN -> "Handwritten"
-        LegendKey.MARKS -> "Pencil marks, ignored"
+        LegendKey.WRITTEN -> "Written"
+        LegendKey.MARKS -> "Marks"
     }
 
     /** True when this is drawn as an outline on the photograph rather than a fill. */
     fun outlined(key: LegendKey): Boolean = false
 }
 
-/** The key to whatever is drawn on the photograph. Absent when nothing is. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * The key to whatever is drawn on the photograph. Absent when nothing is.
+ *
+ * One line, always. It used to wrap, and a key that grows a second line as the drawing
+ * changes moves everything under it. It scrolls sideways rather than wrapping on a screen
+ * too narrow to hold it, which no phone in practice is: four one-word entries is the most
+ * any layer asks for.
+ */
 @Composable
 fun Legend(keys: List<LegendKey>, modifier: Modifier = Modifier) {
     if (keys.isEmpty()) return
-    FlowRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    Row(
+        modifier = modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         for (key in keys) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val colour = Overlays.colour(key)
                 if (Overlays.outlined(key)) {
-                    Box(Modifier.size(14.dp).border(2.dp, colour, RoundedCornerShape(3.dp)))
+                    Box(Modifier.size(11.dp).border(2.dp, colour, RoundedCornerShape(3.dp)))
                 } else {
-                    Box(Modifier.size(14.dp).background(colour, RoundedCornerShape(3.dp)))
+                    Box(Modifier.size(11.dp).background(colour, RoundedCornerShape(3.dp)))
                 }
-                Text(Overlays.label(key), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    Overlays.label(key),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                )
             }
         }
     }
@@ -171,13 +185,17 @@ fun AppBar(
             else -> Box(Modifier.size(12.dp))
         }
 
+        // Three 48dp action buttons and a 48dp menu button leave about seventy dip for
+        // this on a small phone, so the title is a size down from where it would like to
+        // be. Shrinking the buttons instead would take them under the minimum touch target.
         Column(modifier = Modifier.padding(start = 4.dp).weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
             subtitle?.let {
                 Text(
                     it,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }

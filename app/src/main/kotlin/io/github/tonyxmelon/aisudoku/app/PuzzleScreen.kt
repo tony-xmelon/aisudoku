@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,6 +76,7 @@ fun PuzzleScreen(
     onMenu: () -> Unit,
     onRetake: () -> Unit,
     onSettings: () -> Unit,
+    onAbout: () -> Unit,
 ) {
     val measurer = rememberTextMeasurer()
     val sheetState = rememberModalBottomSheetState()
@@ -93,6 +95,9 @@ fun PuzzleScreen(
                 }
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
+                IconButton(onClick = onAbout) {
+                    Icon(Icons.Filled.Info, contentDescription = "About")
                 }
             }
 

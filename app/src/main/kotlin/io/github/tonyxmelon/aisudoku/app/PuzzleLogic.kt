@@ -150,8 +150,8 @@ object PuzzleLogic {
 
         OverlayMode.SOLUTION -> "Blue digits are the solution. Tap any cell to correct what was read."
 
-        OverlayMode.READING -> "What the app made of each square, and the bar showing how " +
-            "sure it was. Tap a square for the detail."
+        OverlayMode.READING -> "Grey squares hold pencil marks, which the app ignores. The " +
+            "bar under a digit is how sure it was. Tap a square for the detail."
 
         OverlayMode.CHECK ->
             if ((AnswerChecker.check(grid) as? AnswerCheck.Checked)?.incorrect.isNullOrEmpty()) {

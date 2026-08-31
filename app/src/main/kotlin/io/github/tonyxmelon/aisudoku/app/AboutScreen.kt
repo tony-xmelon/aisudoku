@@ -14,7 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.tonyxmelon.aisudoku.BuildConfig
 
-/** What the app is, what it does with your photographs, and what it is built on. */
+/**
+ * What the app is, what it does with your photographs, and what it is built on.
+ *
+ * Reached from its own button in the bar rather than through settings: none of it is a
+ * setting, and a page of prose behind a row of switches is a page nobody reads twice.
+ */
 @Composable
 fun AboutScreen(onClose: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
