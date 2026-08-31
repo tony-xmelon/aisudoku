@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
@@ -101,6 +103,10 @@ private fun AppRoot() {
 
     val drawer = rememberDrawerState(DrawerValue.Closed)
 
+    fun closeDrawer() {
+        scope.launch { drawer.close() }
+    }
+
     fun openDrawer() {
         entries = history.list()
         scope.launch { drawer.open() }
@@ -129,13 +135,24 @@ private fun AppRoot() {
         return
     }
 
+    // Back has to mean something everywhere it can. Without this the drawer had no way
+    // out at all on a narrow phone, where the sheet is as wide as the screen and leaves
+    // no scrim to tap, and back from settings or about left the app entirely.
+    BackHandler(enabled = drawer.isOpen) { closeDrawer() }
+    BackHandler(enabled = !drawer.isOpen && screen == Screen.ABOUT) { screen = Screen.SETTINGS }
+    BackHandler(enabled = !drawer.isOpen && screen == Screen.SETTINGS) {
+        screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
+    }
+
     ModalNavigationDrawer(
         drawerState = drawer,
         // A settings or about screen is somewhere you went on purpose; sliding history in
         // over it would be answering a question nobody asked.
         gesturesEnabled = drawer.isOpen || screen == Screen.CAMERA || screen == Screen.PUZZLE,
         drawerContent = {
-            ModalDrawerSheet {
+            // Narrower than the screen on purpose, so there is always a strip of scrim to
+            // tap. The default is 360dp, which is wider than a small phone.
+            ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.84f)) {
                 HistoryList(
                     history = history,
                     entries = entries,
@@ -160,6 +177,7 @@ private fun AppRoot() {
                         // The puzzle on screen has just been thrown away, so leave it.
                         if (entryId == entry.id) newPhoto()
                     },
+                    onClose = ::closeDrawer,
                 )
             }
         },

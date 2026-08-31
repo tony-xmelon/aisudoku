@@ -1,3 +1,11 @@
+FIXED: no way out of the history list. The drawer sheet is 360dp wide by
+default, which is wider than this phone's whole screen, so it covered the scrim
+completely and there was nothing outside it to tap. It is now 84% of the width,
+it has a close button of its own, and the system back button closes it.
+
+Back now works everywhere else too: from About it goes to Settings, from
+Settings back to your puzzle or the camera. Before, it left the app.
+
 UX polish, all of it from your list.
 
 THE GRID NO LONGER MOVES. Its size now comes from the window and nothing else. It
