@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 /**
@@ -33,7 +40,7 @@ import androidx.compose.ui.unit.dp
  * every layer and nowhere else.
  *
  * Defined once here so the key under the photograph and the drawing on it cannot drift
- * apart.
+ * apart - including whether a thing is drawn as a fill or as an outline.
  */
 object Overlays {
 
@@ -97,10 +104,21 @@ object Overlays {
         LegendKey.WRITTEN -> "Handwritten"
         LegendKey.MARKS -> "Pencil marks, ignored"
     }
+
+    /**
+     * True when this is drawn as an outline on the photograph rather than a fill.
+     *
+     * The reading layer outlines rather than fills, because a fill on all 81 squares hid
+     * the very thing the layer exists to let you check: what is actually on the paper.
+     */
+    fun outlined(key: LegendKey): Boolean = when (key) {
+        LegendKey.UNCERTAIN, LegendKey.PRINTED, LegendKey.WRITTEN, LegendKey.MARKS -> true
+        else -> false
+    }
 }
 
 /** The key to whatever is drawn on the photograph. Absent when nothing is. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun Legend(keys: List<LegendKey>, modifier: Modifier = Modifier) {
     if (keys.isEmpty()) return
@@ -115,11 +133,8 @@ fun Legend(keys: List<LegendKey>, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val colour = Overlays.colour(key)
-                if (key == LegendKey.UNCERTAIN) {
-                    Box(
-                        Modifier.size(14.dp)
-                            .border(2.dp, colour, RoundedCornerShape(3.dp))
-                    )
+                if (Overlays.outlined(key)) {
+                    Box(Modifier.size(14.dp).border(2.dp, colour, RoundedCornerShape(3.dp)))
                 } else {
                     Box(Modifier.size(14.dp).background(colour, RoundedCornerShape(3.dp)))
                 }
@@ -130,15 +145,17 @@ fun Legend(keys: List<LegendKey>, modifier: Modifier = Modifier) {
 }
 
 /**
- * The bar at the top of every screen but the camera.
+ * The bar at the top of every screen.
  *
- * Written by hand rather than with `TopAppBar` because all three screens want the same
- * thing and none of them wants scroll behaviour; this keeps the inset handling in one
- * place, which is what actually went wrong before.
+ * Written by hand rather than with `TopAppBar` because every screen wants the same thing
+ * and none of them wants scroll behaviour; this keeps the inset handling in one place,
+ * which is what actually went wrong before.
  */
 @Composable
 fun AppBar(
     title: String,
+    subtitle: String? = null,
+    onMenu: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
@@ -146,18 +163,28 @@ fun AppBar(
         modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onBack != null) {
-            IconButton(onClick = onBack) {
+        when {
+            onBack != null -> IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
-        } else {
-            Box(Modifier.size(12.dp))
+
+            onMenu != null -> IconButton(onClick = onMenu) {
+                Icon(Icons.Filled.Menu, contentDescription = "Your puzzles")
+            }
+
+            else -> Box(Modifier.size(12.dp))
         }
-        Text(
-            title,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(start = 4.dp).weight(1f),
-        )
+
+        Column(modifier = Modifier.padding(start = 4.dp).weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            subtitle?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         actions()
     }
 }
@@ -166,10 +193,52 @@ fun AppBar(
 @Composable
 fun GlassIconButton(
     onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     contentDescription: String,
 ) {
     IconButton(onClick = onClick, modifier = Modifier.background(Color(0x66000000), CircleShape)) {
         Icon(icon, contentDescription = contentDescription, tint = Color.White)
     }
 }
+
+/**
+ * A camera, drawn here rather than pulled from the extended icon set.
+ *
+ * The core Material icons have no camera, and the extended set is tens of megabytes for
+ * one glyph. The lens is a hole punched with the even-odd rule rather than a second
+ * shape, so the whole icon tints as one piece.
+ */
+val CameraIcon: ImageVector = ImageVector.Builder(
+    name = "Camera",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {
+        // The raised part on top.
+        moveTo(9f, 3f)
+        lineTo(15f, 3f)
+        lineTo(16.5f, 6f)
+        lineTo(7.5f, 6f)
+        close()
+
+        // The body.
+        moveTo(4f, 6f)
+        lineTo(20f, 6f)
+        curveTo(21.1f, 6f, 22f, 6.9f, 22f, 8f)
+        lineTo(22f, 19f)
+        curveTo(22f, 20.1f, 21.1f, 21f, 20f, 21f)
+        lineTo(4f, 21f)
+        curveTo(2.9f, 21f, 2f, 20.1f, 2f, 19f)
+        lineTo(2f, 8f)
+        curveTo(2f, 6.9f, 2.9f, 6f, 4f, 6f)
+        close()
+
+        // The lens, punched out.
+        moveTo(8.2f, 13.5f)
+        arcToRelative(3.8f, 3.8f, 0f, isMoreThanHalf = true, isPositiveArc = true, 7.6f, 0f)
+        arcToRelative(3.8f, 3.8f, 0f, isMoreThanHalf = true, isPositiveArc = true, -7.6f, 0f)
+        close()
+    }
+}.build()

@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -75,8 +75,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 fun CameraScreen(
     autoCapture: Boolean,
     onRead: (PuzzleState) -> Unit,
+    onMenu: () -> Unit,
     onSettings: () -> Unit,
-    onHistory: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -219,10 +219,10 @@ fun CameraScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(8.dp),
-                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassIconButton(onHistory, Icons.Filled.DateRange, "History")
-                Box(Modifier.size(8.dp))
+                GlassIconButton(onMenu, Icons.Filled.Menu, "Your puzzles")
+                Box(Modifier.weight(1f))
                 GlassIconButton(onSettings, Icons.Filled.Settings, "Settings")
             }
 

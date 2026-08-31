@@ -2,12 +2,12 @@ package io.github.tonyxmelon.aisudoku.app
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import android.graphics.Color
-import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -17,14 +17,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,10 +37,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tonyxmelon.aisudoku.vision.OpenCvNatives
+import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 
-/** Which screen is showing. */
-private enum class Screen { CAMERA, PUZZLE, HISTORY, SETTINGS }
+/** Which screen is showing. History is a drawer over whichever of these is up. */
+private enum class Screen { CAMERA, PUZZLE, SETTINGS, ABOUT }
 
 class MainActivity : ComponentActivity() {
 
@@ -72,6 +78,7 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot() {
     val context = LocalContext.current
     val history = remember { History(context) }
+    val scope = rememberCoroutineScope()
 
     var hasCamera by remember {
         mutableStateOf(
@@ -92,6 +99,13 @@ private fun AppRoot() {
     // back to it. Without this, reopening a puzzle undoes every fix the user made.
     var entryId by remember { mutableStateOf<Long?>(null) }
 
+    val drawer = rememberDrawerState(DrawerValue.Closed)
+
+    fun openDrawer() {
+        entries = history.list()
+        scope.launch { drawer.open() }
+    }
+
     fun editPuzzle(updated: PuzzleState) {
         puzzle = updated
         entryId?.let { history.update(it, updated.grid) }
@@ -104,62 +118,83 @@ private fun AppRoot() {
         puzzle = puzzle?.copy(hintStyle = updated.hintStyle)
     }
 
-    fun leaveOverlay() {
-        screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
+    fun newPhoto() {
+        puzzle = null
+        entryId = null
+        screen = Screen.CAMERA
     }
 
-    when {
-        !hasCamera -> PermissionScreen { request.launch(Manifest.permission.CAMERA) }
+    if (!hasCamera) {
+        PermissionScreen { request.launch(Manifest.permission.CAMERA) }
+        return
+    }
 
-        screen == Screen.SETTINGS -> SettingsScreen(
-            settings = settings,
-            onChange = ::applySettings,
-            onClose = ::leaveOverlay,
-        )
+    ModalNavigationDrawer(
+        drawerState = drawer,
+        // A settings or about screen is somewhere you went on purpose; sliding history in
+        // over it would be answering a question nobody asked.
+        gesturesEnabled = drawer.isOpen || screen == Screen.CAMERA || screen == Screen.PUZZLE,
+        drawerContent = {
+            ModalDrawerSheet {
+                HistoryList(
+                    history = history,
+                    entries = entries,
+                    currentId = entryId,
+                    onOpen = { entry ->
+                        history.loadPhoto(entry)?.let { photo ->
+                            entryId = entry.id
+                            puzzle = PuzzleState(
+                                photo = photo,
+                                grid = entry.grid,
+                                uncertainCells = emptySet(),
+                                readingNote = null,
+                                hintStyle = settings.hintStyle,
+                            )
+                            screen = Screen.PUZZLE
+                        }
+                        scope.launch { drawer.close() }
+                    },
+                    onDelete = { entry ->
+                        history.delete(entry)
+                        entries = history.list()
+                        // The puzzle on screen has just been thrown away, so leave it.
+                        if (entryId == entry.id) newPhoto()
+                    },
+                )
+            }
+        },
+    ) {
+        when {
+            screen == Screen.ABOUT -> AboutScreen(onClose = { screen = Screen.SETTINGS })
 
-        screen == Screen.HISTORY -> HistoryScreen(
-            history = history,
-            entries = entries,
-            onOpen = { entry ->
-                history.loadPhoto(entry)?.let { photo ->
-                    entryId = entry.id
-                    puzzle = PuzzleState(
-                        photo = photo,
-                        grid = entry.grid,
-                        uncertainCells = emptySet(),
-                        readingNote = null,
-                        hintStyle = settings.hintStyle,
-                    )
+            screen == Screen.SETTINGS -> SettingsScreen(
+                settings = settings,
+                onChange = ::applySettings,
+                onAbout = { screen = Screen.ABOUT },
+                onClose = { screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA },
+            )
+
+            screen == Screen.PUZZLE && puzzle != null -> PuzzleScreen(
+                state = puzzle!!,
+                onChange = ::editPuzzle,
+                onMenu = ::openDrawer,
+                onRetake = ::newPhoto,
+                onSettings = { screen = Screen.SETTINGS },
+            )
+
+            else -> CameraScreen(
+                autoCapture = settings.autoCapture,
+                onRead = { state ->
+                    // Saved as soon as it is read, so a puzzle is never lost by backing out.
+                    entryId = history.save(state.photo, state.grid).id
+                    entries = history.list()
+                    puzzle = state.copy(hintStyle = settings.hintStyle)
                     screen = Screen.PUZZLE
-                }
-            },
-            onDelete = { entry ->
-                history.delete(entry)
-                entries = history.list()
-            },
-            onClose = ::leaveOverlay,
-        )
-
-        screen == Screen.PUZZLE && puzzle != null -> PuzzleScreen(
-            state = puzzle!!,
-            onChange = ::editPuzzle,
-            onRetake = { puzzle = null; entryId = null; screen = Screen.CAMERA },
-            onSettings = { screen = Screen.SETTINGS },
-            onHistory = { entries = history.list(); screen = Screen.HISTORY },
-        )
-
-        else -> CameraScreen(
-            autoCapture = settings.autoCapture,
-            onRead = { state ->
-                // Saved as soon as it is read, so a puzzle is never lost by backing out.
-                entryId = history.save(state.photo, state.grid).id
-                entries = history.list()
-                puzzle = state.copy(hintStyle = settings.hintStyle)
-                screen = Screen.PUZZLE
-            },
-            onSettings = { screen = Screen.SETTINGS },
-            onHistory = { entries = history.list(); screen = Screen.HISTORY },
-        )
+                },
+                onMenu = ::openDrawer,
+                onSettings = { screen = Screen.SETTINGS },
+            )
+        }
     }
 }
 
