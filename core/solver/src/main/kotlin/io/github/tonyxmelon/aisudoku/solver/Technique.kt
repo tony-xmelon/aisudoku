@@ -10,6 +10,19 @@ package io.github.tonyxmelon.aisudoku.solver
 interface Technique {
     val name: String
     val difficulty: Difficulty
+
+    /** The rule itself, in one sentence. What is true, regardless of any puzzle. */
+    val rule: String
+
+    /**
+     * How to go looking for it on a page.
+     *
+     * Written to be read while holding a pencil, not while reading about sudoku. The app
+     * can already finish any puzzle it can read; the only reason to name a technique at
+     * all is so the user can find the next one without it.
+     */
+    val howTo: String
+
     fun find(state: SolverState): Deduction?
 }
 
@@ -23,3 +36,10 @@ val ALL_TECHNIQUES: List<Technique> = listOf(
     PointingPair,
     BoxLineReduction,
 )
+
+/** Looking a technique up by the name a [Deduction] reports. */
+object Techniques {
+    val all: List<Technique> get() = ALL_TECHNIQUES
+
+    fun byName(name: String): Technique? = ALL_TECHNIQUES.firstOrNull { it.name == name }
+}

@@ -7,7 +7,11 @@ import io.github.tonyxmelon.aisudoku.solver.Solver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
+import io.github.tonyxmelon.aisudoku.solver.Techniques
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PuzzleLogicTest {
@@ -205,5 +209,105 @@ class PuzzleLogicTest {
         val explained = PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN)
         assertTrue(explained.evidence.isEmpty())
         assertEquals(listOf(LegendKey.HINT), PuzzleLogic.legend(explained, OverlayMode.HINT, false))
+    }
+
+    // ---------------------------------------------------------------- training
+
+    private fun hintOverlay(depth: Int) =
+        PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.EXPLAIN, hintDepth = depth)
+
+    @Test
+    fun `an explained hint gives away nothing until the last step of the staircase`() {
+        for (depth in 0 until PuzzleLogic.HINT_DEPTHS - 1) {
+            val step = hintOverlay(depth)
+            assertTrue(step.digits.isEmpty(), "depth $depth handed over the digit")
+            assertTrue(
+                step.evidence.isNotEmpty() || step.focus != null,
+                "depth $depth points at nothing at all",
+            )
+        }
+        val last = hintOverlay(PuzzleLogic.HINT_DEPTHS - 1)
+        val (index, drawn) = last.digits.entries.single()
+        assertEquals(solution[index].digit, drawn.digit)
+    }
+
+    @Test
+    fun `the staircase widens from a region to a square before naming the digit`() {
+        assertNull(hintOverlay(0).focus, "the first step should not single out a square")
+        assertNull(hintOverlay(1).focus, "naming the technique is not naming the square")
+        val focus = assertNotNull(hintOverlay(2).focus)
+        assertFalse(puzzle[focus].isFilled)
+        assertEquals(focus, hintOverlay(3).digits.keys.single())
+    }
+
+    @Test
+    fun `each press of Hint goes one step down, then turns it off`() {
+        var mode = OverlayMode.NONE
+        var depth = 0
+        val seen = mutableListOf<Int>()
+        repeat(PuzzleLogic.HINT_DEPTHS + 1) {
+            val next = PuzzleLogic.press(mode, OverlayMode.HINT, depth, HintStyle.EXPLAIN)
+            mode = next.mode
+            depth = next.hintDepth
+            if (mode == OverlayMode.HINT) seen += depth
+        }
+        assertEquals((0 until PuzzleLogic.HINT_DEPTHS).toList(), seen)
+        assertEquals(OverlayMode.NONE, mode, "the press after the last step turns it off")
+    }
+
+    @Test
+    fun `the plain hint style has no staircase to walk`() {
+        val next = PuzzleLogic.press(OverlayMode.HINT, OverlayMode.HINT, 0, HintStyle.REVEAL)
+        assertEquals(OverlayMode.NONE, next.mode)
+        assertEquals(1, hintOverlay(0).let {
+            PuzzleLogic.overlay(puzzle, OverlayMode.HINT, HintStyle.REVEAL, hintDepth = 0).digits.size
+        })
+    }
+
+    @Test
+    fun `pressing another layer switches to it rather than deepening the hint`() {
+        val next = PuzzleLogic.press(OverlayMode.HINT, OverlayMode.CHECK, 2, HintStyle.EXPLAIN)
+        assertEquals(OverlayMode.CHECK, next.mode)
+        assertEquals(0, next.hintDepth)
+    }
+
+    @Test
+    fun `the walkthrough fills the board in as it goes, and points at the current move`() {
+        val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
+        assertTrue(route.steps.size > 3)
+
+        fun at(step: Int) =
+            PuzzleLogic.overlay(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = route, lessonStep = step)
+
+        assertTrue(at(0).digits.size <= at(3).digits.size, "the board should fill in, not empty")
+        for ((index, drawn) in at(route.steps.size - 1).digits) {
+            assertEquals(solution[index].digit, drawn.digit, "step teaches the wrong digit")
+            assertEquals(OverlayRole.SOLUTION, drawn.role)
+        }
+        // The square the current step is about is singled out, and it is one being placed.
+        val focus = assertNotNull(at(0).focus)
+        assertTrue(!puzzle[focus].isFilled)
+    }
+
+    @Test
+    fun `the outlook names the hardest technique rather than only counting steps`() {
+        val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
+        val outlook = assertNotNull(PuzzleLogic.outlook(route))
+        assertTrue(outlook.contains("steps"), outlook)
+        assertTrue(outlook.contains("naked single"), outlook)
+        assertNull(PuzzleLogic.outlook(null))
+    }
+
+    @Test
+    fun `a walked step explains itself and says how to find the next one unaided`() {
+        val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
+        val text = assertNotNull(
+            PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = route, lessonStep = 0)
+        )
+        val technique = assertNotNull(Techniques.byName(route.steps[0].technique))
+        assertTrue(text.contains(technique.name), text)
+        assertTrue(text.contains(technique.howTo), "a step should carry the technique's how-to")
     }
 }

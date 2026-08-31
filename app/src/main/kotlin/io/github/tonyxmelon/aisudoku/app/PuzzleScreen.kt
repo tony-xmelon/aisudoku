@@ -50,6 +50,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -184,6 +185,18 @@ private fun Controls(
             state.guidance?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium)
             }
+
+            // Said only when nothing else is being said, so it reads as an opening
+            // remark rather than as one more thing competing for attention.
+            if (state.overlay == OverlayMode.NONE) {
+                state.outlook?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         // Pinned, so they are in the same place whatever is being said above them.
@@ -198,6 +211,72 @@ private fun Controls(
             ModeButton("Check", OverlayMode.CHECK, state, onChange, Modifier.weight(1f))
             ModeButton("Solve", OverlayMode.SOLUTION, state, onChange, Modifier.weight(1f))
             ModeButton("Read", OverlayMode.READING, state, onChange, Modifier.weight(1f))
+        }
+
+        WalkthroughRow(state, onChange)
+    }
+}
+
+/**
+ * The way into the walkthrough, and the way through it.
+ *
+ * A separate row from the four layers because it is a different kind of thing: those
+ * answer "show me something about this puzzle", this one answers "teach me how to finish
+ * it". It is also the only control here that changes what it is, which is a good reason
+ * to keep it away from the ones that must not move.
+ */
+@Composable
+private fun WalkthroughRow(state: PuzzleState, onChange: (PuzzleState) -> Unit) {
+    val route = state.walkthrough ?: return
+    if (route.isEmpty) return
+
+    if (state.overlay != OverlayMode.LESSON) {
+        Button(
+            onClick = { onChange(state.show(OverlayMode.LESSON)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 10.dp),
+        ) {
+            Text("Walk me through it")
+        }
+        return
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp),
+    ) {
+        OutlinedButton(
+            onClick = { onChange(state.stepTo(state.lessonStep - 1)) },
+            enabled = state.lessonStep > 0,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+        ) { Text("Back", maxLines = 1) }
+
+        Text(
+            "Step ${state.lessonStep + 1} of ${route.steps.size}",
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+
+        if (state.lessonStep < route.steps.size - 1) {
+            Button(
+                onClick = { onChange(state.stepTo(state.lessonStep + 1)) },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            ) { Text("Next", maxLines = 1) }
+        } else {
+            Button(
+                onClick = { onChange(state.show(OverlayMode.LESSON)) },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            ) { Text("Done", maxLines = 1) }
         }
     }
 }
@@ -454,6 +533,11 @@ private fun DrawScope.drawOverlayInLayer(state: PuzzleState, measurer: TextMeasu
         }
     }
 
+    // The square a hint or a step is pointing at, before it says what goes in it.
+    state.focusCell()?.let { index ->
+        squares.outline(this, index, Overlays.hint, squares.unit * 0.06f, inset = 0.04f)
+    }
+
     state.selectedCell?.let { index ->
         drawRect(Color.White, squares.topLeft(index), squares.size(index), style = Stroke(width = 4f))
     }
@@ -617,6 +701,17 @@ private class Squares(lines: GridLines, width: Float, height: Float) {
 
     fun fill(scope: DrawScope, index: Int, colour: Color) =
         scope.drawRect(colour, topLeft(index), size(index))
+
+    fun outline(scope: DrawScope, index: Int, colour: Color, width: Float, inset: Float) {
+        val at = topLeft(index)
+        val cell = size(index)
+        scope.drawRect(
+            color = colour,
+            topLeft = at + Offset(cell.width * inset, cell.height * inset),
+            size = Size(cell.width * (1 - inset * 2), cell.height * (1 - inset * 2)),
+            style = Stroke(width = width),
+        )
+    }
 }
 
 /** A digit in the middle of its square. */

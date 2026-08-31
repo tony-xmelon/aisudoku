@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 
 /** Which screen is showing. History is a drawer over whichever of these is up. */
-private enum class Screen { CAMERA, PUZZLE, SETTINGS, ABOUT }
+private enum class Screen { CAMERA, PUZZLE, SETTINGS, ABOUT, STRATEGIES }
 
 class MainActivity : ComponentActivity() {
 
@@ -143,7 +143,10 @@ private fun AppRoot() {
     // out at all on a narrow phone, where the sheet is as wide as the screen and leaves
     // no scrim to tap, and back from settings or about left the app entirely.
     BackHandler(enabled = drawer.isOpen) { closeDrawer() }
-    BackHandler(enabled = !drawer.isOpen && (screen == Screen.ABOUT || screen == Screen.SETTINGS)) {
+    BackHandler(
+        enabled = !drawer.isOpen &&
+            screen in setOf(Screen.ABOUT, Screen.SETTINGS, Screen.STRATEGIES),
+    ) {
         screen = if (puzzle != null) Screen.PUZZLE else Screen.CAMERA
     }
 
@@ -152,6 +155,8 @@ private fun AppRoot() {
         // A settings or about screen is somewhere you went on purpose; sliding history in
         // over it would be answering a question nobody asked.
         gesturesEnabled = drawer.isOpen || screen == Screen.CAMERA || screen == Screen.PUZZLE,
+        // A reading page is somewhere you went on purpose; sliding history in over it
+        // would be answering a question nobody asked.
         drawerContent = {
             // Narrower than the screen on purpose, so there is always a strip of scrim to
             // tap. The default is 360dp, which is wider than a small phone.
@@ -180,12 +185,18 @@ private fun AppRoot() {
                         // The puzzle on screen has just been thrown away, so leave it.
                         if (entryId == entry.id) newPhoto()
                     },
+                    onStrategies = {
+                        screen = Screen.STRATEGIES
+                        closeDrawer()
+                    },
                     onClose = ::closeDrawer,
                 )
             }
         },
     ) {
         when {
+            screen == Screen.STRATEGIES -> StrategiesScreen(onClose = ::leaveOverlay)
+
             screen == Screen.ABOUT -> AboutScreen(onClose = ::leaveOverlay)
 
             screen == Screen.SETTINGS -> SettingsScreen(

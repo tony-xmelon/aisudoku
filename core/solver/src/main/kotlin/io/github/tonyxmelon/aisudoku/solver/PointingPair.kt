@@ -11,6 +11,16 @@ object PointingPair : Technique {
     override val name = "Pointing pair"
     override val difficulty = Difficulty.HARD
 
+    override val rule = "If a digit's only homes inside a box share one line, that digit " +
+        "can be ruled out of the rest of that line."
+
+    override val howTo = "Inside a single box, find a digit that can only go in two or " +
+        "three squares, and check whether they all sit in the same row, or all in the same " +
+        "column. If they do, the digit is definitely somewhere along that line - you do " +
+        "not know where, but you know it is inside this box. So it cannot be anywhere else " +
+        "along the same line outside the box.\n\nThis places nothing by itself. It " +
+        "clears candidates out of the way so that a single appears somewhere else."
+
     override fun find(state: SolverState): Deduction? {
         for (box in 0 until 9) {
             val boxCells = Coordinates.boxIndices[box]

@@ -13,6 +13,16 @@ object BoxLineReduction : Technique {
     override val name = "Box line reduction"
     override val difficulty = Difficulty.HARD
 
+    override val rule = "If a digit's only homes along a line all sit inside one box, " +
+        "that digit can be ruled out of the rest of that box."
+
+    override val howTo = "The pointing pair read backwards. Take a row or a column and a " +
+        "digit that still needs a home in it. Mark every square in that line which could " +
+        "take the digit. If all of them fall inside one box, the digit must be in that " +
+        "box's share of the line - so it is nowhere else in the box, including the two " +
+        "rows or columns of it you were not looking at.\n\nLike the pointing pair, this " +
+        "places nothing on its own; it makes room for something that does."
+
     override fun find(state: SolverState): Deduction? {
         for (line in 0 until 9) {
             findIn(state, Coordinates.rowIndices[line], "row")?.let { return it }

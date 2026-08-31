@@ -1,17 +1,22 @@
 package io.github.tonyxmelon.aisudoku.app
 
 import io.github.tonyxmelon.aisudoku.model.CellSource
+import io.github.tonyxmelon.aisudoku.model.Coordinates
 import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.AnswerCheck
 import io.github.tonyxmelon.aisudoku.solver.AnswerChecker
+import io.github.tonyxmelon.aisudoku.solver.Deduction
+import io.github.tonyxmelon.aisudoku.solver.Difficulty
 import io.github.tonyxmelon.aisudoku.solver.ExplainedHintEngine
 import io.github.tonyxmelon.aisudoku.solver.Hint
 import io.github.tonyxmelon.aisudoku.solver.RevealHintEngine
 import io.github.tonyxmelon.aisudoku.solver.SolveResult
 import io.github.tonyxmelon.aisudoku.solver.Solver
+import io.github.tonyxmelon.aisudoku.solver.Techniques
+import io.github.tonyxmelon.aisudoku.solver.Walkthrough
 
 /** Which help the user has asked for. Exactly one at a time, so nothing has to blend. */
-enum class OverlayMode { NONE, HINT, CHECK, SOLUTION, READING }
+enum class OverlayMode { NONE, HINT, CHECK, SOLUTION, READING, LESSON }
 
 /** Whether a hint names the technique behind it or only gives the digit. */
 enum class HintStyle { REVEAL, EXPLAIN }
@@ -21,8 +26,7 @@ enum class HintStyle { REVEAL, EXPLAIN }
  *
  * No two roles are ever drawn on the same cell. The first version tinted uncertain cells
  * yellow and wrong ones red, so a cell that was both came out orange, and orange meant
- * nothing. Doubt is now drawn as a ring around the cell rather than a fill, which can sit
- * over any of these without inventing a new colour.
+ * nothing. Doubt is now carried by the confidence bar rather than by the square.
  */
 enum class OverlayRole { SOLUTION, CORRECT, INCORRECT, HINT }
 
@@ -31,8 +35,10 @@ data class OverlayDigit(val digit: Int, val role: OverlayRole)
 /** What the overlay should draw, in cell coordinates. */
 data class Overlay(
     val digits: Map<Int, OverlayDigit>,
-    /** Cells that are evidence for the current hint. */
+    /** Cells that are evidence for the current hint or step. */
     val evidence: Set<Int>,
+    /** The one square being pointed at: ringed, but not necessarily answered. */
+    val focus: Int? = null,
 )
 
 /** One entry in the key shown under the photograph. */
@@ -52,6 +58,41 @@ data class Status(val text: String, val tone: Tone)
  */
 object PuzzleLogic {
 
+    /**
+     * How far an explained hint can be pushed before it simply gives the answer.
+     *
+     * A hint that hands over a digit teaches nothing, and one that says "work it out"
+     * helps nobody. So it is a staircase: the region, then the technique, then the
+     * square, then the digit. Each press of Hint goes down one tread, and most of the
+     * time the user has what they needed before the bottom.
+     */
+    const val HINT_DEPTHS = 4
+
+    /** Which layer is showing, and how far its hint has been pushed. */
+    data class LayerPress(val mode: OverlayMode, val hintDepth: Int)
+
+    /**
+     * What pressing a layer's own button should do next.
+     *
+     * Pressing Hint again walks down the staircase, so asking for more help needs no
+     * second control and no explanation of where to find it. Once there is nothing left
+     * to reveal, that same press turns the layer off, which is what a second press does
+     * everywhere else.
+     */
+    fun press(
+        showing: OverlayMode,
+        pressed: OverlayMode,
+        hintDepth: Int,
+        style: HintStyle,
+    ): LayerPress = when {
+        showing != pressed -> LayerPress(pressed, 0)
+
+        pressed == OverlayMode.HINT && style == HintStyle.EXPLAIN &&
+            hintDepth < HINT_DEPTHS - 1 -> LayerPress(pressed, hintDepth + 1)
+
+        else -> LayerPress(OverlayMode.NONE, 0)
+    }
+
     fun hint(grid: Grid, style: HintStyle): Hint? = when (style) {
         HintStyle.REVEAL -> RevealHintEngine.nextHint(grid)
         HintStyle.EXPLAIN -> ExplainedHintEngine.nextHint(grid)
@@ -60,9 +101,17 @@ object PuzzleLogic {
     /** True when there is still something to hint at. Drives whether the button is live. */
     fun canHint(grid: Grid, style: HintStyle): Boolean = hint(grid, style) != null
 
-    fun overlay(grid: Grid, mode: OverlayMode, style: HintStyle): Overlay {
+    fun overlay(
+        grid: Grid,
+        mode: OverlayMode,
+        style: HintStyle,
+        hintDepth: Int = HINT_DEPTHS - 1,
+        walkthrough: Walkthrough? = null,
+        lessonStep: Int = 0,
+    ): Overlay {
         val digits = mutableMapOf<Int, OverlayDigit>()
         var evidence = emptySet<Int>()
+        var focus: Int? = null
 
         when (mode) {
             OverlayMode.NONE -> Unit
@@ -85,23 +134,58 @@ object PuzzleLogic {
                 for (i in checked.incorrect) digits[i] = OverlayDigit(grid[i].digit!!, OverlayRole.INCORRECT)
             }
 
-            // Drawn from the readings rather than from the grid, so it can show what
-            // was thrown away as well as what was kept.
+            // Drawn from the readings rather than from the grid, so it can show what was
+            // thrown away as well as what was kept.
             OverlayMode.READING -> Unit
 
             OverlayMode.HINT -> hint(grid, style)?.let { h ->
-                digits[h.index] = OverlayDigit(h.digit, OverlayRole.HINT)
-                if (h is Hint.Explained) evidence = h.supportingCells - h.index
+                if (style == HintStyle.REVEAL) {
+                    // Asked for the digit and nothing else. Highlighting a region as well
+                    // would be answering a question this style exists to skip.
+                    digits[h.index] = OverlayDigit(h.digit, OverlayRole.HINT)
+                    return@let
+                }
+
+                val supporting = (h as? Hint.Explained)?.supportingCells.orEmpty() - h.index
+
+                // A naked single's evidence is the square itself, which points at nothing
+                // once the square is taken out. Its box is the honest answer to "where
+                // should I be looking" - until the ring goes round the square, which says
+                // it better.
+                evidence = when {
+                    supporting.isNotEmpty() -> supporting
+                    hintDepth <= 1 ->
+                        Coordinates.boxIndices[Coordinates.boxOf(h.index)].toSet() - h.index
+
+                    else -> emptySet()
+                }
+                if (hintDepth >= 2) focus = h.index
+                if (hintDepth >= HINT_DEPTHS - 1) {
+                    digits[h.index] = OverlayDigit(h.digit, OverlayRole.HINT)
+                }
+            }
+
+            OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
+                val at = lessonStep.coerceIn(0, route.steps.size - 1)
+                // Everything up to and including this step, so the board fills in as the
+                // route is walked and each move is seen from the position it was made in.
+                for (i in 0..at) {
+                    val step = route.steps[i] as? Deduction.Placement ?: continue
+                    digits[step.index] = OverlayDigit(step.digit, OverlayRole.SOLUTION)
+                }
+                val step = route.steps[at]
+                focus = (step as? Deduction.Placement)?.index
+                evidence = step.supportingCells - setOfNotNull(focus)
             }
         }
-        return Overlay(digits, evidence)
+        return Overlay(digits, evidence, focus)
     }
 
     /**
      * The key to whatever is on the photograph right now.
      *
      * Derived from the overlay rather than from the mode, so it names what is actually
-     * drawn: no "Wrong" when nothing is wrong, and no "The reason" when the hint had no
+     * drawn: no "Wrong" when nothing is wrong, and no "Why" when the hint had no
      * technique behind it to point at.
      */
     fun legend(overlay: Overlay, mode: OverlayMode, hasUncertain: Boolean): List<LegendKey> {
@@ -144,11 +228,43 @@ object PuzzleLogic {
             Status("More than one solution, so a printed digit was missed.", Tone.BAD)
     }
 
+    /**
+     * What the route ahead asks of you, said before you set off.
+     *
+     * The number of steps matters much less than the hardest one among them: that is the
+     * technique worth going and reading about, and the reason a puzzle feels stuck.
+     */
+    fun outlook(walkthrough: Walkthrough?): String? {
+        if (walkthrough == null || walkthrough.isEmpty) return null
+        val steps = if (walkthrough.steps.size == 1) "one step" else "${walkthrough.steps.size} steps"
+        val hardest = describe(walkthrough.hardest)
+        return if (walkthrough.finishes) {
+            "From here it is $steps, and the hardest thing you need is $hardest."
+        } else {
+            "$steps can be reasoned out from here, needing $hardest. After that this app " +
+                "runs out of techniques, and the rest needs one it has not been taught."
+        }
+    }
+
+    private fun describe(difficulty: Difficulty): String = when (difficulty) {
+        Difficulty.EASY -> "a naked single"
+        Difficulty.MEDIUM -> "a hidden single"
+        Difficulty.HARD -> "a pointing pair or a box line reduction"
+        Difficulty.VERY_HARD -> "more than this app can explain"
+    }
+
     /** The sentence under the controls, explaining whatever is on screen right now. */
-    fun guidance(grid: Grid, mode: OverlayMode, style: HintStyle): String? = when (mode) {
+    fun guidance(
+        grid: Grid,
+        mode: OverlayMode,
+        style: HintStyle,
+        hintDepth: Int = HINT_DEPTHS - 1,
+        walkthrough: Walkthrough? = null,
+        lessonStep: Int = 0,
+    ): String? = when (mode) {
         OverlayMode.NONE -> null
 
-        OverlayMode.SOLUTION -> "Blue digits are the solution. Tap any cell to correct what was read."
+        OverlayMode.SOLUTION -> "Blue digits are the solution. Tap any square to correct what was read."
 
         OverlayMode.READING -> "Grey squares hold pencil marks, which the app ignores. The " +
             "bar under a digit is how sure it was. Tap a square for the detail."
@@ -157,14 +273,46 @@ object PuzzleLogic {
             if ((AnswerChecker.check(grid) as? AnswerCheck.Checked)?.incorrect.isNullOrEmpty()) {
                 "Everything you have written so far is right."
             } else {
-                "A red cell shows the digit the app read there. If that is not what you " +
-                    "wrote, tap the cell to fix it."
+                "A red square shows the digit the app read there. If that is not what you " +
+                    "wrote, tap the square to fix it."
             }
 
-        OverlayMode.HINT -> when (val h = hint(grid, style)) {
-            is Hint.Explained -> "${h.technique}. ${h.explanation}"
-            is Hint.Reveal -> "Row ${h.index / 9 + 1}, column ${h.index % 9 + 1}."
-            null -> "Nothing left to work out."
+        OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
+            val step = route.steps[lessonStep.coerceIn(0, route.steps.size - 1)]
+            listOfNotNull(
+                "${step.technique}. ${step.explanation}",
+                Techniques.byName(step.technique)?.howTo,
+            ).joinToString("\n\n")
+        } ?: "Nothing more here can be reasoned out by the techniques this app knows."
+
+        OverlayMode.HINT -> hintGuidance(grid, style, hintDepth)
+    }
+
+    /**
+     * The staircase, one tread at a time.
+     *
+     * Every rung but the last says another press will say more, because a hint the user
+     * does not know can be pushed further is a hint that gave everything away at once.
+     */
+    private fun hintGuidance(grid: Grid, style: HintStyle, depth: Int): String {
+        val hint = hint(grid, style) ?: return "Nothing left to work out."
+        if (style == HintStyle.REVEAL || hint !is Hint.Explained) {
+            return "Row ${hint.index / 9 + 1}, column ${hint.index % 9 + 1}."
+        }
+        val technique = Techniques.byName(hint.technique)
+        val more = "\n\nPress Hint again for more."
+        return when (depth) {
+            0 -> "There is a move to be found in the highlighted box.$more"
+
+            1 -> listOfNotNull(
+                "${hint.technique}. ${technique?.rule.orEmpty()}".trim(),
+                technique?.howTo,
+            ).joinToString("\n\n") + more
+
+            2 -> ("It is this square. ${hint.technique}." +
+                (technique?.rule?.let { " $it" } ?: "")) + more
+
+            else -> "${hint.technique}. ${hint.explanation}"
         }
     }
 }

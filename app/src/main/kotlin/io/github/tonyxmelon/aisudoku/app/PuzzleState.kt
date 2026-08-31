@@ -5,6 +5,8 @@ import io.github.tonyxmelon.aisudoku.model.Cell
 import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.Hint
+import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
+import io.github.tonyxmelon.aisudoku.solver.Walkthrough
 
 /**
  * Where the grid lines really are, as fractions of the photograph's width and height.
@@ -50,6 +52,10 @@ data class PuzzleState(
     val overlay: OverlayMode = OverlayMode.NONE,
     val hintStyle: HintStyle = HintStyle.EXPLAIN,
     val selectedCell: Int? = null,
+    /** How far the current hint has been pushed. See [PuzzleLogic.HINT_DEPTHS]. */
+    val hintDepth: Int = 0,
+    /** Which step of the walkthrough is being shown. */
+    val lessonStep: Int = 0,
 ) {
     // Computed once per state rather than once per read. Every one of these runs the
     // solver, and Compose asks for them again on every recomposition - including one per
@@ -58,19 +64,58 @@ data class PuzzleState(
 
     val status: Status by lazy { PuzzleLogic.status(grid) }
 
-    val guidance: String? by lazy { PuzzleLogic.guidance(grid, overlay, hintStyle) }
+    val guidance: String? by lazy {
+        PuzzleLogic.guidance(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep)
+    }
 
     val legend: List<LegendKey>
         get() = PuzzleLogic.legend(computed, overlay, uncertainCells.isNotEmpty())
 
-    private val computed: Overlay by lazy { PuzzleLogic.overlay(grid, overlay, hintStyle) }
+    /**
+     * The whole route from here to the answer, in human steps.
+     *
+     * Costs a full technique solve, so it is worked out once per state and only when
+     * something asks for it - which the button offering it does, on every recomposition.
+     */
+    val walkthrough: Walkthrough? by lazy { TechniqueSolver.walkthrough(grid) }
+
+    /** What the route ahead asks of you, said before you set off. */
+    val outlook: String? by lazy { PuzzleLogic.outlook(walkthrough) }
+
+    private val computed: Overlay by lazy {
+        PuzzleLogic.overlay(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep)
+    }
 
     fun overlayDigits(): Map<Int, OverlayDigit> = computed.digits
 
     fun evidenceCells(): Set<Int> = computed.evidence
 
-    fun show(mode: OverlayMode): PuzzleState =
-        copy(overlay = if (overlay == mode) OverlayMode.NONE else mode, selectedCell = null)
+    fun focusCell(): Int? = computed.focus
+
+    /**
+     * Turning a layer on, or - for a hint - pushing the one already showing one step
+     * further.
+     *
+     * Pressing Hint again is what walks down the staircase, so that asking for more help
+     * needs no second control and no explanation of where to find it. Once there is
+     * nothing left to reveal, the same press turns it off, which is what every other
+     * layer's second press does.
+     */
+    fun show(mode: OverlayMode): PuzzleState {
+        val next = PuzzleLogic.press(overlay, mode, hintDepth, hintStyle)
+        return copy(
+            overlay = next.mode,
+            hintDepth = next.hintDepth,
+            lessonStep = if (next.mode == overlay) lessonStep else 0,
+            selectedCell = null,
+        )
+    }
+
+    /** Moving through the walkthrough. Clamped, so the ends are simply inert. */
+    fun stepTo(step: Int): PuzzleState {
+        val last = (walkthrough?.steps?.size ?: 1) - 1
+        return copy(lessonStep = step.coerceIn(0, maxOf(0, last)), selectedCell = null)
+    }
 
     fun withCell(index: Int, digit: Int?, source: CellSource): PuzzleState {
         val cell = when {
@@ -81,6 +126,10 @@ data class PuzzleState(
         return copy(
             grid = grid.with(index, cell),
             uncertainCells = uncertainCells - index,
+            // The route and the hint were both worked out from a grid that has just
+            // changed underneath them.
+            hintDepth = 0,
+            lessonStep = 0,
             // The reader's account of this square is now out of date - the user has just
             // overruled it - so it goes. Keeping it left the reading layer colouring the
             // square as whatever it had been read as, after being told it is empty.

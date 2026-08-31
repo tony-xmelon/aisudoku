@@ -1,3 +1,35 @@
+A TRAINING APP, NOT JUST A SOLVER.
+
+HINTS NOW COME IN STEPS. Press Hint and it shows you the box to look in, and
+nothing else. Press it again and it names the technique and tells you how to
+spot that kind of move. Again and it rings the square. Only the fourth press
+gives you the digit. Most of the time you will have what you needed before the
+bottom - and a hint you stop early is a move you made yourself.
+
+WALK ME THROUGH IT. The whole route from where you are to the answer, one human
+step at a time, with Back and Next. Each step names its technique, explains why
+it works here, and tells you how to find that kind of step yourself next time.
+The board fills in as you go, so every move is seen from the position it was
+made in.
+
+It starts from YOUR position, not from the printed digits - answers you already
+got right are taken as read, so it never walks you through work you have done.
+Answers you got wrong are left out rather than believed, because a route built
+on a wrong digit leads somewhere wrong.
+
+STRATEGIES, in the menu. The four ways of reasoning this app knows, what each
+one claims, and how to go looking for it while holding a pencil. Two of them
+place nothing at all by themselves - they clear candidates so that something
+else becomes obvious, which is the thing that is hardest to learn from a solver.
+
+WHAT THIS PUZZLE ASKS OF YOU, said before you start: how many steps are left,
+and the hardest technique among them. That last part is the useful one - it is
+the reason a puzzle feels stuck, and it names what to go and read.
+
+When the app runs out of techniques it says so plainly rather than pretending.
+Its four do not finish the hardest puzzles, and telling you that is more use
+than a solution you cannot follow.
+
 THE BUTTONS NO LONGER MOVE. Hint, Check, Solve and Read are pinned above the
 system buttons, and everything whose height depends on what is being said now
 scrolls in its own space above them. A banner appearing used to push them down
