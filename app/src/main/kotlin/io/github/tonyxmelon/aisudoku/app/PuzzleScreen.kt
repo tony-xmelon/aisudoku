@@ -237,8 +237,14 @@ private fun ReadingBanner(state: PuzzleState, onChange: (PuzzleState) -> Unit) {
             style = MaterialTheme.typography.titleSmall,
             color = Overlays.uncertain,
         )
+        // The reader's own reason, when it has one. "One cell looked like a printed
+        // digit but is not" says far more than a count does, and it was being thrown away.
+        state.readingNote?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall)
+        }
         Text(
-            "Their bar is amber or red on the photo. Tap one to fix it, or accept them all.",
+            "Look for the thick amber bar on the photo. Tap that square to fix it, or " +
+                "accept the reading as it stands.",
             style = MaterialTheme.typography.bodySmall,
         )
         FilledTonalButton(onClick = { onChange(state.acceptReading()) }) {
@@ -416,7 +422,9 @@ private fun DrawScope.drawOverlayInLayer(state: PuzzleState, measurer: TextMeasu
             state.uncertainCells.sorted()
         }
         for (index in marked) {
-            reports.getOrNull(index)?.let { drawConfidence(squares, index, it.confidence) }
+            reports.getOrNull(index)?.let {
+                drawConfidence(squares, index, it.confidence, index in state.uncertainCells)
+            }
         }
     }
 
@@ -478,24 +486,37 @@ private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, sq
  * Thin and full width, so it reads as a gauge rather than as another thing sitting on
  * the page.
  */
-private fun DrawScope.drawConfidence(squares: Squares, index: Int, confidence: Float) {
-    // Green, amber, red by how likely the classifier thought its answer was. A square the
-    // reader flagged can never come out green: it is flagged on the gap between the top
-    // two answers, and those sum with the rest to one, so a nine-tenths answer leaves a
-    // gap too wide to flag.
+private fun DrawScope.drawConfidence(
+    squares: Squares,
+    index: Int,
+    confidence: Float,
+    flagged: Boolean,
+) {
     val at = squares.topLeft(index)
     val cell = squares.size(index)
-    val height = squares.unit * 0.045f
+
+    // Thick where the user is being asked about the square, because on a nine by nine
+    // grid a hairline is not something anyone is going to find. In the reading layer
+    // every square has one and they stay out of the way.
+    val height = squares.unit * if (flagged) 0.13f else 0.045f
     val inset = squares.unit * 0.06f
     val width = cell.width - inset * 2
     val top = at.y + cell.height - height - inset * 0.5f
-    drawRect(Color(0x55000000), Offset(at.x + inset, top), Size(width, height))
+
+    // Green, amber, red by how likely the classifier thought its answer was - except that
+    // a flagged square is never green. A square can be flagged with the classifier
+    // perfectly confident: the solver threw the digit out because a clump of candidate
+    // marks was not a printed digit at all, which the classifier had no way to know. Its
+    // confidence is then beside the point and must not read as reassurance.
+    val colour = when {
+        confidence < 0.6f -> Overlays.incorrect
+        flagged || confidence < 0.9f -> Overlays.uncertain
+        else -> Overlays.correct
+    }
+
+    drawRect(Color(0x66000000), Offset(at.x + inset, top), Size(width, height))
     drawRect(
-        color = when {
-            confidence >= 0.9f -> Overlays.correct
-            confidence >= 0.6f -> Overlays.uncertain
-            else -> Overlays.incorrect
-        },
+        color = colour,
         topLeft = Offset(at.x + inset, top),
         size = Size(width * confidence.coerceIn(0f, 1f), height),
     )

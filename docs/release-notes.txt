@@ -1,3 +1,17 @@
+FIXED: the square the app was unsure about was marked with a hairline at the
+bottom of one square out of eighty-one, which is not something anyone is going
+to find. On a flagged square the bar is now three times as thick.
+
+FIXED: that bar could come out GREEN on the very square you were being asked
+about. A square can be flagged with the classifier perfectly confident - the
+solver threw the digit out because a clump of pencil marks was not a printed
+digit at all, which the classifier had no way to know. Its confidence was then
+beside the point, and green read as reassurance. A flagged square is never green
+now.
+
+The banner also says WHY, which it knew all along and was throwing away:
+"One cell looked like a printed digit but is not."
+
 FIXED: no way out of the history list. The drawer sheet is 360dp wide by
 default, which is wider than this phone's whole screen, so it covered the scrim
 completely and there was nothing outside it to tap. It is now 84% of the width,
