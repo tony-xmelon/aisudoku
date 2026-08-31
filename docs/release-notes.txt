@@ -62,5 +62,19 @@ tail. MNIST - the standard training set, collected in America - has almost neith
 which is why eight of nine of your ones were read as 4. The model is now also trained
 on digits drawn in the continental style, and on the corpus itself.
 
+SMALLER THINGS
+
+The overlay is now drawn on the grid lines the app actually found in your photo,
+rather than by dividing the picture into ninths. Paper is not flat, and on a
+bowed page the two are several pixels apart at the edges - which mattered as
+soon as every square got a tint.
+
+The hint digit used to be amber, which is also the colour of the app's own
+uncertainty. A hint is the solution for one square, so it is now the same blue
+as the solution, and amber means one thing only.
+
+Solve draws over a dim scrim, so the answer stays readable on squares you have
+already written in.
+
 Please keep sending photos of anything it gets wrong. Every one of these fixes came
 from a specific photo that failed.
