@@ -1,3 +1,20 @@
+A NEW ICON, and one that actually shows up.
+
+The mark is the app's own visual language: a nine cut out of a cyan cell, with
+the three-by-three grid ruled across it and the digit crossing the lines -
+exactly what the reading layer does to a photograph.
+
+It was invisible in App Tester for a concrete reason. The icon existed only as
+an adaptive XML, which Android renders but anything reading the APK from outside
+cannot. There are now real PNGs at all five densities alongside it, verified by
+pulling them back out of the built APK rather than trusting the source folder.
+
+Also fixed: on Android 12 and up the system draws its own launch screen using
+the icon's FOREGROUND on the window background. The foreground is the dark nine,
+so that was a dark nine on a dark ground - an invisible splash. The launch screen
+is now the icon's cyan, and the window itself is the app's ink rather than the
+platform's grey, so there is no flash of the wrong colour on the way in.
+
 THE TUTOR NOW KNOWS TWELVE TECHNIQUES, up from four.
 
 New: naked pair, hidden pair, naked triple, hidden triple, X-wing, Y-wing,

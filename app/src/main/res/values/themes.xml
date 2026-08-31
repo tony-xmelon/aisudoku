@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.AiSudoku" parent="android:Theme.Material.NoActionBar" />
+    <!--
+        The window is painted the app's own ink, so the moment between tapping the icon
+        and Compose drawing is the app's colour rather than the platform's.
+    -->
+    <style name="Theme.AiSudoku" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_ink</item>
+    </style>
 </resources>

@@ -15,13 +15,13 @@
 
     <!-- The bowl: an outer circle with the counter punched out of it by the even-odd rule. -->
     <path
-        android:fillColor="#FF0E1218"
+        android:fillColor="#FF000000"
         android:fillType="evenOdd"
         android:pathData="M32,43a20,20 0 1,1 40,0a20,20 0 1,1 -40,0z
                           M40.6,43a11.4,11.4 0 1,1 22.8,0a11.4,11.4 0 1,1 -22.8,0z" />
 
     <!-- The stem, rounded at the foot. Its top is hidden inside the bowl. -->
     <path
-        android:fillColor="#FF0E1218"
+        android:fillColor="#FF000000"
         android:pathData="M62.6,43L72,43L72,79.3a4.7,4.7 0 0,1 -9.4,0z" />
 </vector>

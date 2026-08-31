@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The ink the app is drawn on, and the cyan the icon's cell is filled with. -->
+    <color name="brand_ink">#0E1218</color>
+    <color name="brand_cyan">#4DD0E1</color>
+</resources>

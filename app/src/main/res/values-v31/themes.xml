@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        From Android 12 the system draws the launch screen itself, using the launcher
+        icon's FOREGROUND layer on this background. That foreground is the dark nine, so
+        without this it would be a dark nine on a dark ground - an invisible splash.
+
+        Filling it with the icon's own cyan puts the same nine on the same cell it sits in
+        everywhere else.
+    -->
+    <style name="Theme.AiSudoku" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_ink</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_cyan</item>
+    </style>
+</resources>
