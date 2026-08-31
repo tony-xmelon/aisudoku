@@ -100,6 +100,36 @@ dependencies {
 }
 
 /**
+ * Fails fast when the release notes are too long for App Distribution to accept.
+ *
+ * Firebase caps them at 16,384 characters and rejects the whole upload beyond it. That
+ * rejection arrives at the very end of a CI run, after the APK has been built - so this
+ * runs as part of `check` instead, where it costs milliseconds and fails before anything
+ * has been compiled.
+ */
+val releaseNotes = rootProject.layout.projectDirectory.file("docs/release-notes.txt")
+
+tasks.register("checkReleaseNotes") {
+    group = "verification"
+    description = "Check the release notes fit inside App Distribution's limit"
+    val notes = releaseNotes
+    inputs.file(notes)
+    doLast {
+        val limit = 16_384
+        val length = notes.asFile.readText().length
+        check(length <= limit) {
+            "docs/release-notes.txt is $length characters, over App Distribution's " +
+                "limit of $limit. Move older entries to docs/changelog.md - that file is " +
+                "for reading and is never uploaded."
+        }
+    }
+}
+
+tasks.named("check") { dependsOn("checkReleaseNotes") }
+tasks.matching { it.name.startsWith("appDistributionUpload") }
+    .configureEach { dependsOn("checkReleaseNotes") }
+
+/**
  * Builds and distributes a release using the locally signed-in Firebase CLI.
  *
  * The App Distribution Gradle plugin cannot use the CLI's own login, so this shells out
@@ -112,7 +142,8 @@ tasks.register<Exec>("distributeLocal") {
     dependsOn("assembleRelease")
 
     val apk = layout.buildDirectory.file("outputs/apk/release/app-arm64-v8a-release.apk")
-    val notes = rootProject.layout.projectDirectory.file("docs/release-notes.txt")
+    val notes = releaseNotes
+    dependsOn("checkReleaseNotes")
 
     // Windows resolves `firebase` to a .cmd shim, which needs a shell to launch.
     val firebase = if (System.getProperty("os.name").startsWith("Windows")) {
