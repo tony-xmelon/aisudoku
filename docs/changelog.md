@@ -8,6 +8,22 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE TUTOR IS ONE PANEL NOW, NOT A BAND THAT SUMMONS A SHEET.
+Dragging the band used to move the band; the panel arrived afterwards, separately,
+which is not the same gesture at all. It is now a single panel whose height
+changes: what you drag is the thing that grows, and letting go settles it to
+whichever end it is nearer. Tapping it opens it too.
+
+Resting, it shows its handle and the title Tutor - nothing else. The arrow and
+the step count have gone; everything below the title is laid out as usual and
+simply clipped away, so the open panel is the same panel rather than a second
+one wearing its clothes. Nothing under the title is even built while it is shut,
+since none of it can be seen and all of it costs a solve.
+
+The full history is in docs/changelog.md.
+
+---
+
 A FORCING CHAIN NOW SHOWS ITS WORKING.
 It was the one technique that asked you to take its word for it. "Suppose this
 square were 3. Following that through the grid leaves some square with no digit

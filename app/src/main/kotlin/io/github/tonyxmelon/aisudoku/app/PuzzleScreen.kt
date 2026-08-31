@@ -1,8 +1,6 @@
 package io.github.tonyxmelon.aisudoku.app
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -20,6 +18,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -52,13 +52,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -71,7 +71,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -81,6 +80,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
@@ -244,12 +244,23 @@ fun PuzzleScreen(
                 )
             }
 
-            // Everything below the photograph. The tutor rises over the whole of it,
-            // buttons included, and the grid above never moves - which is the reason the
-            // photograph takes its size from the window rather than from what is left.
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                Controls(state, onChange, modifier = Modifier.fillMaxSize())
-                TutorSheet(state, onChange)
+            // Everything below the photograph. The tutor rests across the foot of it and
+            // grows to fill the whole of it, buttons included, while the grid above never
+            // moves - which is the reason the photograph takes its size from the window
+            // rather than from what is left over.
+            BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                val route = state.walkthrough?.takeIf { !it.isEmpty }
+                val peek = TUTOR_PEEK +
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+                Controls(
+                    state,
+                    onChange,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = if (route != null) peek else 0.dp),
+                )
+                route?.let { TutorPanel(state, it, onChange, peek, maxHeight) }
             }
         }
     }
@@ -313,89 +324,27 @@ private fun Controls(
         // Pinned, so they are in the same place whatever is being said above them. Read,
         // Check, Hint, Solve is the order you would use them in: Read while the question
         // is still whether the app got the puzzle right, Solve when you have given up.
-        val route = state.walkthrough?.takeIf { !it.isEmpty }
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                // The tutor's lip sits below this row and carries the system-bar inset.
+                // The tutor rests below this row and carries the system-bar inset for it.
                 // With no route to tutor - a finished puzzle, or one that would not read -
-                // there is no lip, and this row is what would land under the system buttons.
-                .then(if (route == null) Modifier.navigationBarsPadding() else Modifier)
+                // there is no panel, and this row is what would land under the system
+                // buttons instead.
+                .then(
+                    if (state.walkthrough?.takeIf { !it.isEmpty } == null) {
+                        Modifier.navigationBarsPadding()
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(horizontal = 16.dp, vertical = 6.dp),
         ) {
             ModeButton("Read", OverlayMode.READING, state, onChange, Modifier.weight(1f))
             ModeButton("Check", OverlayMode.CHECK, state, onChange, Modifier.weight(1f))
             ModeButton("Hint", OverlayMode.HINT, state, onChange, Modifier.weight(1f), state.hint != null)
             ModeButton("Solve", OverlayMode.SOLUTION, state, onChange, Modifier.weight(1f))
-        }
-
-        route?.let { TutorCollapsed(state, it, onChange) }
-    }
-}
-
-/**
- * The tutor with only its lip showing, at the very bottom of the screen.
- *
- * It is the same panel as the open one, resting at the foot instead of a button that
- * opens it - so what it does is legible before you touch it, and the gesture that opens
- * it is the one that closes it again. Drag it up, flick it up, or tap it.
- */
-@Composable
-private fun TutorCollapsed(
-    state: PuzzleState,
-    route: Walkthrough,
-    onChange: (PuzzleState) -> Unit,
-) {
-    val openAt = with(LocalDensity.current) { 28.dp.toPx() }
-    var lifted by remember { mutableFloatStateOf(0f) }
-
-    Surface(
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 3.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer { translationY = lifted }
-            .clickable { onChange(state.tutor()) }
-            .draggable(
-                orientation = Orientation.Vertical,
-                state = rememberDraggableState { delta ->
-                    lifted = (lifted + delta).coerceAtMost(0f)
-                },
-                onDragStopped = { velocity ->
-                    if (-lifted > openAt || velocity < -700f) onChange(state.tutor())
-                    lifted = 0f
-                },
-            ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(top = 8.dp, bottom = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Handle()
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    Icons.Filled.KeyboardArrowUp,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text("Tutor", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                Text(
-                    "${route.steps.size} steps to the end",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }
@@ -450,44 +399,39 @@ private fun ColumnScope.Lesson(state: PuzzleState, showOutlook: Boolean) {
 }
 
 /**
- * The tutor, as a sheet you pull up and push back down.
+ * The tutor: one panel, resting across the foot of the screen or filling it.
  *
- * It used to be a row of buttons that was always there and could only be left by pressing
- * Next until the route ran out - sixty presses on a hard puzzle, with Done at the end. A
- * sheet answers that with the gesture everyone already has: swipe it away. It covers the
- * layer buttons on purpose, because while it is up it is what the screen is for, and it
- * stops short of the photograph, which never moves.
+ * It was two things before - a labelled band at the bottom, and a separate sheet that
+ * appeared once the band had been dragged far enough. Dragging the band therefore moved
+ * the band, and the panel arrived afterwards, which is not the same gesture at all. This
+ * is one Surface whose height changes: what you drag is the thing that grows, and letting
+ * go settles it to whichever end it is nearer.
+ *
+ * Resting, only its title shows. Everything below the title is laid out as usual and
+ * simply clipped away, so the open panel is the same panel and not a second one.
  */
 @Composable
-private fun BoxScope.TutorSheet(state: PuzzleState, onChange: (PuzzleState) -> Unit) {
-    val route = state.walkthrough
-    val showing = state.overlay == OverlayMode.LESSON && route != null && !route.isEmpty
-
-    AnimatedVisibility(
-        visible = showing,
-        enter = slideInVertically { it },
-        exit = slideOutVertically { it },
-        // The whole controls area, always. An open panel that grew and shrank with the
-        // length of the step under it moved everything on screen every time you stepped.
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        if (route != null && !route.isEmpty) TutorSheetContent(state, route, onChange)
-    }
-}
-
-@Composable
-private fun TutorSheetContent(
+private fun BoxScope.TutorPanel(
     state: PuzzleState,
     route: Walkthrough,
     onChange: (PuzzleState) -> Unit,
+    peek: Dp,
+    full: Dp,
 ) {
+    val density = LocalDensity.current
+    val peekPx = with(density) { peek.toPx() }
+    val fullPx = with(density) { full.toPx() }
+    val open = state.overlay == OverlayMode.LESSON
+
+    // Null except while a finger is on it. The animation owns the height the rest of the
+    // time, so a step that changes the text cannot jog the panel.
+    var dragged by remember { mutableStateOf<Float?>(null) }
+    val settled by animateFloatAsState(if (open) fullPx else peekPx, label = "tutor height")
+    val heightPx = (dragged ?: settled).coerceIn(peekPx, fullPx)
+
     val last = route.steps.size - 1
     val at = state.lessonStep.coerceIn(0, last)
-    val leaveAt = with(LocalDensity.current) { 72.dp.toPx() }
-    val stepAt = with(LocalDensity.current) { 48.dp.toPx() }
-
-    // How far the sheet has been dragged down, so it follows the finger before it goes.
-    var pulled by remember { mutableFloatStateOf(0f) }
+    val stepAt = with(density) { 48.dp.toPx() }
 
     // Whether the how-to is showing. Closes itself when the technique changes, which is
     // the moment it would have become the wrong text.
@@ -502,7 +446,11 @@ private fun TutorSheetContent(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 3.dp,
-        modifier = Modifier.fillMaxSize().graphicsLayer { translationY = pulled },
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .height(with(density) { heightPx.toDp() })
+            .clipToBounds(),
     ) {
         Column(
             modifier = Modifier
@@ -512,103 +460,133 @@ private fun TutorSheetContent(
                 .padding(bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // The handle, and the way out. Dragging it down past a threshold - or flicking
-            // it - closes the tutor, which is the one thing the old row could not do.
-            Box(
+            // The grip: the handle and the title under it. Drag either way, or tap to
+            // open. It is the only part of the panel that is always on screen, so it is
+            // the only part that can be the way in.
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .draggable(
                         orientation = Orientation.Vertical,
                         state = rememberDraggableState { delta ->
-                            pulled = (pulled + delta).coerceAtLeast(0f)
+                            dragged = ((dragged ?: heightPx) - delta).coerceIn(peekPx, fullPx)
                         },
                         onDragStopped = { velocity ->
-                            if (pulled > leaveAt || velocity > 900f) {
-                                onChange(state.close())
-                            } else {
-                                pulled = 0f
+                            val height = dragged ?: heightPx
+                            val wanted = when {
+                                velocity < -600f -> true
+                                velocity > 600f -> false
+                                else -> height > (peekPx + fullPx) / 2f
+                            }
+                            dragged = null
+                            if (wanted != open) {
+                                onChange(if (wanted) state.tutor() else state.close())
                             }
                         },
                     )
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Handle()
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TutorPicker(state, onChange, route.steps.size, Modifier.weight(1f))
-
-                // Swiping is quick and coarse; these are for landing on one step exactly.
-                IconButton(onClick = { stepBy(-1) }, enabled = at > 0) {
-                    Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous step")
-                }
-                Text(
-                    "${at + 1} / ${route.steps.size}",
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                )
-                IconButton(onClick = { stepBy(1) }, enabled = at < last) {
-                    Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next step")
-                }
-
-                // The technique's how-to, which is paragraphs long and the same words
-                // every time that technique comes round. It had a line of its own saying
-                // "How to spot one"; a question mark says it in no lines at all.
-                // A question mark drawn as text: the core icon set has no help glyph, and
-                // the extended set is tens of megabytes for one.
-                IconButton(onClick = { asking = !asking }) {
-                    Text(
-                        "?",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (asking) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            LocalContentColor.current
-                        },
-                    )
-                }
-            }
-
-            ChapterStrip(state.chapters, at) { onChange(state.stepTo(it)) }
-
-            Legend(state.legend, evidenceLabel = state.evidenceLabel)
-
-            // Sideways for the next step, so the common move needs no button at all.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState())
-                    .pointerInput(at, last) {
-                        var dragged = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { dragged = 0f },
-                            onDragEnd = {
-                                when {
-                                    dragged < -stepAt -> stepBy(1)
-                                    dragged > stepAt -> stepBy(-1)
-                                }
-                            },
-                        ) { _, amount -> dragged += amount }
-                    },
+                    .clickable(enabled = !open) { onChange(state.tutor()) },
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Lesson(state, showOutlook = true)
+                Box(modifier = Modifier.padding(top = 10.dp)) { Handle() }
 
-                if (asking) {
-                    state.guidance?.howTo?.let {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Tutor",
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    if (open) {
+                        // Swiping is quick and coarse; these land on one step exactly.
+                        IconButton(onClick = { stepBy(-1) }, enabled = at > 0) {
+                            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous step")
+                        }
                         Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            "${at + 1} / ${route.steps.size}",
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
                         )
+                        IconButton(onClick = { stepBy(1) }, enabled = at < last) {
+                            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next step")
+                        }
+
+                        // The technique's how-to: paragraphs long, and the same words every
+                        // time that technique comes round. It had a line to itself saying
+                        // "How to spot one"; a question mark says it in no lines at all.
+                        // Drawn as text because the core icon set has no help glyph and the
+                        // extended set is tens of megabytes for one.
+                        IconButton(onClick = { asking = !asking }) {
+                            Text(
+                                "?",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (asking) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    LocalContentColor.current
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Nothing below the grip is worth building while the panel is shut: the route,
+            // its chapters and the step's own text all cost a solve, and none of it can be
+            // seen.
+            if (heightPx > peekPx + 1f) {
+                ChapterStrip(state.chapters, at) { onChange(state.stepTo(it)) }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TutorPicker(state, onChange, route.steps.size, Modifier)
+                    ChapterName(state.chapters, at, Modifier.weight(1f))
+                }
+
+                Legend(state.legend, evidenceLabel = state.evidenceLabel)
+
+                // Sideways for the next step, so the common move needs no button at all.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .pointerInput(at, last) {
+                            var swiped = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { swiped = 0f },
+                                onDragEnd = {
+                                    when {
+                                        swiped < -stepAt -> stepBy(1)
+                                        swiped > stepAt -> stepBy(-1)
+                                    }
+                                },
+                            ) { _, amount -> swiped += amount }
+                        },
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Lesson(state, showOutlook = true)
+
+                    if (asking) {
+                        state.guidance?.howTo?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+
+/** How much of the tutor shows when it is shut: its handle and its title. */
+private val TUTOR_PEEK = 62.dp
 
 /**
  * The whole route as one line, a block per run of the same technique.
@@ -623,44 +601,48 @@ private fun ChapterStrip(chapters: List<Chapter>, at: Int, onJump: (Int) -> Unit
     if (chapters.isEmpty()) return
     val here = chapters.firstOrNull { at in it.from until it.until }
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.fillMaxWidth().height(24.dp),
-        ) {
-            for (chapter in chapters) {
-                val colour = when {
-                    chapter === here -> MaterialTheme.colorScheme.primary
-                    chapter.until <= at -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
-                }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.fillMaxWidth().height(24.dp),
+    ) {
+        for (chapter in chapters) {
+            val colour = when {
+                chapter === here -> MaterialTheme.colorScheme.primary
+                chapter.until <= at -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(chapter.count.toFloat())
+                    .fillMaxHeight()
+                    .clickable { onJump(chapter.from) },
+                contentAlignment = Alignment.Center,
+            ) {
                 Box(
-                    modifier = Modifier
-                        .weight(chapter.count.toFloat())
-                        .fillMaxHeight()
-                        .clickable { onJump(chapter.from) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(10.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(colour)
-                    )
-                }
+                    Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(colour)
+                )
             }
         }
-        here?.let {
-            Text(
-                if (it.count == 1) it.technique
-                else "${it.technique} - step ${at - it.from + 1} of ${it.count}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
     }
+}
+
+/** Which run of the route this step belongs to, and how far through it you are. */
+@Composable
+private fun ChapterName(chapters: List<Chapter>, at: Int, modifier: Modifier) {
+    val here = chapters.firstOrNull { at in it.from until it.until } ?: return
+    Text(
+        if (here.count == 1) here.technique
+        else "${here.technique} - ${at - here.from + 1} of ${here.count}",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        textAlign = TextAlign.End,
+        modifier = modifier,
+    )
 }
 
 /**
