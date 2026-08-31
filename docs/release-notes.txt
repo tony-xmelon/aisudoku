@@ -5,12 +5,19 @@ used to take whatever the controls left over, so switching layer resized it and
 the square under your finger moved. The controls scroll in their own space now.
 
 WHAT WAS READ is a fourth button beside Hint, Check and Solve. The squares stay
-FILLED, as you preferred - what changed is the digit. It used to be an opaque
-block in the top-right corner, which is exactly where candidate marks are
-written. It is now smaller, in the BOTTOM-RIGHT corner, on a translucent dark
-backing: the middle of a square is where the answer goes and the top is where
-the marks go, so the bottom-right is the emptiest part of a real page. The
-confidence bar is a hairline along the bottom edge.
+FILLED, as you preferred, and the digit is now a HOLE CUT IN THE FILL - it adds
+no ink at all, and what shows through the glyph is the page itself.
+
+It sits in the bottom-right corner rather than the middle, because it has to be
+BESIDE your own digit to be compared with it, not on top of it. The middle holds
+the answer and the top holds the candidate marks, which leaves that corner as
+the emptiest part of a real page. The old chip was an opaque block at the
+top-right, sitting exactly on the marks.
+
+The corner has slightly more of the same tint for the digit to be cut out of: a
+hole in a thirty percent tint is only thirty percent of a contrast, which is not
+enough to read a digit out of. It is still translucent, so the page is visible
+through all of it. The confidence bar is a hairline along the bottom edge.
 
 The same treatment is now used on a red square in Check, because it is the same
 statement: this is what I saw there.
