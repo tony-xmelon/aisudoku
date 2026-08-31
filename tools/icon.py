@@ -1,132 +1,149 @@
-"""Draws the AI Sudoku launcher icon.
+"""Draws the AI Sudoku launcher icon, raster and geometry.
 
-The mark is the app's own visual language: a digit knocked out of a coloured square,
-with the grid showing through around it. Exactly what the reading layer does to a
-photograph, which is the one thing this app does that others do not.
+The icon is the thing the app looks at: a printed sudoku on paper, zoomed until one box
+fills the frame, with the ruled lines running off the edges because the grid carries on.
+One cell is filled in the app's cyan - what it does to a square it has just read.
 
-Geometry is in a 108-unit square so the same numbers serve the adaptive vector and the
-raster mipmaps.
+Three things are deliberate and easy to undo by accident:
+
+  * **Digits, and a heavy box rule.** A bare three-by-three grid is noughts and crosses.
+    What makes a grid read as sudoku is numbers in it and box rules heavier than cell
+    rules. Both cost legibility, which is why the grid is one box rather than all nine -
+    a whole nine-by-nine is unreadable mush below about seventy pixels.
+
+  * **Paper, not ink.** A dark tile is stylish and says nothing. White paper with black
+    rules says *printed puzzle*, which is what the camera is pointed at, and it holds up
+    against a dark wallpaper and a light one.
+
+  * **The corners are empty.** An adaptive icon is only guaranteed to show the middle
+    circle of its 108 units, and the corner cells of a three-by-three sit exactly where a
+    round mask bites. Nothing is put there that would be missed.
+
+Geometry is in a 108-unit square so these numbers also serve the vector drawables in
+app/src/main/res/drawable. The two must not drift apart.
 """
 import os
 import sys
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
-S = 108.0                     # the adaptive icon viewport
-CYAN_TOP = (77, 208, 225)     # #4DD0E1, the app's "printed" colour
-CYAN_BOTTOM = (26, 148, 168)  # #1A94A8
-INK = (14, 18, 24)            # #0E1218
-GRID = (0, 0, 0, 34)          # the 3x3 lines, a darkening rather than a colour
+S = 108.0
+STEP = 24.0                      # one cell
+BOX = (18.0, 90.0)               # the box rules, and the adaptive safe area
+CYAN = (77, 208, 225)
+INK = (17, 21, 26)
+PAPER = (243, 246, 248)
+THIN, HEAVY = 1.5, 3.4
+FONT = r"C:\Windows\Fonts\tahomabd.ttf"
 
-# The nine. A geometric bowl and a straight stem, which stays legible at 48 pixels
-# where a typeset glyph turns to mush.
-# Deliberately wider than the middle cell of the grid, so it cuts clean across the lines
-# instead of grazing them. That crossing is what the reading layer does to a photograph.
-BOWL = (52.0, 43.0)           # centre
-BOWL_OUTER = 20.0
-BOWL_INNER = 11.4
-STEM_RIGHT = BOWL[0] + BOWL_OUTER
-STEM_WIDTH = 9.4
-STEM_BOTTOM = 84.0
-GRID_AT = (36.0, 72.0)        # thirds of the canvas
-GRID_WIDTH = 2.6
+# A plausibly part-solved box, with the corners left empty so a round mask has nothing
+# to take. Sequential digits would read as a telephone keypad.
+CELLS = {(1, 0): "5", (0, 1): "9", (1, 1): "7", (2, 1): "3", (1, 2): "1"}
+HILITE = (1, 1)
 
 
-def draw_grid(d, k, colour):
-    for at in GRID_AT:
-        d.rectangle([0, (at - GRID_WIDTH / 2) * k, S * k, (at + GRID_WIDTH / 2) * k], fill=colour)
-        d.rectangle([(at - GRID_WIDTH / 2) * k, 0, (at + GRID_WIDTH / 2) * k, S * k], fill=colour)
-
-
-def draw_nine(d, k, colour):
-    cx, cy = BOWL
-    d.ellipse(
-        [(cx - BOWL_OUTER) * k, (cy - BOWL_OUTER) * k,
-         (cx + BOWL_OUTER) * k, (cy + BOWL_OUTER) * k],
-        fill=colour,
-    )
-    d.rounded_rectangle(
-        [(STEM_RIGHT - STEM_WIDTH) * k, cy * k, STEM_RIGHT * k, STEM_BOTTOM * k],
-        radius=(STEM_WIDTH / 2) * k,
-        fill=colour,
+def centred(d, box, text, font, fill):
+    left, top, right, bottom = d.textbbox((0, 0), text, font=font)
+    d.text(
+        (box[0] + (box[2] - box[0] - (right - left)) / 2 - left,
+         box[1] + (box[3] - box[1] - (bottom - top)) / 2 - top),
+        text, font=font, fill=fill,
     )
 
 
-def punch_counter(image, k):
-    """The hole in the bowl, cut rather than painted so it works over any ground."""
-    cx, cy = BOWL
-    hole = Image.new("L", image.size, 255)
-    ImageDraw.Draw(hole).ellipse(
-        [(cx - BOWL_INNER) * k, (cy - BOWL_INNER) * k,
-         (cx + BOWL_INNER) * k, (cy + BOWL_INNER) * k],
-        fill=0,
-    )
-    alpha = image.getchannel("A")
-    image.putalpha(Image.composite(alpha, Image.new("L", image.size, 0), hole))
+def draw(img, k, layer="all"):
+    """The mark, in units of the 108 grid scaled by k.
 
+    An adaptive icon wants it in two halves: the paper, the cell and the rules underneath,
+    and the digits on top where the safe zone protects them.
+    """
+    d = ImageDraw.Draw(img, "RGBA")
+    step = STEP * k
 
-def gradient(size):
-    ramp = Image.new("RGB", (1, size))
-    for y in range(size):
-        t = y / max(1, size - 1)
-        ramp.putpixel((0, y), tuple(
-            round(CYAN_TOP[i] + (CYAN_BOTTOM[i] - CYAN_TOP[i]) * t) for i in range(3)
-        ))
-    return ramp.resize((size, size))
+    if layer in ("all", "background"):
+        for (col, row) in CELLS:
+            if (col, row) != HILITE:
+                continue
+            x0 = BOX[0] * k + col * step
+            y0 = BOX[0] * k + row * step
+            d.rectangle((x0, y0, x0 + step, y0 + step), fill=CYAN + (255,))
+
+    # Rules run the full width, so the grid is a fragment of something larger rather than
+    # an object with a border round it.
+    font = ImageFont.truetype(FONT, max(6, int(step * 0.68)))
+    if layer in ("all", "background", "monochrome"):
+        for i in range(-2, 6):
+            at = (BOX[0] + i * STEP) * k
+            if at < -HEAVY * k or at > S * k + HEAVY * k:
+                continue
+            heavy = i in (0, 3)
+            w = (HEAVY if heavy else THIN) * k
+            colour = INK + (255 if heavy else 120,)
+            d.rectangle([-w, at - w / 2, S * k + w, at + w / 2], fill=colour)
+            d.rectangle([at - w / 2, -w, at + w / 2, S * k + w], fill=colour)
+
+    if layer != "background":
+        for (col, row), text in CELLS.items():
+            x0 = BOX[0] * k + col * step
+            y0 = BOX[0] * k + row * step
+            centred(d, (x0, y0, x0 + step, y0 + step), text, font, INK)
 
 
 def render(size, shape, supersample=4):
-    """One finished icon: cyan tile, grid lines, and the nine cut out of both."""
-    k = size * supersample / S
     px = int(size * supersample)
-
-    tile = gradient(px).convert("RGBA")
-    draw_grid(ImageDraw.Draw(tile, "RGBA"), k, GRID)
-
-    # The nine is a hole, so what shows through it is whatever the icon sits on - which
-    # for the mipmaps is the ink colour underneath, and for the adaptive layer is the
-    # background layer itself.
-    hole = Image.new("L", (px, px), 255)
-    draw_nine(ImageDraw.Draw(hole), k, 0)
-    counter = Image.new("L", (px, px), 0)
-    ImageDraw.Draw(counter).ellipse(
-        [(BOWL[0] - BOWL_INNER) * k, (BOWL[1] - BOWL_INNER) * k,
-         (BOWL[0] + BOWL_INNER) * k, (BOWL[1] + BOWL_INNER) * k],
-        fill=255,
-    )
-    hole = Image.composite(Image.new("L", (px, px), 255), hole, counter)
-
-    ground = Image.new("RGBA", (px, px), INK + (255,))
-    art = Image.composite(tile, ground, hole)
+    img = Image.new("RGBA", (px, px), PAPER + (255,))
+    draw(img, px / S)
 
     mask = Image.new("L", (px, px), 0)
-    d = ImageDraw.Draw(mask)
+    m = ImageDraw.Draw(mask)
     if shape == "round":
-        d.ellipse([0, 0, px, px], fill=255)
+        m.ellipse([0, 0, px, px], fill=255)
     else:
-        d.rounded_rectangle([0, 0, px, px], radius=px * 0.22, fill=255)
-    art.putalpha(mask)
-    return art.resize((size, size), Image.LANCZOS)
+        m.rounded_rectangle([0, 0, px, px], radius=px * 0.22, fill=255)
+    img.putalpha(mask)
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def layer(name, px=432):
+    """One adaptive-icon layer, full bleed, on transparency.
+
+    Everything but the paper lives in the foreground, and the background is a flat colour.
+    That is not how these are usually split, and the reason is the launch screen: from
+    Android 12 the system draws it from the FOREGROUND layer alone, so anything left in
+    the background is missing from it. With the whole mark in front, the splash is the
+    icon.
+    """
+    img = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+    draw(img, px / S, layer="all" if name == "foreground" else name)
+    return img
 
 
 def main():
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
+
+    # Adaptive layers as bitmaps rather than vectors: the mark contains type, and tracing
+    # five glyphs to path data by hand is a good way to ship a wonky 9.
+    adaptive = os.path.join(out, "drawable-nodpi")
+    os.makedirs(adaptive, exist_ok=True)
+    for name in ("foreground", "monochrome"):
+        layer(name).save(os.path.join(adaptive, "ic_launcher_%s.png" % name))
+
     for density, size in [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                           ("xxhdpi", 144), ("xxxhdpi", 192)]:
+        folder = os.path.join(out, "mipmap-" + density)
+        os.makedirs(folder, exist_ok=True)
         for shape, name in [("square", "ic_launcher"), ("round", "ic_launcher_round")]:
-            folder = os.path.join(out, "mipmap-" + density)
-            os.makedirs(folder, exist_ok=True)
             render(size, shape).save(os.path.join(folder, name + ".png"))
-    # A sheet for looking at, at the sizes that actually matter.
-    sheet = Image.new("RGBA", (460, 250), (24, 24, 28, 255))
+
+    sizes = [192, 96, 72, 48, 36]
+    sheet = Image.new("RGBA", (20 + sum(s + 16 for s in sizes), 420), (26, 26, 30, 255))
     x = 14
-    for size in (192, 96, 72, 48, 36):
-        square = render(size, "square")
-        round_ = render(size, "round")
-        sheet.paste(square, (x, 14), square)
-        sheet.paste(round_, (x, 220 - size), round_)
-        x += size + 14
+    for size in sizes:
+        for row, shape in enumerate(("square", "round")):
+            art = render(size, shape)
+            sheet.paste(art, (x, 14 + row * 200 + (192 - size) // 2), art)
+        x += size + 16
     sheet.save(os.path.join(out, "preview.png"))
     print("wrote icons to", out)
 

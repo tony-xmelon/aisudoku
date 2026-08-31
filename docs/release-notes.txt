@@ -1,3 +1,24 @@
+A NEW ICON, with meaning this time.
+
+The old one was a three-by-three grid, which is noughts and crosses, and a nine
+that read as a q. Stylish and about nothing.
+
+This one is the thing the app looks at: a printed sudoku on paper, zoomed until
+one box fills the frame, ruled lines running off the edges because the grid
+carries on past them, and one cell filled in the app's cyan - which is what the
+app does to a square it has just read.
+
+Paper rather than ink, because a dark tile says nothing and white paper with
+black rules says printed puzzle. Digits, because a grid without them is noughts
+and crosses whatever else you do to it. One box rather than all nine, because a
+whole nine-by-nine turns to unreadable mush below about seventy pixels - which I
+checked by rendering it at 36, 48, 72, 96 and 192 rather than guessing.
+
+The corner cells are left empty on purpose. An adaptive icon is only guaranteed
+to show the middle circle of itself, and the corners of a three-by-three sit
+exactly where a round launcher mask bites. Nothing is put there that would be
+missed.
+
 A NEW ICON, and one that actually shows up.
 
 The mark is the app's own visual language: a nine cut out of a cyan cell, with

@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background" />
+    <!--
+        The paper is a flat colour and everything drawn on it is in the foreground. That
+        is the wrong way round for most icons, and deliberate here: from Android 12 the
+        system builds the launch screen out of the FOREGROUND layer alone, so a mark split
+        across both layers arrives at the splash screen with half of itself missing.
+    -->
+    <background android:drawable="@color/brand_paper" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
 </adaptive-icon>
