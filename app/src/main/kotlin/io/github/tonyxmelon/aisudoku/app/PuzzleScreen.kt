@@ -373,13 +373,13 @@ private fun DrawScope.drawOverlay(state: PuzzleState, measurer: TextMeasurer) {
             // The paper already shows the right digit, so a tint is all that is needed.
             OverlayRole.CORRECT -> squares.fill(this, index, colour.copy(alpha = 0.32f))
 
-            // Tint, and then what the app read, on a chip in the corner. On a chip
-            // because it is the app talking, not a digit on the paper - without that, a
-            // misreading is indistinguishable from the app marking a right answer wrong,
-            // which is exactly how it was first reported.
+            // Tint, and then what the app read, in the corner. Drawn exactly as the
+            // reading layer draws it, because it is the same statement: this is what I
+            // saw there. Without it a misreading is indistinguishable from the app
+            // marking a right answer wrong, which is how it was first reported.
             OverlayRole.INCORRECT -> {
                 squares.fill(this, index, colour.copy(alpha = 0.42f))
-                drawChip(measurer, squares, index, digit.digit, colour)
+                drawReadDigit(measurer, squares, index, digit.digit)
             }
 
             OverlayRole.SOLUTION, OverlayRole.HINT ->
@@ -399,11 +399,15 @@ private fun DrawScope.drawOverlay(state: PuzzleState, measurer: TextMeasurer) {
 /**
  * What the reader made of every square, drawn over the photograph.
  *
- * **Outlined, not filled.** A tint on all 81 squares hid the very thing this layer exists
- * to let you check: what is actually on the paper. An outline says the same thing at the
- * edges of a square and leaves the middle of it alone.
+ * A tint says what the square was taken to be. It reads at a glance in a way an outline
+ * does not, and the price is that everything else drawn here has to stay out of the way:
  *
- * A chip repeats the digit that was read and a bar shows how sure the classifier was.
+ *  - the digit sits in the **bottom-right corner**, small, on a translucent backing
+ *    rather than a solid chip. Candidate marks are written along the top of a square and
+ *    the answer through the middle, so the bottom-right corner is the emptiest part of a
+ *    real page. A solid chip at the top-right sat exactly on top of the marks;
+ *  - the confidence bar is a hairline along the very bottom edge.
+ *
  * This layer exists because after a read there was otherwise no way to see what the app
  * had decided - only what it had decided to do about it.
  */
@@ -428,33 +432,32 @@ private fun DrawScope.drawReading(state: PuzzleState, measurer: TextMeasurer, sq
             Ink.NONE -> null
         } ?: continue
 
-        // Pencil marks get a thinner, dimmer line: there are forty of them on a busy page
+        // Pencil marks are tinted more faintly: there are forty of them on a busy page
         // and they are the least interesting thing on it.
         val marks = ink == Ink.MARK
-        squares.outline(
-            scope = this,
-            index = index,
-            colour = if (marks) colour.copy(alpha = 0.45f) else colour,
-            width = squares.unit * if (marks) 0.025f else 0.05f,
-            inset = 0.02f,
-        )
+        squares.fill(this, index, colour.copy(alpha = if (marks) 0.20f else 0.30f))
 
         if (digit != null) {
-            drawChip(measurer, squares, index, digit, colour)
+            drawReadDigit(measurer, squares, index, digit)
             report?.let { drawConfidence(squares, index, it.confidence) }
         }
     }
 }
 
-/** How sure the classifier was, as a bar across the foot of the square. */
+/**
+ * How sure the classifier was, as a hairline along the very bottom edge.
+ *
+ * Thin and full width, so it reads as a gauge rather than as another thing sitting on
+ * the page.
+ */
 private fun DrawScope.drawConfidence(squares: Squares, index: Int, confidence: Float) {
     val at = squares.topLeft(index)
     val cell = squares.size(index)
-    val height = squares.unit * 0.06f
-    val inset = squares.unit * 0.10f
+    val height = squares.unit * 0.045f
+    val inset = squares.unit * 0.06f
     val width = cell.width - inset * 2
-    val top = at.y + cell.height - height - inset * 0.6f
-    drawRect(Color(0x66000000), Offset(at.x + inset, top), Size(width, height))
+    val top = at.y + cell.height - height - inset * 0.5f
+    drawRect(Color(0x55000000), Offset(at.x + inset, top), Size(width, height))
     drawRect(
         color = when {
             confidence >= 0.9f -> Overlays.correct
@@ -466,33 +469,44 @@ private fun DrawScope.drawConfidence(squares: Squares, index: Int, confidence: F
     )
 }
 
-/** The digit the app read, drawn as a label rather than as ink on the page. */
-private fun DrawScope.drawChip(
+/**
+ * The digit the app read, in the corner of the square.
+ *
+ * Small, in the bottom-right, on a translucent dark backing rather than a solid chip in
+ * the app's own colour. Three things follow from wanting to compare it against the paper:
+ * it has to be legible over anything, it must not cover the paper's own digit in the
+ * middle, and it must not cover the candidate marks along the top. The backing is dark
+ * rather than coloured because the tint of the square already says what kind of digit
+ * this is; repeating that here only spends contrast the digit needs.
+ */
+private fun DrawScope.drawReadDigit(
     measurer: TextMeasurer,
     squares: Squares,
     index: Int,
     digit: Int,
-    colour: Color,
 ) {
     val layout = measurer.measure(
         digit.toString(),
         style = TextStyle(
             color = Color.White,
-            fontSize = (squares.unit * 0.38f / 2.2f).sp,
+            fontSize = (squares.unit * 0.34f / 2.2f).sp,
             fontWeight = FontWeight.Bold,
         ),
     )
     val origin = squares.topLeft(index)
     val cell = squares.size(index)
-    val padding = squares.unit * 0.05f
+    val padding = squares.unit * 0.045f
     val width = layout.size.width + padding * 2
     val height = layout.size.height + padding
-    val at = Offset(origin.x + cell.width - width - padding, origin.y + padding)
+    val at = Offset(
+        origin.x + cell.width - width - padding,
+        origin.y + cell.height - height - squares.unit * 0.13f,
+    )
     drawRoundRect(
-        color = colour.copy(alpha = 0.95f),
+        color = Color(0xAA101010),
         topLeft = at,
         size = Size(width, height),
-        cornerRadius = CornerRadius(squares.unit * 0.08f),
+        cornerRadius = CornerRadius(squares.unit * 0.06f),
     )
     drawText(layout, topLeft = Offset(at.x + padding, at.y + padding / 2))
 }

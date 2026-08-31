@@ -4,12 +4,16 @@ THE GRID NO LONGER MOVES. Its size now comes from the window and nothing else. I
 used to take whatever the controls left over, so switching layer resized it and
 the square under your finger moved. The controls scroll in their own space now.
 
-WHAT WAS READ is a fourth button beside Hint, Check and Solve, and it OUTLINES
-each square rather than filling it - a tint on all 81 hid the very thing the
-layer exists to let you check. Pencil marks get a thinner, dimmer line, because
-there are forty of them on a busy page and they are the least interesting thing
-on it. There are four other treatments I would like you to look at before this
-one is settled; the link I sent has all five side by side on your own puzzle.
+WHAT WAS READ is a fourth button beside Hint, Check and Solve. The squares stay
+FILLED, as you preferred - what changed is the digit. It used to be an opaque
+block in the top-right corner, which is exactly where candidate marks are
+written. It is now smaller, in the BOTTOM-RIGHT corner, on a translucent dark
+backing: the middle of a square is where the answer goes and the top is where
+the marks go, so the bottom-right is the emptiest part of a real page. The
+confidence bar is a hairline along the bottom edge.
+
+The same treatment is now used on a red square in Check, because it is the same
+statement: this is what I saw there.
 
 NEW PHOTO moved to the top bar as a camera icon, next to settings.
 

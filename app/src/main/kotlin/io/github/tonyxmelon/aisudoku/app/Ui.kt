@@ -105,16 +105,8 @@ object Overlays {
         LegendKey.MARKS -> "Pencil marks, ignored"
     }
 
-    /**
-     * True when this is drawn as an outline on the photograph rather than a fill.
-     *
-     * The reading layer outlines rather than fills, because a fill on all 81 squares hid
-     * the very thing the layer exists to let you check: what is actually on the paper.
-     */
-    fun outlined(key: LegendKey): Boolean = when (key) {
-        LegendKey.UNCERTAIN, LegendKey.PRINTED, LegendKey.WRITTEN, LegendKey.MARKS -> true
-        else -> false
-    }
+    /** True when this is drawn as an outline on the photograph rather than a fill. */
+    fun outlined(key: LegendKey): Boolean = key == LegendKey.UNCERTAIN
 }
 
 /** The key to whatever is drawn on the photograph. Absent when nothing is. */
