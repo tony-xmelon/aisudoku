@@ -22,7 +22,7 @@ object QuadDetector {
     private const val WORKING_EDGE = 1000.0
 
     /** Ignore anything smaller than this share of the frame. */
-    private const val MIN_AREA_FRACTION = 0.08
+    private const val MIN_AREA_FRACTION = 0.03
 
     private const val MAX_CANDIDATES = 10
 

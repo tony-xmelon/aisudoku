@@ -3,7 +3,20 @@ package io.github.tonyxmelon.aisudoku.vision
 import kotlin.math.abs
 
 /** One line of on-screen advice, and whether the framing is good enough to capture. */
-data class Guidance(val message: String, val readyToCapture: Boolean)
+data class Guidance(
+    val message: String,
+    val readyToCapture: Boolean,
+    /**
+     * The shape the reader is looking at, as fractions of the frame's width and height.
+     *
+     * Drawn over the preview so that what the app can see is not a matter of guesswork.
+     * Present even when the shape was rejected: a rectangle round the book instead of the
+     * puzzle says more about what to do next than any sentence.
+     */
+    val outline: List<Corner>? = null,
+    /** True when the outline is a grid the app accepts, rather than its best guess. */
+    val outlineAccepted: Boolean = false,
+)
 
 /**
  * Turns a preview frame into exactly one instruction.
@@ -49,7 +62,12 @@ class FramingAdvisor(
         val located = GridLocator.locate(frame)
         if (located !is GridLocation.Found) {
             reset()
-            return Guidance(whyNoGrid(frame, located as? GridLocation.NoGrid), false)
+            val missed = located as? GridLocation.NoGrid
+            return Guidance(
+                whyNoGrid(frame, missed),
+                readyToCapture = false,
+                outline = missed?.best?.let { normalise(it, frame) },
+            )
         }
 
         val quad = located.quad
@@ -69,9 +87,10 @@ class FramingAdvisor(
             else -> null
         }
 
+        val outline = normalise(quad, frame)
         if (complaint != null) {
             reset()
-            return Guidance(complaint, false)
+            return Guidance(complaint, false, outline, outlineAccepted = true)
         }
 
         val previous = lastQuad
@@ -81,12 +100,17 @@ class FramingAdvisor(
         stableFrames = if (steady) stableFrames + 1 else 0
         lastQuad = quad
 
-        return if (stableFrames >= stableFramesRequired) {
-            Guidance("Hold still...", true)
-        } else {
-            Guidance("Hold still...", false)
-        }
+        return Guidance(
+            "Hold still...",
+            readyToCapture = stableFrames >= stableFramesRequired,
+            outline = outline,
+            outlineAccepted = true,
+        )
     }
+
+    /** A quad in pixels, as fractions of the frame, so the screen can place it. */
+    private fun normalise(quad: Quad, frame: GrayImage): List<Corner> =
+        quad.corners.map { Corner(it.x / frame.width, it.y / frame.height) }
 
     /**
      * What to say when no grid was found, which is more than "point the camera at one".

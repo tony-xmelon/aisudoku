@@ -1,21 +1,30 @@
-The camera now says what is wrong with the puzzle in front of it.
+Scanning: the app now shows you what it can see, and sees far more.
 
-"Point the camera at a sudoku puzzle" was the answer to every failure, including
-a puzzle filling the frame - which is advice to do the thing you are already
-doing. It was also the only answer possible, because the checks for light and
-glare sat on the far side of the branch: they ran once a grid had been found, so
-in the one case where the picture was too dark or too shiny to find a grid at
-all, nothing checked for either.
+WHY A WELL-FRAMED PUZZLE WAS REFUSED. Not the wording, and not the aim. A grid
+is scored on the weakest of the twenty lines it must have, and each line was
+measured against the *strongest* line in the picture - which is the outer border,
+drawn two or three times the width of the inner ones. That asks every thin line
+to be as inky as the thick one, and it is a bar that rises the further away the
+puzzle is, until a perfectly framed grid scores 0.32 against a pass mark of 0.35
+for no reason except its distance from the camera.
 
-Those now run first, on the frame as it is. Beyond them the reader says what it
-honestly knows: whether it saw anything square-cornered in the shot at all, and
-how close the best of them came to reading as nine rows and nine columns. So a
-frame with nothing in it still asks for a puzzle, a dark one says it is dark, a
-shiny one says to tilt the page, and a square that is not a grid says that - and
-says to fill the frame with the grid alone, straight on and flat.
+Lines are now measured by how far they stand above the page around them, and each
+is judged against a typical line rather than the boldest one. A photograph the
+app had always refused went from 0.15 to 0.49. The whole corpus passes, which it
+did not before.
 
-Not a guess about focus: nothing in the app measures blur against a calibrated
-threshold, and a message that fires when it should not is worse than one line
-fewer.
+Two more things came out of the same measurements. Nothing smaller than eight per
+cent of the frame was even considered as a possible grid, and the viewfinder crops
+the frame - so a puzzle filling your screen is a good deal smaller in the picture
+the app is given. That floor is now three per cent. And every candidate shape used
+to be blown up to 1152 pixels square before being scored; they are scored at their
+own size, and only the winner is enlarged, which made the whole pass faster rather
+than slower.
+
+AND IT SHOWS YOU WHAT IT HAS FOUND. There is now an outline drawn over the
+preview: green when it is a grid the app accepts, amber when it is the closest
+thing it could find. The amber case is the one that matters - it shows the reader
+fastening onto the page, or the book, or the edge of the table, which you can do
+something about at once and which no message could ever have told you.
 
 The full history is in docs/changelog.md.

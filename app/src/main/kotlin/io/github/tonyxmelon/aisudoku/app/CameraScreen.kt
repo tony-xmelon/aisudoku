@@ -44,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -83,6 +85,8 @@ fun CameraScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var guidance by remember { mutableStateOf("Point the camera at a sudoku puzzle") }
+    // What the reader is looking at, so the screen can draw it.
+    var sighting by remember { mutableStateOf<Sighting?>(null) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
 
@@ -94,7 +98,11 @@ fun CameraScreen(
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             .build()
     }
-    val previewView = remember { PreviewView(context) }
+    // FILL_CENTER is not just the default here, it is the geometry [Framing] undoes to
+    // put the outline back over the thing it outlines. Set it where it can be seen.
+    val previewView = remember {
+        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+    }
 
     fun handleCaptured(proxy: ImageProxy) {
         try {
@@ -192,6 +200,15 @@ fun CameraScreen(
                     if (!capturing.get()) {
                         val advice = advisor.advise(Images.fromPreview(proxy))
                         guidance = advice.message
+                        sighting = advice.outline?.let { corners ->
+                            Sighting(
+                                corners = corners.map { Fraction(it.x.toFloat(), it.y.toFloat()) },
+                                accepted = advice.outlineAccepted,
+                                rotationDegrees = proxy.imageInfo.rotationDegrees,
+                                frameWidth = proxy.width,
+                                frameHeight = proxy.height,
+                            )
+                        }
                         if (autoCapture && advice.readyToCapture) takePicture()
                     }
                 } catch (_: Exception) {
@@ -216,6 +233,13 @@ fun CameraScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+
+        // What the app can see, drawn over what the user can see.
+        //
+        // No sentence can say "I am looking at the book, not the puzzle", and that is the
+        // failure people actually hit. An outline says it without a word, and when it sits
+        // squarely on the grid there is nothing left to wonder about.
+        sighting?.let { seen -> Sighted(seen, Modifier.fillMaxSize()) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -310,5 +334,32 @@ private fun Shutter(onClick: () -> Unit) {
             border = BorderStroke(4.dp, Color.White),
         ) {}
         Box(Modifier.size(58.dp).background(Color.White, CircleShape))
+    }
+}
+
+/**
+ * The shape the reader has locked onto, drawn over the preview.
+ *
+ * Green when it is a grid the app accepts, amber when it is only the closest thing it
+ * could find. The amber case is the useful one: it shows the reader fastening onto the
+ * page, or the book, or the edge of the table - something the user can act on at once, and
+ * which no wording ever conveyed.
+ */
+@Composable
+private fun Sighted(sighting: Sighting, modifier: Modifier) {
+    if (sighting.corners.size < 4) return
+    val colour = if (sighting.accepted) Overlays.correct else Overlays.uncertain
+
+    Canvas(modifier = modifier) {
+        val points = sighting.corners.map {
+            Framing.onScreen(it, sighting, size.width, size.height)
+        }
+        val path = Path().apply {
+            moveTo(points[0].x, points[0].y)
+            for (point in points.drop(1)) lineTo(point.x, point.y)
+            close()
+        }
+        drawPath(path, colour.copy(alpha = 0.12f))
+        drawPath(path, colour, style = Stroke(width = 6f, cap = StrokeCap.Round))
     }
 }

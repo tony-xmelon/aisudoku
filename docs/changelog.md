@@ -8,6 +8,38 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+SCANNING: THE APP NOW SHOWS YOU WHAT IT CAN SEE, AND SEES FAR MORE.
+WHY A WELL-FRAMED PUZZLE WAS REFUSED. Not the wording, and not the aim. A grid
+is scored on the weakest of the twenty lines it must have, and each line was
+measured against the *strongest* line in the picture - which is the outer border,
+drawn two or three times the width of the inner ones. That asks every thin line
+to be as inky as the thick one, and it is a bar that rises the further away the
+puzzle is, until a perfectly framed grid scores 0.32 against a pass mark of 0.35
+for no reason except its distance from the camera.
+
+Lines are now measured by how far they stand above the page around them, and each
+is judged against a typical line rather than the boldest one. A photograph the
+app had always refused went from 0.15 to 0.49. The whole corpus passes, which it
+did not before.
+
+Two more things came out of the same measurements. Nothing smaller than eight per
+cent of the frame was even considered as a possible grid, and the viewfinder crops
+the frame - so a puzzle filling your screen is a good deal smaller in the picture
+the app is given. That floor is now three per cent. And every candidate shape used
+to be blown up to 1152 pixels square before being scored; they are scored at their
+own size, and only the winner is enlarged, which made the whole pass faster rather
+than slower.
+
+AND IT SHOWS YOU WHAT IT HAS FOUND. There is now an outline drawn over the
+preview: green when it is a grid the app accepts, amber when it is the closest
+thing it could find. The amber case is the one that matters - it shows the reader
+fastening onto the page, or the book, or the edge of the table, which you can do
+something about at once and which no message could ever have told you.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE CAMERA NOW SAYS WHAT IS WRONG WITH THE PUZZLE IN FRONT OF IT.
 "Point the camera at a sudoku puzzle" was the answer to every failure, including
 a puzzle filling the frame - which is advice to do the thing you are already

@@ -49,19 +49,50 @@ internal object GridScorer {
         return columns to rows
     }
 
-    /** The weakest of the ten required lines along one axis, relative to the strongest. */
-    private fun axisScore(profile: DoubleArray): Double {
-        val strongest = profile.max()
-        if (strongest <= 0.0) return 0.0
+    /**
+     * Ink a line must have above the page around it before it counts as a line at all,
+     * as a fraction of the grid's span.
+     */
+    private const val REAL_LINE_FRACTION = 0.25
 
+    /**
+     * The weakest of the ten required lines along one axis, against a typical one.
+     *
+     * Two things had to change here, and the first is why a well-framed puzzle could sit
+     * in the middle of the viewfinder and never be seen.
+     *
+     * The strength of a line is how far it stands above the page around it, not how much
+     * ink it has: a column through a row of digits carries ink too. Measuring the rise
+     * above the median column - which is a cell interior - is what separates a line from a
+     * busy column of handwriting.
+     *
+     * And each line is judged against a typical line rather than against the strongest
+     * one. The strongest is the outer border, drawn two or three times the width of the
+     * inner lines, so dividing by it asks every thin line to be as inky as the thick one.
+     * That bar rises as the grid gets smaller in the frame, until a perfectly framed
+     * puzzle scores 0.3 for no reason except how far away it is.
+     *
+     * The absolute floor is what keeps the ratio honest. Comparing lines only with each
+     * other, a blank square scores full marks - it has ten equally missing lines - which
+     * is exactly what the framing advisor started reporting as a grid.
+     */
+    private fun axisScore(profile: DoubleArray): Double {
         val size = profile.size
         val window = (size / 9.0 * SEARCH_WINDOW_FRACTION).toInt().coerceAtLeast(4)
+        val page = profile.sorted()[size / 2]
 
-        return (0..9).minOf { line ->
+        val strengths = (0..9).map { line ->
             val centre = (line * (size - 1.0) / 9.0).toInt()
             val from = (centre - window).coerceAtLeast(0)
             val to = (centre + window).coerceAtMost(size - 1)
-            (from..to).maxOf { profile[it] } / strongest
+            ((from..to).maxOf { profile[it] } - page).coerceAtLeast(0.0)
         }
+
+        val typical = strengths.sorted()[strengths.size / 2]
+        if (typical < size * REAL_LINE_FRACTION) return 0.0
+
+        // Capped at one: a line inkier than the typical one is not better than a grid
+        // line, it is a grid line. Only the missing ones should count against the score.
+        return strengths.minOf { (it / typical).coerceAtMost(1.0) }
     }
 }
