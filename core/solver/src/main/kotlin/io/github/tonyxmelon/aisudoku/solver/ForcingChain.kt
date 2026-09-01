@@ -28,6 +28,15 @@ object ForcingChain : Technique {
     private const val ENOUGH = 12
 
     /**
+     * How many refutations to weigh against each other when hunting the shortest.
+     *
+     * Twenty is where it stops paying: on the hardest puzzle in the test set the longest
+     * trail on the route falls from fifteen squares to eleven between four and twenty, and
+     * not at all between twenty and forty.
+     */
+    private const val SHORTLIST = 20
+
+    /**
      * How many squares a drawn trail may have.
      *
      * Set where it covers every chain on the hardest puzzle in the test set. A trail of
@@ -61,6 +70,22 @@ object ForcingChain : Technique {
      * stopping at one is the difference between a snappy tutor and a stalled one.
      */
     override fun find(state: SolverState): Deduction? = search(state, limit = 1).firstOrNull()
+
+    /**
+     * The chain with the fewest squares to follow, out of the first several found.
+     *
+     * The first chain found is the one on the square with the fewest candidates, which
+     * says nothing about how long the argument from it runs. On a hard puzzle that came
+     * out as a thirteen-square trail where a four-square one was available a few
+     * candidates further down the list - both correct, one of them followable by a person.
+     *
+     * Costs a propagation per candidate weighed rather than one in total, which is why it
+     * is a choice rather than the only behaviour.
+     */
+    fun shortest(state: SolverState): Deduction? =
+        search(state, SHORTLIST).minByOrNull {
+            (it as? Deduction.Elimination)?.chain?.links?.size ?: Int.MAX_VALUE
+        }
 
     override fun findAll(state: SolverState): List<Deduction> = search(state, ENOUGH)
 

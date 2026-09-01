@@ -82,7 +82,7 @@ object TechniqueSolver {
      * done. Answers they got right are taken as read; answers they got wrong are left
      * out, because a route built on a wrong digit leads somewhere wrong.
      */
-    fun walkthrough(grid: Grid): Walkthrough? {
+    fun walkthrough(grid: Grid, style: RouteStyle = RouteStyle.SHORT_CHAINS): Walkthrough? {
         val solution = (Solver.solve(grid) as? SolveResult.Unique)?.solution ?: return null
         val state = SolverState.candidatesOnly(progressGrid(grid, solution)) ?: return null
 
@@ -102,7 +102,7 @@ object TechniqueSolver {
         // explained - six of them, on the easy puzzle.
         var guard = 0
         while (guard++ <= Coordinates.CELL_COUNT * 10) {
-            val reasoned = nextDeduction(state)
+            val reasoned = nextDeduction(state, style)
             val step = reasoned ?: triedOut(state, solution)?.also { triedOut++ } ?: break
             val told = crossReferenced(step, state, steps)
             if (!apply(state, step)) break
@@ -245,8 +245,19 @@ object TechniqueSolver {
     }
 
     /** The easiest available deduction, since a hint should offer the simplest route. */
-    fun nextDeduction(state: SolverState): Deduction? =
-        ALL_TECHNIQUES.firstNotNullOfOrNull { it.find(state) }
+    fun nextDeduction(
+        state: SolverState,
+        style: RouteStyle = RouteStyle.SHORT_CHAINS,
+    ): Deduction? = ALL_TECHNIQUES.firstNotNullOfOrNull { technique ->
+        // Every other technique recognises a pattern, and one instance of a pattern is as
+        // good as another. A forcing chain is an argument, and a short argument is worth
+        // hunting for.
+        if (technique === ForcingChain && style == RouteStyle.SHORT_CHAINS) {
+            ForcingChain.shortest(state)
+        } else {
+            technique.find(state)
+        }
+    }
 
     /**
      * Applies a deduction to the state. Returns false if it produced a contradiction.

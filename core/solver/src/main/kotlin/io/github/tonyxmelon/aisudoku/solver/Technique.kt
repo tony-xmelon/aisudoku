@@ -37,6 +37,21 @@ interface Technique {
 }
 
 /**
+ * What the tutor's route should be good at, where the two disagree.
+ *
+ * They only disagree about forcing chains. Every other technique recognises a pattern,
+ * and one instance of a pattern is as good as another; a chain is an argument, and its
+ * length is how much work it is to follow.
+ */
+enum class RouteStyle {
+    /** Weigh several chains and walk the one with the fewest squares in it. */
+    SHORT_CHAINS,
+
+    /** Take the first chain that works. Quicker to arrive at on a hard puzzle. */
+    FIRST_FOUND,
+}
+
+/**
  * Every technique, easiest first.
  *
  * Order matters twice over: the solver offers the simplest reasoning that works rather

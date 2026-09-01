@@ -15,9 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.tonyxmelon.aisudoku.solver.RouteStyle
 
 /**
- * The two things worth choosing.
+ * The few things worth choosing.
  *
  * About, privacy and the licences used to sit at the bottom of this page, then behind a
  * row on it. They are reading rather than settings and now have their own button in the
@@ -45,6 +46,32 @@ fun SettingsScreen(
                         onChange(
                             settings.copy(
                                 hintStyle = if (it) HintStyle.EXPLAIN else HintStyle.REVEAL
+                            )
+                        )
+                    },
+                )
+            }
+
+            item {
+                // Not a better-and-worse but a genuine trade, and the numbers are from the
+                // hardest puzzle in the test set, measured both ways.
+                SettingRow(
+                    title = "Keep forcing chains short",
+                    detail = "A forcing chain is the technique of last resort, and its " +
+                        "length is how much work it is to follow. Weighing several and " +
+                        "walking the shortest keeps any one of them down to about ten " +
+                        "squares, at the cost of needing more of them: on the hardest " +
+                        "puzzle tested, 110 steps this way against 87 the other, where " +
+                        "one chain ran to fifteen squares.",
+                    checked = settings.routeStyle == RouteStyle.SHORT_CHAINS,
+                    onChange = {
+                        onChange(
+                            settings.copy(
+                                routeStyle = if (it) {
+                                    RouteStyle.SHORT_CHAINS
+                                } else {
+                                    RouteStyle.FIRST_FOUND
+                                }
                             )
                         )
                     },

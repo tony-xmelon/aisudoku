@@ -6,6 +6,7 @@ import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.solver.Hint
+import io.github.tonyxmelon.aisudoku.solver.RouteStyle
 import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
 import io.github.tonyxmelon.aisudoku.solver.Techniques
 import io.github.tonyxmelon.aisudoku.solver.Walkthrough
@@ -66,6 +67,8 @@ data class PuzzleState(
      * at a different list.
      */
     val tutorTechnique: String? = null,
+    /** What the route should be good at. See [RouteStyle]. */
+    val routeStyle: RouteStyle = RouteStyle.SHORT_CHAINS,
     /**
      * Squares the user typed in themselves.
      *
@@ -111,8 +114,20 @@ data class PuzzleState(
     val walkthrough: Walkthrough? by lazy {
         val chosen = tutorTechnique?.let { Techniques.byName(it) }
         if (chosen != null) TechniqueSolver.findings(grid, chosen)
-        else TechniqueSolver.walkthrough(grid)
+        else route
     }
+
+    /**
+     * The tutor's own route, whatever is being browsed on top of it.
+     *
+     * Separate from [walkthrough] because the picker has to say how long the route is
+     * while showing one technique's findings, and it was reading the findings' length -
+     * so "Best route" claimed however many places the technique being browsed applied.
+     */
+    val route: Walkthrough? get() = Routes.of(grid, routeStyle)
+
+    /** How many steps the tutor's own route runs to, whatever is being browsed. */
+    val routeLength: Int get() = route?.steps?.size ?: 0
 
     /** The route grouped into runs of one technique, for the tutor's progress line. */
     val chapters: List<Chapter> by lazy { PuzzleLogic.chapters(walkthrough) }
@@ -163,18 +178,28 @@ data class PuzzleState(
     fun close(): PuzzleState = copy(
         overlay = OverlayMode.NONE,
         hintDepth = 0,
-        lessonStep = 0,
-        tutorTechnique = null,
         selectedCell = null,
     )
 
-    /** Starting the tutor, either on its own route or on one technique the user picked. */
+    /**
+     * Starting the tutor on one technique the user picked, from the beginning of it.
+     *
+     * A different list to walk, so the position in the old one means nothing.
+     */
     fun tutor(technique: String? = null): PuzzleState = copy(
         tutorTechnique = technique,
         overlay = OverlayMode.LESSON,
         lessonStep = 0,
         selectedCell = null,
     )
+
+    /**
+     * Opening the tutor again on whatever it was walking, where it was.
+     *
+     * Shutting it used to forget the position, so a look at the grid halfway through a
+     * sixty-step route cost the whole route. Closing is not the same as finishing.
+     */
+    fun reopenTutor(): PuzzleState = copy(overlay = OverlayMode.LESSON, selectedCell = null)
 
     /**
      * Moving through the walkthrough. Clamped, so the ends are simply inert.
@@ -212,4 +237,31 @@ data class PuzzleState(
 
     /** The user has looked at everything the reader flagged and is happy with it. */
     fun acceptReading(): PuzzleState = copy(uncertainCells = emptySet())
+}
+
+/**
+ * The last route worked out, kept so that stepping through one does not work it out again.
+ *
+ * A [PuzzleState] is copied on every press - each step of the tutor is a new instance -
+ * and its lazy route would be recomputed from scratch each time. That is a full technique
+ * solve per press: tens of milliseconds on this machine and rather more on a phone, for an
+ * answer that cannot have changed, because the route depends on the grid and nothing else.
+ *
+ * One entry is enough. Only one puzzle is on screen, and the grid changes far less often
+ * than the state around it.
+ */
+private object Routes {
+    private var forGrid: Grid? = null
+    private var forStyle: RouteStyle? = null
+    private var found: Walkthrough? = null
+
+    @Synchronized
+    fun of(grid: Grid, style: RouteStyle): Walkthrough? {
+        if (grid != forGrid || style != forStyle) {
+            forGrid = grid
+            forStyle = style
+            found = TechniqueSolver.walkthrough(grid, style)
+        }
+        return found
+    }
 }

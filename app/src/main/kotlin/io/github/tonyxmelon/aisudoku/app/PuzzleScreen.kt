@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -170,14 +172,16 @@ private fun DrawScope.drawChain(chain: Chain, squares: Squares, measurer: TextMe
     // Which digit has nowhere left to go, struck through. The red band says where the
     // trouble is; without this it does not say what the trouble is, and the sentence
     // underneath was carrying that on its own.
-    chain.missing?.let { missing ->
-        val on = chain.links.mapTo(mutableSetOf()) { it.index }
+    val ending = chain.missing?.let { missing ->
         val cells = chain.deadEnd.sorted()
         val where = cells.filterNot { it in on }.minByOrNull {
             kotlin.math.abs(cells.indexOf(it) - cells.size / 2)
-        } ?: return
-        drawStruck(measurer, squares, where, missing)
-    }
+        }
+        where?.also { drawStruck(measurer, squares, it, missing) }
+    } ?: wall
+
+    // The wall is the last thing that happens, so it carries the next number.
+    ending?.let { drawCorner(measurer, squares, it, "${chain.links.size + 1}") }
 }
 
 /** A small number in the corner of a square, for the order of a trail. */
@@ -199,17 +203,38 @@ private fun DrawScope.drawCorner(
     drawText(layout, topLeft = at + Offset(squares.unit * 0.07f, squares.unit * 0.04f))
 }
 
-/** A digit with a line through it: this one, here, is what cannot be placed. */
+/**
+ * A digit with a line through it: this one, here, is what cannot be placed.
+ *
+ * Outlined rather than solid, because it is drawn over a photograph of a square that
+ * already has something written in it, and a solid glyph hid the very thing the reader
+ * was checking it against.
+ */
 private fun DrawScope.drawStruck(
     measurer: TextMeasurer,
     squares: Squares,
     index: Int,
     digit: Int,
 ) {
-    drawCentred(measurer, squares, index, digit.toString(), Overlays.incorrect)
-
+    val layout = measurer.measure(
+        digit.toString(),
+        style = TextStyle(
+            color = Overlays.incorrect,
+            fontSize = (squares.unit * 0.62f / 2.2f).sp,
+            fontWeight = FontWeight.Bold,
+            drawStyle = Stroke(width = squares.unit * 0.045f),
+        ),
+    )
     val at = squares.topLeft(index)
     val cell = squares.size(index)
+    drawText(
+        layout,
+        topLeft = Offset(
+            at.x + (cell.width - layout.size.width) / 2f,
+            at.y + (cell.height - layout.size.height) / 2f,
+        ),
+    )
+
     val inset = squares.unit * 0.24f
     drawLine(
         Overlays.incorrect,
@@ -441,7 +466,7 @@ private fun Controls(
         ) {
             ModeButton("Read", OverlayMode.READING, state, onChange, Modifier.weight(1f))
             ModeButton("Check", OverlayMode.CHECK, state, onChange, Modifier.weight(1f))
-            ModeButton("Hint", OverlayMode.HINT, state, onChange, Modifier.weight(1f), state.hint != null)
+            HintButton(state, onChange, Modifier.weight(1f))
             ModeButton("Solve", OverlayMode.SOLUTION, state, onChange, Modifier.weight(1f))
         }
     }
@@ -468,18 +493,45 @@ private fun Handle() {
  * actually does.
  */
 @Composable
-private fun ColumnScope.Lesson(state: PuzzleState) {
-    state.guidance?.let { guidance ->
-        Text(guidance.body, style = MaterialTheme.typography.bodyMedium)
+private fun ColumnScope.Lesson(state: PuzzleState, trailing: @Composable () -> Unit = {}) {
+    val guidance = state.guidance ?: return
 
+    if (guidance.effect == null) {
+        Trailing(guidance.body, MaterialTheme.typography.bodyMedium, null, trailing)
+    } else {
+        Text(guidance.body, style = MaterialTheme.typography.bodyMedium)
         // Last, because it is the summary of a move whose reasoning is above it.
-        guidance.effect?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Trailing(
+            guidance.effect,
+            MaterialTheme.typography.bodySmall,
+            MaterialTheme.colorScheme.onSurfaceVariant,
+            trailing,
+        )
+    }
+}
+
+/**
+ * A paragraph with a small control after its last word rather than under it.
+ *
+ * The text takes only the width it needs, so a short paragraph leaves the control beside
+ * it and a long one leaves it beside the last line. Aligned to the bottom, which is what
+ * puts it on that last line rather than the first.
+ */
+@Composable
+private fun Trailing(
+    text: String,
+    style: TextStyle,
+    colour: Color?,
+    trailing: @Composable () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text,
+            style = style,
+            color = colour ?: Color.Unspecified,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        trailing()
     }
 }
 
@@ -517,7 +569,10 @@ private fun BoxScope.TutorPanel(
     val height = remember { Animatable(peekPx) }
     var dragging by remember { mutableStateOf(false) }
 
-    LaunchedEffect(open, peekPx, fullPx) {
+    // The only thing that settles the panel, so it can only ever come to rest open or
+    // shut. Letting the drag handler animate as well left it stopped halfway whenever the
+    // two disagreed about which of them was finishing the job.
+    LaunchedEffect(open, dragging, peekPx, fullPx) {
         if (!dragging) height.animateTo(if (open) fullPx else peekPx)
     }
 
@@ -570,7 +625,7 @@ private fun BoxScope.TutorPanel(
                         // the movement ended.
                         onDragStarted = {
                             dragging = true
-                            if (!open) onChange(state.tutor())
+                            if (!open) onChange(state.reopenTutor())
                         },
                         state = rememberDraggableState { delta ->
                             scope.launch {
@@ -583,21 +638,13 @@ private fun BoxScope.TutorPanel(
                                 velocity > 600f -> false
                                 else -> height.value > (peekPx + fullPx) / 2f
                             }
-                            dragging = false
-                            // Only one of these animates. Changing the state lets the
-                            // effect above carry the panel the rest of the way; if the
-                            // state is already right, nothing else will, so it settles here.
                             if (wanted != open) {
-                                onChange(if (wanted) state.tutor() else state.close())
-                            } else {
-                                height.animateTo(
-                                    if (wanted) fullPx else peekPx,
-                                    initialVelocity = -velocity,
-                                )
+                                onChange(if (wanted) state.reopenTutor() else state.close())
                             }
+                            dragging = false
                         },
                     )
-                    .clickable { onChange(if (open) state.close() else state.tutor()) },
+                    .clickable { onChange(if (open) state.close() else state.reopenTutor()) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
@@ -652,7 +699,7 @@ private fun BoxScope.TutorPanel(
                 // being printed twice - once here and once in the key beside the colour of
                 // its own squares - and the key is the one that earns it.
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TutorPicker(state, onChange, route.steps.size, Modifier)
+                    TutorPicker(state, onChange, state.routeLength, Modifier)
                     Legend(
                         state.legend,
                         modifier = Modifier.weight(1f),
@@ -706,10 +753,18 @@ private fun BoxScope.TutorPanel(
                         },
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Lesson(state)
+                    Lesson(state) {
+                        state.guidance?.howTo?.let { HowTo(asking) { asking = !asking } }
+                    }
 
-                    state.guidance?.howTo?.let {
-                        HowTo(it, asking) { asking = !asking }
+                    if (asking) {
+                        state.guidance?.howTo?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -726,11 +781,11 @@ private fun BoxScope.TutorPanel(
  * with the controls.
  */
 @Composable
-private fun HowTo(text: String, open: Boolean, onToggle: () -> Unit) {
+private fun HowTo(open: Boolean, onToggle: () -> Unit) {
     val turn by animateFloatAsState(if (open) 90f else 0f, label = "how")
 
     Row(
-        modifier = Modifier.clickable(onClick = onToggle),
+        modifier = Modifier.clickable(onClick = onToggle).padding(start = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -743,13 +798,6 @@ private fun HowTo(text: String, open: Boolean, onToggle: () -> Unit) {
             contentDescription = if (open) "Hide how to spot one" else "How to spot one",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = turn },
-        )
-    }
-    if (open) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -830,6 +878,42 @@ private fun ModeButton(
     modifier: Modifier,
     enabled: Boolean = true,
 ) = Pill(label, state.overlay == mode, enabled, modifier) { onChange(state.show(mode)) }
+
+/**
+ * Hint, with how far down its staircase you are drawn into it.
+ *
+ * A hint has four treads - the box, the technique, the square, the digit - and the button
+ * gave no sign of that, so a press that revealed the next tread looked like a press that
+ * had done nothing. It fills a quarter at a time instead, which says both that there is
+ * more and how much more.
+ */
+@Composable
+private fun HintButton(
+    state: PuzzleState,
+    onChange: (PuzzleState) -> Unit,
+    modifier: Modifier,
+) {
+    val showing = state.overlay == OverlayMode.HINT
+    val rungs = if (state.hintStyle == HintStyle.EXPLAIN) PuzzleLogic.HINT_DEPTHS else 1
+    val filled = if (showing) (state.hintDepth + 1f) / rungs else 0f
+    val poured by animateFloatAsState(filled.coerceIn(0f, 1f), label = "hint")
+    val colour = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+
+    // Behind the button rather than in it, so the label stays the one colour throughout
+    // and stays readable over both the filled part and the empty part.
+    Pill(
+        "Hint",
+        selected = false,
+        enabled = state.hint != null,
+        modifier = modifier
+            .clip(ButtonDefaults.outlinedShape)
+            .drawBehind {
+                if (poured > 0f) drawRect(colour, size = Size(size.width * poured, size.height))
+            },
+    ) {
+        onChange(state.show(OverlayMode.HINT))
+    }
+}
 
 /**
  * One of the five. The selected one is filled, so which is on can be seen without reading.

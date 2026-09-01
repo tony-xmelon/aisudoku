@@ -120,7 +120,10 @@ private fun AppRoot() {
         settings = updated
         Settings.save(context, updated)
         // A puzzle already on screen should follow the setting rather than keep the old one.
-        puzzle = puzzle?.copy(hintStyle = updated.hintStyle)
+        puzzle = puzzle?.copy(
+            hintStyle = updated.hintStyle,
+            routeStyle = updated.routeStyle,
+        )
     }
 
     fun go(target: Screen) {
@@ -201,6 +204,7 @@ private fun AppRoot() {
                                 uncertainCells = emptySet(),
                                 readingNote = null,
                                 hintStyle = settings.hintStyle,
+                                routeStyle = settings.routeStyle,
                             )
                             go(Screen.PUZZLE)
                         }
@@ -255,7 +259,10 @@ private fun AppRoot() {
                     // Saved as soon as it is read, so a puzzle is never lost by backing out.
                     entryId = history.save(state.photo, state.grid).id
                     entries = history.list()
-                    puzzle = state.copy(hintStyle = settings.hintStyle)
+                    puzzle = state.copy(
+                        hintStyle = settings.hintStyle,
+                        routeStyle = settings.routeStyle,
+                    )
                     go(Screen.PUZZLE)
                 },
                 onMenu = ::openDrawer,

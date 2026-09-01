@@ -8,6 +8,37 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE TUTOR KEEPS YOUR PLACE, THE HINT SHOWS HOW FAR IT WILL GO, AND THERE IS A
+choice about how the route is built.
+
+WHERE YOU LEFT OFF. Closing the tutor forgot the position, so a glance at the
+grid halfway through a sixty-step route cost the whole route. Closing is not
+finishing.
+
+A CHOICE ABOUT FORCING CHAINS, in Settings, because it is a real trade and not a
+better and a worse. The first chain the app finds is the one on the square with
+the fewest candidates, which says nothing about how long the argument from it
+runs - on the hardest puzzle tested, that came out as a fifteen-square trail.
+Weighing twenty and walking the shortest keeps every chain to about ten squares
+instead, but weaker eliminations mean more of them: 110 steps against 87. Short
+chains is the default. Neither is wrong; they are different kinds of work.
+
+THE HINT BUTTON FILLS IN QUARTERS. A hint has four treads - the box, the
+technique, the square, the digit - and the button gave no sign of that, so a
+press that revealed the next one looked like a press that had done nothing.
+
+The "how" that opens a technique's how-to now sits at the end of the sentence it
+belongs to rather than on a line of its own. The digit that cannot be placed is
+drawn as an outline, so the photograph underneath still shows through what it is
+being compared with, and the dead end is numbered like every other square on the
+trail. The panel can no longer be left half open. And the route picker says how
+long the route is even while you are browsing one technique - it was showing the
+length of whatever was being browsed.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE TUTOR OPENS ON STEP 0 - ITSELF - AND THE PANEL NOW JUST FOLLOWS YOUR FINGER.
 STEP 0 IS THE INTRODUCTION. What the route ahead asks of you used to share a
 screen with the first step, so opening the tutor gave you a paragraph about the
