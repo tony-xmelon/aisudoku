@@ -131,9 +131,12 @@ object ForcingChain : Technique {
         chain.missing != null ->
             "Suppose this square were $digit. Follow the arrows: each square is forced by " +
                 "the one it points from - either that digit is the only one it can still " +
-                "hold, or that square is the only place the digit can still go. The " +
-                "${chain.deadEndUnit ?: "unit"} in red is then left with nowhere at all to " +
-                "put ${chain.missing}, which cannot happen - so it is not $digit."
+                "hold, or that square is the only place the digit can still go.\n\nThat " +
+                "leaves the ${chain.deadEndUnit ?: "unit"} in red with nowhere to put " +
+                "${chain.missing}. The ${chain.missing}s marked in it are the places it " +
+                "could have gone, and each is a square one of the arrows has just taken. A " +
+                "${chain.deadEndUnit ?: "unit"} with nowhere for a digit cannot happen - so " +
+                "it is not $digit."
 
         else ->
             "Suppose this square were $digit. Follow the arrows: each square is forced by " +
@@ -207,6 +210,7 @@ object ForcingChain : Technique {
                         0 -> return chain(
                             forced, cause, order, from,
                             roots(unit, other, start, struck), unit.toSet(), other, null,
+                            couldHave(unit, other, start),
                         )
 
                         1 -> {
@@ -234,7 +238,9 @@ object ForcingChain : Technique {
                     // placement that took one of the digits this square started with.
                     val emptied = start.candidatesAt(peer).digits()
                         .mapNotNull { struck[peer * 10 + it] }
-                    return chain(forced, cause, order, from, emptied, setOf(peer), null, at)
+                    return chain(
+                        forced, cause, order, from, emptied, setOf(peer), null, at, setOf(peer),
+                    )
                 }
 
                 // Two candidates before, one after: this square is forced too, by `at`.
@@ -256,6 +262,7 @@ object ForcingChain : Technique {
                         0 -> return chain(
                             forced, cause, order, from,
                             roots(unit, value, start, struck), unit.toSet(), value, null,
+                            couldHave(unit, value, start),
                         )
 
                         1 -> {
@@ -273,6 +280,10 @@ object ForcingChain : Technique {
         }
         return null
     }
+
+    /** The squares of [unit] that could have held [digit] before the chain touched it. */
+    private fun couldHave(unit: List<Int>, digit: Int, start: SolverState): Set<Int> =
+        unit.filter { digit in start.candidatesAt(it) }.toSet()
 
     /** Which placements struck [digit] out of every square of [unit] that could hold it. */
     private fun roots(
@@ -299,6 +310,7 @@ object ForcingChain : Technique {
         deadEnd: Set<Int>,
         missing: Int?,
         deadEndFrom: Int?,
+        blocked: Set<Int>,
     ): Chain? {
         val needed = mutableSetOf(from)
         val stack = ArrayDeque(roots)
@@ -313,8 +325,18 @@ object ForcingChain : Technique {
             .sortedBy { order[it] ?: 0 }
             .mapNotNull { i -> forced[i]?.let { ChainLink(i, it, cause[i]) } }
 
+        // A square already on the trail shows the digit it was forced to, which is its own
+        // account of why it is not the missing one. Marking it again says nothing new.
+        val onTrail = links.mapTo(mutableSetOf()) { it.index }
+
         return if (links.isEmpty()) null
-        else Chain(links, deadEnd, missing, deadEndFrom?.takeIf { it in needed })
+        else Chain(
+            links,
+            deadEnd,
+            missing,
+            deadEndFrom?.takeIf { it in needed },
+            blocked - onTrail,
+        )
     }
 
     /**

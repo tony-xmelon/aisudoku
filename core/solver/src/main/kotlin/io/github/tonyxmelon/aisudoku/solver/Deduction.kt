@@ -28,6 +28,14 @@ data class Chain(
     val missing: Int? = null,
     /** Which square emptied the dead end, when the dead end is a single square. */
     val deadEndFrom: Int? = null,
+    /**
+     * The squares in the dead end that could have held [missing] before the chain ran.
+     *
+     * Without these the picture makes a claim it does not show: a whole unit in red and a
+     * sentence saying the digit has nowhere left to go, with nothing to say where it could
+     * have gone or what took each of those places away. These are the squares to mark.
+     */
+    val blocked: Set<Int> = emptySet(),
 ) {
     /** What kind of unit the dead end is, when it is a unit. */
     val deadEndUnit: String?

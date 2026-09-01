@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -169,19 +170,20 @@ private fun DrawScope.drawChain(chain: Chain, squares: Squares, measurer: TextMe
         drawCorner(measurer, squares, link.index, "${step + 1}")
     }
 
-    // Which digit has nowhere left to go, struck through. The red band says where the
-    // trouble is; without this it does not say what the trouble is, and the sentence
-    // underneath was carrying that on its own.
+    // Every square in the dead end the missing digit could have gone in, marked with it.
+    //
+    // One mark was not enough. A whole unit in red and a sentence saying the digit has
+    // nowhere left to go is a claim, not a picture: it does not say where the digit could
+    // have gone, and so it cannot show that each of those places has just been taken by
+    // one of the arrows. Reported from the phone as "why can't 5 be in r1c2?", which the
+    // grid had no answer to.
     val ending = chain.missing?.let { missing ->
-        val cells = chain.deadEnd.sorted()
-        val where = cells.filterNot { it in on }.minByOrNull {
-            kotlin.math.abs(cells.indexOf(it) - cells.size / 2)
-        }
-        where?.also { drawStruck(measurer, squares, it, missing) }
-    } ?: wall
+        for (cell in chain.blocked) drawGhost(measurer, squares, cell, missing)
+        chain.blocked
+    } ?: setOfNotNull(wall)
 
-    // The wall is the last thing that happens, so it carries the next number.
-    ending?.let { drawCorner(measurer, squares, it, "${chain.links.size + 1}") }
+    // The wall is the last thing that happens, so it all carries the next number.
+    for (cell in ending) drawCorner(measurer, squares, cell, "${chain.links.size + 1}")
 }
 
 /** A small number in the corner of a square, for the order of a trail. */
@@ -204,13 +206,15 @@ private fun DrawScope.drawCorner(
 }
 
 /**
- * A digit with a line through it: this one, here, is what cannot be placed.
+ * The digit that can no longer go here, in the colour of the wall it is part of.
  *
  * Outlined rather than solid, because it is drawn over a photograph of a square that
- * already has something written in it, and a solid glyph hid the very thing the reader
- * was checking it against.
+ * already has pencil marks in it, and a solid glyph hid the very thing the reader was
+ * checking it against. Not struck through either: it sits in a square already tinted red,
+ * inside a unit already tinted red, and a third mark saying the same thing only crowds
+ * the pencil marks underneath.
  */
-private fun DrawScope.drawStruck(
+private fun DrawScope.drawGhost(
     measurer: TextMeasurer,
     squares: Squares,
     index: Int,
@@ -233,15 +237,6 @@ private fun DrawScope.drawStruck(
             at.x + (cell.width - layout.size.width) / 2f,
             at.y + (cell.height - layout.size.height) / 2f,
         ),
-    )
-
-    val inset = squares.unit * 0.24f
-    drawLine(
-        Overlays.incorrect,
-        at + Offset(inset, cell.height - inset),
-        at + Offset(cell.width - inset, inset),
-        strokeWidth = squares.unit * 0.06f,
-        cap = StrokeCap.Round,
     )
 }
 
@@ -608,7 +603,9 @@ private fun BoxScope.TutorPanel(
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            // Tight at the top, because everything up there is a label or a control and
+            // the room it takes comes straight out of the explanation underneath.
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             // The grip: the handle and the title under it. Drag either way, or tap to
             // open and tap again to shut. It is the only part of the panel that is always
@@ -648,7 +645,7 @@ private fun BoxScope.TutorPanel(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Box(modifier = Modifier.padding(top = 8.dp)) { Handle() }
+                Box(modifier = Modifier.padding(top = 6.dp)) { Handle() }
 
                 // The name on the left where a title belongs, and the stepping centred,
                 // because it is the control your thumb goes to and the middle is where a
@@ -753,6 +750,7 @@ private fun BoxScope.TutorPanel(
                         },
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    Spacer(Modifier.height(2.dp))
                     Lesson(state) {
                         state.guidance?.howTo?.let { HowTo(asking) { asking = !asking } }
                     }
@@ -820,7 +818,7 @@ private fun ChapterStrip(chapters: List<Chapter>, at: Int, onJump: (Int) -> Unit
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.fillMaxWidth().height(24.dp),
+        modifier = Modifier.fillMaxWidth().height(18.dp),
     ) {
         for (chapter in chapters) {
             val colour = when {
@@ -838,7 +836,7 @@ private fun ChapterStrip(chapters: List<Chapter>, at: Int, onJump: (Int) -> Unit
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(10.dp)
+                        .height(8.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(colour)
                 )

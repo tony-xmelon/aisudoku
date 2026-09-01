@@ -1,29 +1,23 @@
-Ten more techniques, and the tutor's menu now lists only what is actually there.
+The forcing chain now shows where the missing digit could have gone.
 
-TWENTY-THREE INSTEAD OF THIRTEEN. Added: naked and hidden quads, jellyfish,
-skyscraper, two-string kite, W-wing, remote pairs, simple colouring, unique
-rectangle and the XY-chain. All of them are in Strategies with the rule and how
-to hunt for it, as the others are.
+"WHY CAN'T 5 BE IN r1c2?" A whole box in red and a sentence saying 5 has nowhere
+left to go is a claim, not a picture. It never said where 5 could have gone, so
+it could not show that every one of those places had just been taken by one of
+the arrows - and the one square that was marked looked like the only one that
+mattered.
 
-What they buy is shorter explanations, not more solvable puzzles - the forcing
-chain could already eliminate anything they can, given enough length. A named
-four-square pattern in place of an eleven-square trail is the whole point. On the
-hardest puzzle in the test set the new ones take eleven steps that were chains
-before; on ordinary puzzles they take many more, because the patterns they
-recognise are the ones ordinary puzzles are built from.
+Every square in the dead end that could have held the digit is now marked with
+it, and they all carry the number of the final step. Each of them is a square one
+of the arrows has just taken, which is the part of the argument that was missing
+from the grid. The explanation says so too.
 
-ONLY WHAT IS THERE. The tutor's menu listed every technique with "none" beside
-most of them - two dozen things you could not choose, with the handful you could
-lost among them. It now lists what applies to the puzzle in front of you and
-nothing else. The full list, including everything that does not apply, is under
-Strategies, which is the page for reading.
+The marked digit is no longer struck through. It sits in a square tinted red,
+inside a unit tinted red; a third mark saying the same thing only crowded the
+pencil marks underneath. A dead end that is a single square keeps its cross,
+because there the point is that no digit at all fits, and there is nothing to
+write.
 
-Every one of these is audited: the soundness sweep checks each technique against
-the known answer at every position the solver passes through, and now runs over
-4,400 deductions. The five whose patterns neither test puzzle happens to contain
-have hand-built positions of their own, because a technique that never fires is
-untested code claiming to be a lesson.
-
-The list is still not all of sudoku, and never will be.
+And the tutor's top lines are closer together, because the room they take comes
+straight out of the explanation below them.
 
 The full history is in docs/changelog.md.

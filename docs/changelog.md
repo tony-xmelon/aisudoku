@@ -8,6 +8,31 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE FORCING CHAIN NOW SHOWS WHERE THE MISSING DIGIT COULD HAVE GONE.
+"WHY CAN'T 5 BE IN r1c2?" A whole box in red and a sentence saying 5 has nowhere
+left to go is a claim, not a picture. It never said where 5 could have gone, so
+it could not show that every one of those places had just been taken by one of
+the arrows - and the one square that was marked looked like the only one that
+mattered.
+
+Every square in the dead end that could have held the digit is now marked with
+it, and they all carry the number of the final step. Each of them is a square one
+of the arrows has just taken, which is the part of the argument that was missing
+from the grid. The explanation says so too.
+
+The marked digit is no longer struck through. It sits in a square tinted red,
+inside a unit tinted red; a third mark saying the same thing only crowded the
+pencil marks underneath. A dead end that is a single square keeps its cross,
+because there the point is that no digit at all fits, and there is nothing to
+write.
+
+And the tutor's top lines are closer together, because the room they take comes
+straight out of the explanation below them.
+
+The full history is in docs/changelog.md.
+
+---
+
 TEN MORE TECHNIQUES, AND THE TUTOR'S MENU NOW LISTS ONLY WHAT IS ACTUALLY THERE.
 TWENTY-THREE INSTEAD OF THIRTEEN. Added: naked and hidden quads, jellyfish,
 skyscraper, two-string kite, W-wing, remote pairs, simple colouring, unique
