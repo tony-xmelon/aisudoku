@@ -1,23 +1,21 @@
-The forcing chain now shows where the missing digit could have gone.
+The camera now says what is wrong with the puzzle in front of it.
 
-"WHY CAN'T 5 BE IN r1c2?" A whole box in red and a sentence saying 5 has nowhere
-left to go is a claim, not a picture. It never said where 5 could have gone, so
-it could not show that every one of those places had just been taken by one of
-the arrows - and the one square that was marked looked like the only one that
-mattered.
+"Point the camera at a sudoku puzzle" was the answer to every failure, including
+a puzzle filling the frame - which is advice to do the thing you are already
+doing. It was also the only answer possible, because the checks for light and
+glare sat on the far side of the branch: they ran once a grid had been found, so
+in the one case where the picture was too dark or too shiny to find a grid at
+all, nothing checked for either.
 
-Every square in the dead end that could have held the digit is now marked with
-it, and they all carry the number of the final step. Each of them is a square one
-of the arrows has just taken, which is the part of the argument that was missing
-from the grid. The explanation says so too.
+Those now run first, on the frame as it is. Beyond them the reader says what it
+honestly knows: whether it saw anything square-cornered in the shot at all, and
+how close the best of them came to reading as nine rows and nine columns. So a
+frame with nothing in it still asks for a puzzle, a dark one says it is dark, a
+shiny one says to tilt the page, and a square that is not a grid says that - and
+says to fill the frame with the grid alone, straight on and flat.
 
-The marked digit is no longer struck through. It sits in a square tinted red,
-inside a unit tinted red; a third mark saying the same thing only crowded the
-pencil marks underneath. A dead end that is a single square keeps its cross,
-because there the point is that no digit at all fits, and there is nothing to
-write.
-
-And the tutor's top lines are closer together, because the room they take comes
-straight out of the explanation below them.
+Not a guess about focus: nothing in the app measures blur against a calibrated
+threshold, and a message that fires when it should not is worse than one line
+fewer.
 
 The full history is in docs/changelog.md.

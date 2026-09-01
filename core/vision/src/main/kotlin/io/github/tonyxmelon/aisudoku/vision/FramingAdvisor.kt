@@ -25,6 +25,20 @@ class FramingAdvisor(
     private var lastQuad: Quad? = null
     private var stableFrames = 0
 
+    private companion object {
+        /** Mean luma below which the lines are lost in the dark, on a 0..255 scale. */
+        const val DARK = 60.0
+
+        /**
+         * Blown-out fraction of a whole preview frame that counts as glare.
+         *
+         * Higher than the 0.04 used once a grid is found, because that measures the grid
+         * alone and this measures everything in shot - a bright window behind the page is
+         * not glare on the page.
+         */
+        const val GLARE = 0.08
+    }
+
     /** Resets the stability counter, e.g. after a capture. */
     fun reset() {
         lastQuad = null
@@ -35,7 +49,7 @@ class FramingAdvisor(
         val located = GridLocator.locate(frame)
         if (located !is GridLocation.Found) {
             reset()
-            return Guidance("Point the camera at a sudoku puzzle", false)
+            return Guidance(whyNoGrid(frame, located as? GridLocation.NoGrid), false)
         }
 
         val quad = located.quad
@@ -71,6 +85,37 @@ class FramingAdvisor(
             Guidance("Hold still...", true)
         } else {
             Guidance("Hold still...", false)
+        }
+    }
+
+    /**
+     * What to say when no grid was found, which is more than "point the camera at one".
+     *
+     * That line was the only answer to every failure, including a puzzle filling the
+     * frame - which tells the user to do the thing they are already doing. The checks for
+     * light and glare sat on the other side of the branch and so never ran in the one case
+     * where the picture was too dark or too shiny to find a grid in at all.
+     *
+     * What is left is the honest distinction the locator can actually draw: whether it saw
+     * anything square-cornered in the frame, and how close the best of them came to
+     * reading as nine rows and nine columns.
+     */
+    private fun whyNoGrid(frame: GrayImage, missed: GridLocation.NoGrid?): String {
+        val quality = ImageQuality.of(frame)
+        return when {
+            quality.meanLuma < DARK -> "Too dark to make out the grid lines"
+
+            quality.clippedWhiteFraction > GLARE ->
+                "Glare is washing the lines out - tilt the page away from the light"
+
+            missed == null || missed.candidatesConsidered == 0 ->
+                "Point the camera at a sudoku puzzle"
+
+            missed.bestScore >= GridLocator.MIN_GRID_SCORE * 0.6 ->
+                "Almost - hold the page flat and square to the camera"
+
+            else -> "That is not reading as a nine by nine grid. Try to fill the frame " +
+                "with the grid alone, straight on and flat"
         }
     }
 

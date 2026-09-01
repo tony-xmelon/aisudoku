@@ -8,6 +8,29 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE CAMERA NOW SAYS WHAT IS WRONG WITH THE PUZZLE IN FRONT OF IT.
+"Point the camera at a sudoku puzzle" was the answer to every failure, including
+a puzzle filling the frame - which is advice to do the thing you are already
+doing. It was also the only answer possible, because the checks for light and
+glare sat on the far side of the branch: they ran once a grid had been found, so
+in the one case where the picture was too dark or too shiny to find a grid at
+all, nothing checked for either.
+
+Those now run first, on the frame as it is. Beyond them the reader says what it
+honestly knows: whether it saw anything square-cornered in the shot at all, and
+how close the best of them came to reading as nine rows and nine columns. So a
+frame with nothing in it still asks for a puzzle, a dark one says it is dark, a
+shiny one says to tilt the page, and a square that is not a grid says that - and
+says to fill the frame with the grid alone, straight on and flat.
+
+Not a guess about focus: nothing in the app measures blur against a calibrated
+threshold, and a message that fires when it should not is worse than one line
+fewer.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE FORCING CHAIN NOW SHOWS WHERE THE MISSING DIGIT COULD HAVE GONE.
 "WHY CAN'T 5 BE IN r1c2?" A whole box in red and a sentence saying 5 has nowhere
 left to go is a claim, not a picture. It never said where 5 could have gone, so
