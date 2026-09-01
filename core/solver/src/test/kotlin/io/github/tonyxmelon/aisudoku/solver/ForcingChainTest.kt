@@ -4,6 +4,7 @@ import io.github.tonyxmelon.aisudoku.model.Coordinates
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -90,6 +91,40 @@ class ForcingChainTest {
             }
         }
         assertTrue(checked > 0, "no chain carried a trail at all")
+    }
+
+    /**
+     * Reported from the phone: "not all arrows can be traced back from the original cell".
+     * Every square must hang off the assumption, or an arrow is drawn from nowhere.
+     */
+    @Test
+    fun `every arrow leads back to the assumption`() {
+        val found = trails()
+        assertTrue(found.isNotEmpty(), "this puzzle no longer exercises forcing chains")
+
+        for ((_, step) in found) {
+            val chain = assertNotNull(step.chain)
+            val root = chain.links.first()
+            assertNull(root.from, "the assumption is forced by nothing")
+
+            val parent = chain.links.associate { it.index to it.from }
+            for (link in chain.links.drop(1)) {
+                val fromCell = assertNotNull(link.from, "square ${link.index} has no arrow")
+                assertTrue(
+                    fromCell in parent,
+                    "square ${link.index} points from ${link.from}, which is not on the trail",
+                )
+
+                // And walking those arrows backwards has to end at the assumption rather
+                // than wandering off or going round.
+                var at: Int? = link.index
+                var steps = 0
+                while (at != null && at != root.index && steps++ <= chain.links.size) {
+                    at = parent[at]
+                }
+                assertEquals(root.index, at, "square ${link.index} does not lead back")
+            }
+        }
     }
 
     @Test

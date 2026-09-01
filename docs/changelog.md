@@ -8,6 +8,34 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE CHAIN'S TRAIL IS NUMBERED, ITS DEAD END NAMES THE DIGIT, AND THE TUTOR NO
+longer changes what it says as you let go of it.
+
+NUMBERED, BECAUSE ARROWS ALONE CANNOT BE FOLLOWED. Reported from the phone: not
+every arrow could be traced back to the square the chain assumes. They all can -
+there is now a test that walks every arrow backwards and fails if any of them
+wanders off or goes round in a circle - but a dozen crossing arrows cannot be
+followed by eye, which amounts to the same thing. Each square on the trail now
+carries its place in the order, and every square's number is larger than its
+parent's, so counting up always walks away from the assumption.
+
+WHAT CANNOT BE PLACED, AND WHERE. The red band showed where the trouble was
+without saying what it was; the sentence underneath was carrying that on its
+own. The digit with nowhere left to go is now drawn in the band, in red, with a
+line through it.
+
+NOTHING CHANGES WHEN YOU LET GO. The panel showed the route's opening remark
+while being dragged and the first step once released, so the words changed under
+you exactly as the movement ended - and flickered doing it. The tutor now opens
+on the first millimetre of the drag rather than at the end of it, so what you
+pull into view is what stays there, grid and all. The opening remark also comes
+before the first step now instead of after it, which is the order you read them
+in.
+
+The full history is in docs/changelog.md.
+
+---
+
 EVERY FORCING CHAIN ON THE HARDEST PUZZLE NOW COMES WITH ITS TRAIL DRAWN.
 WHY THAT DIGIT IS OUT. The chain that could not be drawn fell back to
 highlighting one square and asserting that following it through the grid led

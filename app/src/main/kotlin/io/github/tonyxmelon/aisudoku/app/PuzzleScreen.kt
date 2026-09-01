@@ -154,6 +154,66 @@ private fun DrawScope.drawChain(chain: Chain, squares: Squares, measurer: TextMe
     }
 
     for (link in chain.links) drawReadDigit(measurer, squares, link.index, link.digit)
+
+    // Numbered, because arrows alone cannot be followed once a dozen of them cross. The
+    // trail is a tree, so the numbers are the order things were forced rather than a
+    // single line - but every square's number is larger than its parent's, so counting up
+    // always walks away from the assumption and never back towards it.
+    for ((step, link) in chain.links.withIndex()) {
+        drawCorner(measurer, squares, link.index, "${step + 1}")
+    }
+
+    // Which digit has nowhere left to go, struck through. The red band says where the
+    // trouble is; without this it does not say what the trouble is, and the sentence
+    // underneath was carrying that on its own.
+    chain.missing?.let { missing ->
+        val on = chain.links.mapTo(mutableSetOf()) { it.index }
+        val cells = chain.deadEnd.sorted()
+        val where = cells.filterNot { it in on }.minByOrNull {
+            kotlin.math.abs(cells.indexOf(it) - cells.size / 2)
+        } ?: return
+        drawStruck(measurer, squares, where, missing)
+    }
+}
+
+/** A small number in the corner of a square, for the order of a trail. */
+private fun DrawScope.drawCorner(
+    measurer: TextMeasurer,
+    squares: Squares,
+    index: Int,
+    text: String,
+) {
+    val layout = measurer.measure(
+        text,
+        style = TextStyle(
+            color = Color.White,
+            fontSize = (squares.unit * 0.26f / 2.2f).sp,
+            fontWeight = FontWeight.Bold,
+        ),
+    )
+    val at = squares.topLeft(index)
+    drawText(layout, topLeft = at + Offset(squares.unit * 0.07f, squares.unit * 0.04f))
+}
+
+/** A digit with a line through it: this one, here, is what cannot be placed. */
+private fun DrawScope.drawStruck(
+    measurer: TextMeasurer,
+    squares: Squares,
+    index: Int,
+    digit: Int,
+) {
+    drawCentred(measurer, squares, index, digit.toString(), Overlays.incorrect)
+
+    val at = squares.topLeft(index)
+    val cell = squares.size(index)
+    val inset = squares.unit * 0.24f
+    drawLine(
+        Overlays.incorrect,
+        at + Offset(inset, cell.height - inset),
+        at + Offset(cell.width - inset, inset),
+        strokeWidth = squares.unit * 0.06f,
+        cap = StrokeCap.Round,
+    )
 }
 
 /** One arrow, stopping short at both ends so it does not run over the digits it joins. */
@@ -395,6 +455,20 @@ private fun Handle() {
  */
 @Composable
 private fun ColumnScope.Lesson(state: PuzzleState, showOutlook: Boolean) {
+    // The tutor's opening remark, on the first step of its own route and nowhere else. It
+    // introduces the walk, so it comes before the first step of it rather than after -
+    // and it was being reprinted under every step, where a paragraph about the route as a
+    // whole pushed the reasoning for the step in front of you off the bottom.
+    if (showOutlook && state.tutorTechnique == null && state.lessonStep == 0) {
+        state.outlook?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
     state.guidance?.let { guidance ->
         Text(guidance.body, style = MaterialTheme.typography.bodyMedium)
 
@@ -403,19 +477,6 @@ private fun ColumnScope.Lesson(state: PuzzleState, showOutlook: Boolean) {
             Text(
                 it,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-
-    // The tutor's opening remark, and only that: on the first step of its own route. It
-    // was being reprinted under every step, where a paragraph about the route as a whole
-    // pushed the reasoning for the step in front of you off the bottom.
-    if (showOutlook && state.tutorTechnique == null && state.lessonStep == 0) {
-        state.outlook?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -494,6 +555,13 @@ private fun BoxScope.TutorPanel(
                     .fillMaxWidth()
                     .draggable(
                         orientation = Orientation.Vertical,
+                        // Opened the moment the drag begins, not when it is let go. The
+                        // panel used to show one thing while being pulled and another once
+                        // released - the route's opening remark, then the first step - so
+                        // the words changed under the reader exactly as the movement ended.
+                        // Being open from the first millimetre means nothing changes at
+                        // all: what is dragged into view is what stays.
+                        onDragStarted = { if (!open) onChange(state.tutor()) },
                         state = rememberDraggableState { delta ->
                             dragged = ((dragged ?: heightPx) - delta).coerceIn(peekPx, fullPx)
                         },
