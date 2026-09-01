@@ -1,28 +1,29 @@
-The tutor keeps your place, the hint shows how far it will go, and there is a
-choice about how the route is built.
+Ten more techniques, and the tutor's menu now lists only what is actually there.
 
-WHERE YOU LEFT OFF. Closing the tutor forgot the position, so a glance at the
-grid halfway through a sixty-step route cost the whole route. Closing is not
-finishing.
+TWENTY-THREE INSTEAD OF THIRTEEN. Added: naked and hidden quads, jellyfish,
+skyscraper, two-string kite, W-wing, remote pairs, simple colouring, unique
+rectangle and the XY-chain. All of them are in Strategies with the rule and how
+to hunt for it, as the others are.
 
-A CHOICE ABOUT FORCING CHAINS, in Settings, because it is a real trade and not a
-better and a worse. The first chain the app finds is the one on the square with
-the fewest candidates, which says nothing about how long the argument from it
-runs - on the hardest puzzle tested, that came out as a fifteen-square trail.
-Weighing twenty and walking the shortest keeps every chain to about ten squares
-instead, but weaker eliminations mean more of them: 110 steps against 87. Short
-chains is the default. Neither is wrong; they are different kinds of work.
+What they buy is shorter explanations, not more solvable puzzles - the forcing
+chain could already eliminate anything they can, given enough length. A named
+four-square pattern in place of an eleven-square trail is the whole point. On the
+hardest puzzle in the test set the new ones take eleven steps that were chains
+before; on ordinary puzzles they take many more, because the patterns they
+recognise are the ones ordinary puzzles are built from.
 
-THE HINT BUTTON FILLS IN QUARTERS. A hint has four treads - the box, the
-technique, the square, the digit - and the button gave no sign of that, so a
-press that revealed the next one looked like a press that had done nothing.
+ONLY WHAT IS THERE. The tutor's menu listed every technique with "none" beside
+most of them - two dozen things you could not choose, with the handful you could
+lost among them. It now lists what applies to the puzzle in front of you and
+nothing else. The full list, including everything that does not apply, is under
+Strategies, which is the page for reading.
 
-The "how" that opens a technique's how-to now sits at the end of the sentence it
-belongs to rather than on a line of its own. The digit that cannot be placed is
-drawn as an outline, so the photograph underneath still shows through what it is
-being compared with, and the dead end is numbered like every other square on the
-trail. The panel can no longer be left half open. And the route picker says how
-long the route is even while you are browsing one technique - it was showing the
-length of whatever was being browsed.
+Every one of these is audited: the soundness sweep checks each technique against
+the known answer at every position the solver passes through, and now runs over
+4,400 deductions. The five whose patterns neither test puzzle happens to contain
+have hand-built positions of their own, because a technique that never fires is
+untested code claiming to be a lesson.
+
+The list is still not all of sudoku, and never will be.
 
 The full history is in docs/changelog.md.

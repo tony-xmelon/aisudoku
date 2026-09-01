@@ -15,7 +15,7 @@ import io.github.tonyxmelon.aisudoku.model.Coordinates
  */
 class NakedSubset(private val size: Int) : Technique {
 
-    override val name = if (size == 2) "Naked pair" else "Naked triple"
+    override val name = subsetName("Naked", size)
 
     override val difficulty = if (size == 2) Difficulty.MEDIUM else Difficulty.HARD
 
@@ -74,7 +74,7 @@ class NakedSubset(private val size: Int) : Technique {
  */
 class HiddenSubset(private val size: Int) : Technique {
 
-    override val name = if (size == 2) "Hidden pair" else "Hidden triple"
+    override val name = subsetName("Hidden", size)
 
     override val difficulty = if (size == 2) Difficulty.MEDIUM else Difficulty.HARD
 
@@ -128,8 +128,17 @@ class HiddenSubset(private val size: Int) : Technique {
 
 val NakedPair = NakedSubset(2)
 val NakedTriple = NakedSubset(3)
+val NakedQuad = NakedSubset(4)
 val HiddenPair = HiddenSubset(2)
 val HiddenTriple = HiddenSubset(3)
+val HiddenQuad = HiddenSubset(4)
+
+/** Pair, triple, quad. Nothing about a subset changes with its size except its name. */
+private fun subsetName(kind: String, size: Int): String = when (size) {
+    2 -> "$kind pair"
+    3 -> "$kind triple"
+    else -> "$kind quad"
+}
 
 /** Rows come first in [Coordinates.units], then columns, then boxes. */
 internal fun unitName(unit: List<Int>): String = when {

@@ -989,16 +989,26 @@ private fun TutorPicker(
                     onChange(state.tutor())
                 },
             )
-            for (technique in Techniques.all) {
-                val found = counts[technique.name] ?: 0
+            // Only what is actually there. Listing every technique with "none" beside it
+            // was a menu of two dozen things you could not choose, and the handful you
+            // could were lost in it. What the app knows belongs under Strategies, which is
+            // for reading; this menu is for going somewhere.
+            val available = Techniques.all.filter { (counts[it.name] ?: 0) > 0 }
+            for (technique in available) {
                 DropdownMenuItem(
-                    enabled = found > 0,
                     text = { Text(technique.name) },
-                    trailingIcon = { Text(if (found > 0) "$found" else "none") },
+                    trailingIcon = { Text("${counts[technique.name]}") },
                     onClick = {
                         open = false
                         onChange(state.tutor(technique.name))
                     },
+                )
+            }
+            if (available.isEmpty()) {
+                DropdownMenuItem(
+                    enabled = false,
+                    text = { Text("No technique applies here") },
+                    onClick = {},
                 )
             }
         }

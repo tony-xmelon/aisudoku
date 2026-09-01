@@ -9,13 +9,17 @@ import io.github.tonyxmelon.aisudoku.model.Coordinates
  * up the digit in all N columns between them - so it cannot appear in those columns
  * anywhere else. The same holds with rows and columns swapped.
  *
- * N = 2 is an X-wing, N = 3 a swordfish. Nothing changes but the size, which is worth
- * saying out loud: people learn them as two separate tricks and then cannot see the
- * second one.
+ * N = 2 is an X-wing, N = 3 a swordfish, N = 4 a jellyfish. Nothing changes but the size,
+ * which is worth saying out loud: people learn them as three separate tricks and then
+ * cannot see the second and third.
  */
 class Fish(private val size: Int) : Technique {
 
-    override val name = if (size == 2) "X-wing" else "Swordfish"
+    override val name = when (size) {
+        2 -> "X-wing"
+        3 -> "Swordfish"
+        else -> "Jellyfish"
+    }
 
     override val difficulty = if (size == 2) Difficulty.HARD else Difficulty.VERY_HARD
 
@@ -83,3 +87,4 @@ class Fish(private val size: Int) : Technique {
 
 val XWing = Fish(2)
 val Swordfish = Fish(3)
+val Jellyfish = Fish(4)

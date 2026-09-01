@@ -131,6 +131,9 @@ class WalkthroughTest {
             assertTrue(technique.howTo.length > 150, "${technique.name} has no real how-to")
             assertEquals(technique, Techniques.byName(technique.name))
         }
-        assertNull(Techniques.byName("Jellyfish"), "an unknown technique must not resolve")
+        assertNull(
+            Techniques.byName("Hidden X-wing"),
+            "a name nobody has implemented must not resolve to something that sounds close",
+        )
     }
 }

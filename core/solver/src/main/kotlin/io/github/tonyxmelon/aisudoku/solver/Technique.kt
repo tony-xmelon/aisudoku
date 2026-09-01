@@ -56,6 +56,13 @@ enum class RouteStyle {
  *
  * Order matters twice over: the solver offers the simplest reasoning that works rather
  * than the cleverest, and the same order is the one worth learning them in.
+ *
+ * The list is not the whole of sudoku and never will be - people keep naming new patterns.
+ * What it does have to be is honest about that, which is why [ForcingChain] sits at the
+ * end: it recognises no pattern at all, applies whenever anything would, and is the reason
+ * the tutor can finish a puzzle whose next move has no name here. Everything above it
+ * exists to replace a chain with something shorter to follow, not to make more puzzles
+ * solvable.
  */
 val ALL_TECHNIQUES: List<Technique> = listOf(
     NakedSingle,
@@ -66,10 +73,20 @@ val ALL_TECHNIQUES: List<Technique> = listOf(
     BoxLineReduction,
     NakedTriple,
     HiddenTriple,
+    NakedQuad,
+    HiddenQuad,
     XWing,
+    Skyscraper,
+    TwoStringKite,
     YWing,
     XyzWing,
+    WWing,
     Swordfish,
+    Jellyfish,
+    RemotePairs,
+    SimpleColouring,
+    UniqueRectangle,
+    XyChain,
     ForcingChain,
 )
 

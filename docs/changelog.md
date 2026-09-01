@@ -8,6 +8,37 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+TEN MORE TECHNIQUES, AND THE TUTOR'S MENU NOW LISTS ONLY WHAT IS ACTUALLY THERE.
+TWENTY-THREE INSTEAD OF THIRTEEN. Added: naked and hidden quads, jellyfish,
+skyscraper, two-string kite, W-wing, remote pairs, simple colouring, unique
+rectangle and the XY-chain. All of them are in Strategies with the rule and how
+to hunt for it, as the others are.
+
+What they buy is shorter explanations, not more solvable puzzles - the forcing
+chain could already eliminate anything they can, given enough length. A named
+four-square pattern in place of an eleven-square trail is the whole point. On the
+hardest puzzle in the test set the new ones take eleven steps that were chains
+before; on ordinary puzzles they take many more, because the patterns they
+recognise are the ones ordinary puzzles are built from.
+
+ONLY WHAT IS THERE. The tutor's menu listed every technique with "none" beside
+most of them - two dozen things you could not choose, with the handful you could
+lost among them. It now lists what applies to the puzzle in front of you and
+nothing else. The full list, including everything that does not apply, is under
+Strategies, which is the page for reading.
+
+Every one of these is audited: the soundness sweep checks each technique against
+the known answer at every position the solver passes through, and now runs over
+4,400 deductions. The five whose patterns neither test puzzle happens to contain
+have hand-built positions of their own, because a technique that never fires is
+untested code claiming to be a lesson.
+
+The list is still not all of sudoku, and never will be.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE TUTOR KEEPS YOUR PLACE, THE HINT SHOWS HOW FAR IT WILL GO, AND THERE IS A
 choice about how the route is built.
 
