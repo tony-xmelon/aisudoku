@@ -1,5 +1,6 @@
 package io.github.tonyxmelon.aisudoku.app
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -50,9 +51,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +96,7 @@ import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.recognize.Ink
 import io.github.tonyxmelon.aisudoku.solver.Techniques
 import io.github.tonyxmelon.aisudoku.solver.Walkthrough
+import kotlinx.coroutines.launch
 
 /**
  * A forcing chain: the assumption, what it forces, and the wall it hits.
@@ -411,7 +415,7 @@ private fun Controls(
                 // The key names the technique, so the pane does not have to.
                 Legend(state.legend, evidenceLabel = state.evidenceLabel)
 
-                Lesson(state, showOutlook = false)
+                Lesson(state)
             }
         }
 
@@ -464,21 +468,7 @@ private fun Handle() {
  * actually does.
  */
 @Composable
-private fun ColumnScope.Lesson(state: PuzzleState, showOutlook: Boolean) {
-    // The tutor's opening remark, on the first step of its own route and nowhere else. It
-    // introduces the walk, so it comes before the first step of it rather than after -
-    // and it was being reprinted under every step, where a paragraph about the route as a
-    // whole pushed the reasoning for the step in front of you off the bottom.
-    if (showOutlook && state.tutorTechnique == null && state.lessonStep == 0) {
-        state.outlook?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-
+private fun ColumnScope.Lesson(state: PuzzleState) {
     state.guidance?.let { guidance ->
         Text(guidance.body, style = MaterialTheme.typography.bodyMedium)
 
@@ -517,14 +507,22 @@ private fun BoxScope.TutorPanel(
     val peekPx = with(density) { peek.toPx() }
     val fullPx = with(density) { full.toPx() }
     val open = state.overlay == OverlayMode.LESSON
+    val scope = rememberCoroutineScope()
 
-    // Null except while a finger is on it. The animation owns the height the rest of the
-    // time, so a step that changes the text cannot jog the panel.
-    var dragged by remember { mutableStateOf<Float?>(null) }
-    val settled by animateFloatAsState(if (open) fullPx else peekPx, label = "tutor height")
-    val heightPx = (dragged ?: settled).coerceIn(peekPx, fullPx)
+    // One value for the height, which the finger writes to directly and an animation
+    // settles afterwards. It used to be an animateFloatAsState racing a separate drag
+    // offset: opening began the animation, the animation finished while the finger was
+    // still down, and letting go handed control back to a value that had long since
+    // reached the top - so the panel jumped, and the whole opening played again.
+    val height = remember { Animatable(peekPx) }
+    var dragging by remember { mutableStateOf(false) }
 
-    val last = route.steps.size - 1
+    LaunchedEffect(open, peekPx, fullPx) {
+        if (!dragging) height.animateTo(if (open) fullPx else peekPx)
+    }
+
+    val heightPx = height.value
+    val last = PuzzleLogic.lastStep(route)
     val at = state.lessonStep.coerceIn(0, last)
     val stepAt = with(density) { 48.dp.toPx() }
 
@@ -565,26 +563,37 @@ private fun BoxScope.TutorPanel(
                     .fillMaxWidth()
                     .draggable(
                         orientation = Orientation.Vertical,
-                        // Opened the moment the drag begins, not when it is let go. The
-                        // panel used to show one thing while being pulled and another once
-                        // released - the route's opening remark, then the first step - so
-                        // the words changed under the reader exactly as the movement ended.
-                        // Being open from the first millimetre means nothing changes at
-                        // all: what is dragged into view is what stays.
-                        onDragStarted = { if (!open) onChange(state.tutor()) },
+                        // Opened the moment the drag begins, not when it is let go, so that
+                        // what is dragged into view is what stays there. Waiting until the
+                        // release meant the panel showed nothing while being pulled and its
+                        // first page once let go, which changed under the reader exactly as
+                        // the movement ended.
+                        onDragStarted = {
+                            dragging = true
+                            if (!open) onChange(state.tutor())
+                        },
                         state = rememberDraggableState { delta ->
-                            dragged = ((dragged ?: heightPx) - delta).coerceIn(peekPx, fullPx)
+                            scope.launch {
+                                height.snapTo((height.value - delta).coerceIn(peekPx, fullPx))
+                            }
                         },
                         onDragStopped = { velocity ->
-                            val height = dragged ?: heightPx
                             val wanted = when {
                                 velocity < -600f -> true
                                 velocity > 600f -> false
-                                else -> height > (peekPx + fullPx) / 2f
+                                else -> height.value > (peekPx + fullPx) / 2f
                             }
-                            dragged = null
+                            dragging = false
+                            // Only one of these animates. Changing the state lets the
+                            // effect above carry the panel the rest of the way; if the
+                            // state is already right, nothing else will, so it settles here.
                             if (wanted != open) {
                                 onChange(if (wanted) state.tutor() else state.close())
+                            } else {
+                                height.animateTo(
+                                    if (wanted) fullPx else peekPx,
+                                    initialVelocity = -velocity,
+                                )
                             }
                         },
                     )
@@ -619,7 +628,7 @@ private fun BoxScope.TutorPanel(
                                 )
                             }
                             Text(
-                                "${at + 1} / ${route.steps.size}",
+                                "$at / ${route.steps.size}",
                                 style = MaterialTheme.typography.labelLarge,
                                 maxLines = 1,
                             )
@@ -649,10 +658,12 @@ private fun BoxScope.TutorPanel(
                         modifier = Modifier.weight(1f),
                         evidenceLabel = state.evidenceLabel,
                     )
-                    ChapterCount(state.chapters, at)
+                    ChapterCount(state.chapters, at - 1)
                 }
 
-                ChapterStrip(state.chapters, at) { onChange(state.stepTo(it)) }
+                // Minus one, because the strip is a picture of the route and the route
+                // starts at step one; step zero is the tutor talking about it.
+                ChapterStrip(state.chapters, at - 1) { onChange(state.stepTo(it + 1)) }
 
                 // Sideways for the next step, so the common move needs no button at all.
                 Column(
@@ -695,7 +706,7 @@ private fun BoxScope.TutorPanel(
                         },
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Lesson(state, showOutlook = true)
+                    Lesson(state)
 
                     state.guidance?.howTo?.let {
                         HowTo(it, asking) { asking = !asking }

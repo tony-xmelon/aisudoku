@@ -88,7 +88,9 @@ data class PuzzleState(
     val progress: String by lazy { PuzzleLogic.progress(grid) }
 
     val guidance: Guidance? by lazy {
-        PuzzleLogic.guidance(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep)
+        PuzzleLogic.guidance(
+            grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep, tutorTechnique,
+        )
     }
 
     val legend: List<LegendKey>
@@ -111,9 +113,6 @@ data class PuzzleState(
         if (chosen != null) TechniqueSolver.findings(grid, chosen)
         else TechniqueSolver.walkthrough(grid)
     }
-
-    /** What the route ahead asks of you, said before you set off. */
-    val outlook: String? by lazy { PuzzleLogic.outlook(walkthrough) }
 
     /** The route grouped into runs of one technique, for the tutor's progress line. */
     val chapters: List<Chapter> by lazy { PuzzleLogic.chapters(walkthrough) }
@@ -177,11 +176,16 @@ data class PuzzleState(
         selectedCell = null,
     )
 
-    /** Moving through the walkthrough. Clamped, so the ends are simply inert. */
-    fun stepTo(step: Int): PuzzleState {
-        val last = (walkthrough?.steps?.size ?: 1) - 1
-        return copy(lessonStep = step.coerceIn(0, maxOf(0, last)), selectedCell = null)
-    }
+    /**
+     * Moving through the walkthrough. Clamped, so the ends are simply inert.
+     *
+     * Zero is the introduction and the route's own steps run from one, so the last
+     * position is the number of steps rather than one less than it.
+     */
+    fun stepTo(step: Int): PuzzleState = copy(
+        lessonStep = step.coerceIn(0, PuzzleLogic.lastStep(walkthrough)),
+        selectedCell = null,
+    )
 
     fun withCell(index: Int, digit: Int?, source: CellSource): PuzzleState {
         val cell = when {

@@ -8,6 +8,27 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE TUTOR OPENS ON STEP 0 - ITSELF - AND THE PANEL NOW JUST FOLLOWS YOUR FINGER.
+STEP 0 IS THE INTRODUCTION. What the route ahead asks of you used to share a
+screen with the first step, so opening the tutor gave you a paragraph about the
+whole puzzle and a paragraph about one square at once, and dragging the panel up
+changed which you were reading halfway through the movement. It is a position of
+its own now: 0 of 60, drawing nothing on the grid, with the route running from 1.
+Browsing a single technique gets its own opening too - what the rule is, and how
+many places it applies from here.
+
+THE PANEL FOLLOWS THE FINGER. There were two things fighting over its height: an
+animation that started when the tutor opened, and a separate offset the drag
+wrote to. Opening began the animation, the animation reached the top while the
+finger was still down, and letting go handed control back to a value that had
+long since arrived - so the panel jumped, and the whole opening played again.
+There is one value now. The drag writes it directly, and an animation settles it
+afterwards, once.
+
+The full history is in docs/changelog.md.
+
+---
+
 TWO ARROWS LEAVING ONE SQUARE NO LONGER LOOK LIKE ONE ARROW PASSING THROUGH IT.
 A square that forces two others in opposite directions was drawing both down the
 same line, tail to tail, which reads as a single long arrow with a head at each

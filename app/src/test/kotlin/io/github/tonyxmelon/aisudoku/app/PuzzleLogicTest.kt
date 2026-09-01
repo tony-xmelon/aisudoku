@@ -344,14 +344,55 @@ class PuzzleLogicTest {
             PuzzleLogic.overlay(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
                 walkthrough = route, lessonStep = step)
 
-        assertTrue(at(0).digits.size <= at(3).digits.size, "the board should fill in, not empty")
-        for ((index, drawn) in at(route.steps.size - 1).digits) {
+        // Step zero is the tutor introducing the route, which is about no square at all.
+        assertTrue(at(0).digits.isEmpty(), "the introduction should draw nothing")
+        assertNull(at(0).focus)
+
+        assertTrue(at(1).digits.size <= at(4).digits.size, "the board should fill in, not empty")
+        for ((index, drawn) in at(route.steps.size).digits) {
             assertEquals(solution[index].digit, drawn.digit, "step teaches the wrong digit")
             assertEquals(OverlayRole.SOLUTION, drawn.role)
         }
         // The square the current step is about is singled out, and it is one being placed.
-        val focus = assertNotNull(at(0).focus)
+        val focus = assertNotNull(at(1).focus)
         assertTrue(!puzzle[focus].isFilled)
+    }
+
+    /**
+     * Reported from the phone: the panel showed the route's opening remark while being
+     * dragged up and the first step once released, so the words changed under the reader
+     * exactly as the movement ended. The remark is a position of its own now.
+     */
+    @Test
+    fun `step zero introduces the route rather than walking it`() {
+        val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
+        assertNull(PuzzleLogic.stepIndex(0, route), "step zero is not a step of the route")
+        assertEquals(0, PuzzleLogic.stepIndex(1, route), "the route starts at step one")
+        assertEquals(route.steps.size, PuzzleLogic.lastStep(route))
+        assertNull(PuzzleLogic.stepIndex(route.steps.size + 1, route))
+
+        val opening = assertNotNull(
+            PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = route, lessonStep = 0)
+        )
+        assertEquals(PuzzleLogic.outlook(route), opening.body)
+        assertNull(opening.effect, "the introduction does nothing to the board")
+        assertNull(opening.howTo, "the introduction is about the route, not one technique")
+
+        // Browsing one technique gets its own opening: what the rule is, and how many
+        // places it applies from here.
+        val browsing = assertNotNull(
+            PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = route, lessonStep = 0, technique = "Naked single")
+        )
+        assertTrue(browsing.body.contains("only one digit left"), browsing.body)
+        assertTrue(browsing.body.contains("${route.steps.size} places"), browsing.body)
+
+        // And nothing is highlighted while the tutor is still talking about the route.
+        assertNull(
+            PuzzleLogic.evidenceLabel(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
+                walkthrough = route, lessonStep = 0)
+        )
     }
 
     /**
@@ -402,7 +443,7 @@ class PuzzleLogicTest {
         val route = assertNotNull(TechniqueSolver.walkthrough(puzzle))
         val said = assertNotNull(
             PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
-                walkthrough = route, lessonStep = 0)
+                walkthrough = route, lessonStep = 1)
         )
         val technique = assertNotNull(Techniques.byName(route.steps[0].technique))
         assertEquals(route.steps[0].explanation, said.body)
@@ -432,7 +473,7 @@ class PuzzleLogicTest {
         )
         val about = assertNotNull(
             PuzzleLogic.guidance(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
-                walkthrough = cleared, lessonStep = 0)
+                walkthrough = cleared, lessonStep = 1)
         )
         assertEquals("This fills nothing in. It rules 4 out of one square.", about.effect)
 
@@ -442,7 +483,7 @@ class PuzzleLogicTest {
         assertEquals(
             technique.name,
             PuzzleLogic.evidenceLabel(puzzle, OverlayMode.LESSON, HintStyle.EXPLAIN,
-                walkthrough = route, lessonStep = 0),
+                walkthrough = route, lessonStep = 1),
         )
     }
 

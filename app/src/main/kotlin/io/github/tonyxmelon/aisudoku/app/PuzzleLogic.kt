@@ -242,8 +242,10 @@ object PuzzleLogic {
                 }
             }
 
+            // Nothing is drawn for the introduction: it is about the route, not about any
+            // one square, and highlighting something would be pointing at the wrong thing.
             OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
-                val at = lessonStep.coerceIn(0, route.steps.size - 1)
+                val at = stepIndex(lessonStep, route) ?: return@let
                 // On a route, everything up to and including this step, so the board
                 // fills in as it is walked and each move is seen from the position it was
                 // made in. When browsing one technique the steps are alternatives from a
@@ -378,9 +380,8 @@ object PuzzleLogic {
         walkthrough: Walkthrough? = null,
         lessonStep: Int = 0,
     ): String? = when (mode) {
-        OverlayMode.LESSON -> walkthrough?.steps?.getOrNull(
-            lessonStep.coerceIn(0, maxOf(0, walkthrough.steps.size - 1))
-        )?.technique
+        OverlayMode.LESSON -> stepIndex(lessonStep, walkthrough)
+            ?.let { walkthrough?.steps?.getOrNull(it)?.technique }
 
         OverlayMode.HINT -> when {
             style == HintStyle.REVEAL -> null
@@ -389,6 +390,38 @@ object PuzzleLogic {
         }
 
         else -> null
+    }
+
+    /**
+     * Which of the route's steps a position on the tutor's dial refers to, if any.
+     *
+     * Step zero is the tutor's own introduction - what the route ahead asks of you - and
+     * the route's own steps run from one. Before that, the introduction shared a screen
+     * with the first step, so opening the tutor showed a paragraph about the whole route
+     * and a paragraph about one square at the same time, and dragging the panel up changed
+     * which of them you were reading halfway through the movement.
+     */
+    fun stepIndex(lessonStep: Int, walkthrough: Walkthrough?): Int? =
+        (lessonStep - 1).takeIf { it >= 0 && it < (walkthrough?.steps?.size ?: 0) }
+
+    /** The last position on the dial: the introduction plus one per step. */
+    fun lastStep(walkthrough: Walkthrough?): Int = walkthrough?.steps?.size ?: 0
+
+    /**
+     * What the tutor says before it starts: what lies ahead on the route, or what the
+     * technique being browsed is and how many places it applies here.
+     */
+    fun intro(walkthrough: Walkthrough?, technique: String?): String {
+        if (technique == null) {
+            return outlook(walkthrough) ?: "There is nothing left here to reason about."
+        }
+        val found = walkthrough?.steps?.size ?: 0
+        val rule = Techniques.byName(technique)?.rule?.plus("\n\n").orEmpty()
+        return rule + when (found) {
+            0 -> "It does not apply anywhere in this position."
+            1 -> "It applies in one place here. Step forward to see it."
+            else -> "It applies in $found places here. Step forward to walk through them."
+        }
     }
 
     /** The route's steps grouped into runs of one technique, in order. */
@@ -474,6 +507,8 @@ object PuzzleLogic {
         hintDepth: Int = HINT_DEPTHS - 1,
         walkthrough: Walkthrough? = null,
         lessonStep: Int = 0,
+        /** Which technique is being browsed, when the tutor is not on its own route. */
+        technique: String? = null,
     ): Guidance? = when (mode) {
         OverlayMode.NONE -> null
 
@@ -499,7 +534,9 @@ object PuzzleLogic {
         // the part that is only true of this position, which is what the space is worth
         // spending on.
         OverlayMode.LESSON -> walkthrough?.takeIf { it.steps.isNotEmpty() }?.let { route ->
-            val step = route.steps[lessonStep.coerceIn(0, route.steps.size - 1)]
+            val at = stepIndex(lessonStep, route)
+                ?: return@let Guidance(intro(route, technique))
+            val step = route.steps[at]
             Guidance(
                 body = step.explanation,
                 howTo = Techniques.byName(step.technique)?.howTo,
