@@ -8,6 +8,38 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+SCANNING: THE READER NO LONGER OFFERS SHAPES THAT ARE NOT SHAPES.
+WHAT THE SCREENSHOTS SHOWED. An outline slicing diagonally across the grid, and
+another spanning the whole screen. Neither is a mistake about where to draw - a
+contour that is not four-sided was being reduced to its four extreme points,
+which for a wandering blob of pattern is a sliver that means nothing. And the
+last build had lowered the size at which a shape is considered at all, so far
+more of those blobs got in, and the ten largest shapes in the picture could all
+be tablecloth while the puzzle waited outside the list.
+
+A candidate now has to be square enough, upright enough and solid enough to be a
+sudoku before it is considered - questions that cost nothing to ask and do not
+depend on what else is in the picture. When a contour is not four-sided, the
+smallest rectangle around it stands in, rather than its extreme points.
+
+The size floor goes back most of the way: it was 0.08, went to 0.03 on the
+strength of a synthetic scene that later measurements showed was a poor model of
+a real table, and is now 0.05.
+
+WHAT IS NOT THE CAUSE, measured rather than assumed: the resolution the camera
+analyses at, camera shake, the viewfinder cropping the frame, and - which
+surprised me - how much pencil is on the page. A grid buried in annotations
+scores exactly what a clean one does.
+
+If a puzzle still will not scan, press the shutter anyway. The button is always
+live, and a captured photograph is examined at full resolution by a far better
+reader than the live one. If what comes back is wrong, that photograph is the
+most useful thing you can send.
+
+The full history is in docs/changelog.md.
+
+---
+
 SCANNING: THE APP NOW SHOWS YOU WHAT IT CAN SEE, AND SEES FAR MORE.
 WHY A WELL-FRAMED PUZZLE WAS REFUSED. Not the wording, and not the aim. A grid
 is scored on the weakest of the twenty lines it must have, and each line was

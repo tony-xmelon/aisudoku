@@ -53,8 +53,14 @@ class SyntheticRejectTest {
         val verdict = StructuralGate.assess(Degrade.rotate(good(), 35.0))
         val rejected = assertIs<GateVerdict.Rejected>(verdict)
         assertTrue(
-            rejected.reason is RejectionReason.NotUpright || rejected.reason is RejectionReason.NoGrid,
-            "expected an orientation rejection but got ${rejected.reason}",
+            rejected.reason is RejectionReason.NotUpright ||
+                rejected.reason is RejectionReason.NoGrid ||
+                // Turning a photograph inside a fixed canvas takes the corners of the page
+                // off the edge of it, so a grid that is found at this angle really has been
+                // cut off. That is a better answer than "no grid here" and it only became
+                // available once the detector could see a grid this far over.
+                rejected.reason is RejectionReason.GridCutOff,
+            "expected a rejection about the angle or the edges but got ${rejected.reason}",
         )
     }
 
