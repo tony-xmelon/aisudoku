@@ -8,6 +8,21 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+TWO ARROWS LEAVING ONE SQUARE NO LONGER LOOK LIKE ONE ARROW PASSING THROUGH IT.
+A square that forces two others in opposite directions was drawing both down the
+same line, tail to tail, which reads as a single long arrow with a head at each
+end - and once you read it that way, nothing in the picture leads back to where
+the chain began.
+
+Each arrow is now set a little to one side of the line between the two squares.
+The offset is taken from the arrow's own direction, so two arrows pointing
+opposite ways land on opposite sides of the square they leave and separate,
+instead of doubling up.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE CHAIN'S TRAIL IS NUMBERED, ITS DEAD END NAMES THE DIGIT, AND THE TUTOR NO
 longer changes what it says as you let go of it.
 

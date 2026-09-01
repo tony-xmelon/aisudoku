@@ -1,25 +1,13 @@
-The chain's trail is numbered, its dead end names the digit, and the tutor no
-longer changes what it says as you let go of it.
+Two arrows leaving one square no longer look like one arrow passing through it.
 
-NUMBERED, BECAUSE ARROWS ALONE CANNOT BE FOLLOWED. Reported from the phone: not
-every arrow could be traced back to the square the chain assumes. They all can -
-there is now a test that walks every arrow backwards and fails if any of them
-wanders off or goes round in a circle - but a dozen crossing arrows cannot be
-followed by eye, which amounts to the same thing. Each square on the trail now
-carries its place in the order, and every square's number is larger than its
-parent's, so counting up always walks away from the assumption.
+A square that forces two others in opposite directions was drawing both down the
+same line, tail to tail, which reads as a single long arrow with a head at each
+end - and once you read it that way, nothing in the picture leads back to where
+the chain began.
 
-WHAT CANNOT BE PLACED, AND WHERE. The red band showed where the trouble was
-without saying what it was; the sentence underneath was carrying that on its
-own. The digit with nowhere left to go is now drawn in the band, in red, with a
-line through it.
-
-NOTHING CHANGES WHEN YOU LET GO. The panel showed the route's opening remark
-while being dragged and the first step once released, so the words changed under
-you exactly as the movement ended - and flickered doing it. The tutor now opens
-on the first millimetre of the drag rather than at the end of it, so what you
-pull into view is what stays there, grid and all. The opening remark also comes
-before the first step now instead of after it, which is the order you read them
-in.
+Each arrow is now set a little to one side of the line between the two squares.
+The offset is taken from the arrow's own direction, so two arrows pointing
+opposite ways land on opposite sides of the square they leave and separate,
+instead of doubling up.
 
 The full history is in docs/changelog.md.

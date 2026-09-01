@@ -216,18 +216,28 @@ private fun DrawScope.drawStruck(
     )
 }
 
-/** One arrow, stopping short at both ends so it does not run over the digits it joins. */
+/**
+ * One arrow, stopping short at both ends so it does not run over the digits it joins.
+ *
+ * Set a little to one side of the line between the two squares rather than straight along
+ * it. A square that forces two others in opposite directions was drawing two arrows down
+ * the same line, tail to tail, which reads as one long arrow with a head at each end
+ * passing through the square - and then nothing in the picture leads back to where the
+ * chain began. The offset is taken from each arrow's own direction, so the two land on
+ * opposite sides of the square and separate rather than doubling up.
+ */
 private fun DrawScope.drawArrow(from: Offset, to: Offset, unit: Float) {
     val step = to - from
     val length = hypot(step.x, step.y)
     if (length < 1f) return
 
     val direction = Offset(step.x / length, step.y / length)
+    val aside = Offset(-direction.y, direction.x) * (unit * 0.13f)
     val clear = unit * 0.34f
     if (length <= clear * 2f + unit * 0.1f) return
 
-    val start = from + direction * clear
-    val end = to - direction * clear
+    val start = from + direction * clear + aside
+    val end = to - direction * clear + aside
     val colour = Color.White.copy(alpha = 0.92f)
     drawLine(colour, start, end, strokeWidth = unit * 0.045f, cap = StrokeCap.Round)
 
