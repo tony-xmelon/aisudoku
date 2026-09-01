@@ -265,6 +265,11 @@ object PuzzleLogic {
                 } else {
                     step.supportingCells - setOfNotNull(focus)
                 }
+
+                // The square the chain assumes something about is the square the step is
+                // about, so it gets the same ring every other step's subject gets. Without
+                // it the eye has nowhere to start on a trail of a dozen arrows.
+                chain?.links?.firstOrNull()?.let { focus = it.index }
             }
         }
 

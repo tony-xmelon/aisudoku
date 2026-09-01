@@ -30,11 +30,12 @@ object ForcingChain : Technique {
     /**
      * How many squares a drawn trail may have.
      *
-     * An argument wider than this is still a sound argument, and still gets made - it just
-     * gets made without a picture. Fifteen arrows over a photograph of a page is not an
-     * explanation, it is a scribble.
+     * Set where it covers every chain on the hardest puzzle in the test set. A trail of
+     * fifteen squares is busy, but the alternative is what the app used to do: highlight
+     * one square and assert that following it through the grid leads somewhere impossible.
+     * A busy picture can be studied. An assertion cannot.
      */
-    private const val MOST_LINKS = 12
+    private const val MOST_LINKS = 16
 
     override val name = "Forcing chain"
     override val difficulty = Difficulty.VERY_HARD
@@ -164,8 +165,37 @@ object ForcingChain : Technique {
             // has lost its footing rather than found a wall, so it is dropped: claiming a
             // contradiction here would be claiming one that was never reached.
             if (value !in state.candidatesAt(at)) return null
-            for (other in state.candidatesAt(at).minus(value).digits()) mark(at, other, at)
+
+            // Fixing a square throws away the other digits it was holding, and each of
+            // those may have been one of the last places its digit could go. Leaving that
+            // out was why two chains in five reached no wall this way and had to be stated
+            // without a picture: the fast propagation eliminates every other digit from an
+            // assigned square and follows each one, and this now does the same.
+            val wiped = state.candidatesAt(at).minus(value).digits()
+            for (other in wiped) mark(at, other, at)
             state.fixOnly(at, value)
+
+            for (other in wiped) {
+                for (unit in Coordinates.unitsOf[at]) {
+                    val places = unit.filter { other in state.candidatesAt(it) }
+                    when (places.size) {
+                        0 -> return chain(
+                            forced, cause, order, from,
+                            roots(unit, other, start, struck), unit.toSet(), other, null,
+                        )
+
+                        1 -> {
+                            val only = places[0]
+                            if (only !in forced && state.candidatesAt(only).size > 1) {
+                                forced[only] = other
+                                cause[only] = at
+                                order[only] = order.size
+                                queue += only
+                            }
+                        }
+                    }
+                }
+            }
 
             for (peer in Coordinates.peers[at]) {
                 val before = state.candidatesAt(peer)
@@ -177,9 +207,9 @@ object ForcingChain : Technique {
                 if (!survived) {
                     // Nothing left in the peer at all. What the wall rests on is every
                     // placement that took one of the digits this square started with.
-                    val roots = start.candidatesAt(peer).digits()
+                    val emptied = start.candidatesAt(peer).digits()
                         .mapNotNull { struck[peer * 10 + it] }
-                    return chain(forced, cause, order, from, roots, setOf(peer), null, at)
+                    return chain(forced, cause, order, from, emptied, setOf(peer), null, at)
                 }
 
                 // Two candidates before, one after: this square is forced too, by `at`.
@@ -198,14 +228,10 @@ object ForcingChain : Technique {
                 for (unit in Coordinates.unitsOf[peer]) {
                     val places = unit.filter { value in state.candidatesAt(it) }
                     when (places.size) {
-                        0 -> {
-                            val roots = unit
-                                .filter { value in start.candidatesAt(it) }
-                                .mapNotNull { struck[it * 10 + value] }
-                            return chain(
-                                forced, cause, order, from, roots, unit.toSet(), value, null,
-                            )
-                        }
+                        0 -> return chain(
+                            forced, cause, order, from,
+                            roots(unit, value, start, struck), unit.toSet(), value, null,
+                        )
 
                         1 -> {
                             val only = places[0]
@@ -222,6 +248,16 @@ object ForcingChain : Technique {
         }
         return null
     }
+
+    /** Which placements struck [digit] out of every square of [unit] that could hold it. */
+    private fun roots(
+        unit: List<Int>,
+        digit: Int,
+        start: SolverState,
+        struck: Map<Int, Int>,
+    ): List<Int> = unit
+        .filter { digit in start.candidatesAt(it) }
+        .mapNotNull { struck[it * 10 + digit] }
 
     /**
      * The placements the wall rests on, their ancestors, and nothing else.

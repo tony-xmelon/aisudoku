@@ -8,6 +8,38 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+EVERY FORCING CHAIN ON THE HARDEST PUZZLE NOW COMES WITH ITS TRAIL DRAWN.
+WHY THAT DIGIT IS OUT. The chain that could not be drawn fell back to
+highlighting one square and asserting that following it through the grid led
+somewhere impossible - which is what you were being shown most of the time, and
+is not an explanation. The trace was weaker than the propagation that proves the
+step: fixing a square throws away the other digits it was holding, and each of
+those may have been one of the last places its digit could go. Following those
+too takes the hardest puzzle in the test set from six chains in eleven with a
+picture to eleven in eleven.
+
+The square the chain assumes something about is now ringed, so the eye knows
+where a trail of a dozen arrows begins, and the square at the end is crossed
+out, because the point of that square is that nothing goes in it - a red tint
+alone reads as "wrong answer here", which is the opposite of what it means.
+
+ONE LINE INSTEAD OF THREE. The technique was named twice, once beside the route
+picker and once in the key beside the colour of its own squares. The key is the
+one that earns it, so the picker, the key and how far through the run you are
+now share a line. The stepping controls are centred, where a thumb lands.
+
+The question mark has gone. The how-to opens from a "how" at the end of the
+step it belongs to, with a chevron that turns down as it expands - beside the
+stepping controls it looked like help with the controls. A thread of a scrollbar
+shows when there is more text below.
+
+Tapping the tutor's handle when it is open now shuts it, as well as opening it
+when it is shut.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE TUTOR IS ONE PANEL NOW, NOT A BAND THAT SUMMONS A SHEET.
 Dragging the band used to move the band; the panel arrived afterwards, separately,
 which is not the same gesture at all. It is now a single panel whose height

@@ -42,7 +42,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -61,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -125,8 +126,31 @@ private fun DrawScope.drawChain(chain: Chain, squares: Squares, measurer: TextMe
     // And into the wall itself, when the wall is one square. A whole unit has no centre
     // worth pointing at, and the block of red says where it is well enough.
     val wall = chain.deadEnd.singleOrNull()
-    if (wall != null && chain.deadEndFrom != null) {
-        drawArrow(squares.centre(chain.deadEndFrom!!), squares.centre(wall), squares.unit)
+    if (wall != null) {
+        chain.deadEndFrom?.let {
+            drawArrow(squares.centre(it), squares.centre(wall), squares.unit)
+        }
+        // Crossed out, because the point of that square is that nothing goes in it. A red
+        // tint alone reads as "wrong answer here", which is the opposite of what it means.
+        val at = squares.topLeft(wall)
+        val cell = squares.size(wall)
+        val inset = squares.unit * 0.3f
+        val stroke = squares.unit * 0.07f
+        val colour = Overlays.incorrect
+        drawLine(
+            colour,
+            at + Offset(inset, inset),
+            at + Offset(cell.width - inset, cell.height - inset),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            colour,
+            at + Offset(cell.width - inset, inset),
+            at + Offset(inset, cell.height - inset),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
     }
 
     for (link in chain.links) drawReadDigit(measurer, squares, link.index, link.digit)
@@ -436,6 +460,8 @@ private fun BoxScope.TutorPanel(
     // Whether the how-to is showing. Closes itself when the technique changes, which is
     // the moment it would have become the wrong text.
     var asking by remember(state.evidenceLabel) { mutableStateOf(false) }
+    val scroll = rememberScrollState()
+    val bar = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
 
     fun stepBy(by: Int) {
         val to = at + by
@@ -458,11 +484,11 @@ private fun BoxScope.TutorPanel(
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // The grip: the handle and the title under it. Drag either way, or tap to
-            // open. It is the only part of the panel that is always on screen, so it is
-            // the only part that can be the way in.
+            // open and tap again to shut. It is the only part of the panel that is always
+            // on screen, so it is the only part that can be the way in or out.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -484,52 +510,47 @@ private fun BoxScope.TutorPanel(
                             }
                         },
                     )
-                    .clickable(enabled = !open) { onChange(state.tutor()) },
+                    .clickable { onChange(if (open) state.close() else state.tutor()) },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Box(modifier = Modifier.padding(top = 10.dp)) { Handle() }
+                Box(modifier = Modifier.padding(top = 8.dp)) { Handle() }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                // The name on the left where a title belongs, and the stepping centred,
+                // because it is the control your thumb goes to and the middle is where a
+                // thumb lands. A Box rather than a Row so the middle is the middle of the
+                // panel and not of whatever is left over beside the title.
+                Box(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         "Tutor",
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.align(Alignment.CenterStart),
                     )
 
                     if (open) {
-                        // Swiping is quick and coarse; these land on one step exactly.
-                        IconButton(onClick = { stepBy(-1) }, enabled = at > 0) {
-                            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous step")
-                        }
-                        Text(
-                            "${at + 1} / ${route.steps.size}",
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                        )
-                        IconButton(onClick = { stepBy(1) }, enabled = at < last) {
-                            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next step")
-                        }
-
-                        // The technique's how-to: paragraphs long, and the same words every
-                        // time that technique comes round. It had a line to itself saying
-                        // "How to spot one"; a question mark says it in no lines at all.
-                        // Drawn as text because the core icon set has no help glyph and the
-                        // extended set is tens of megabytes for one.
-                        IconButton(onClick = { asking = !asking }) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.align(Alignment.Center),
+                        ) {
+                            // Swiping is quick and coarse; these land on one step exactly.
+                            IconButton(onClick = { stepBy(-1) }, enabled = at > 0) {
+                                Icon(
+                                    Icons.Filled.KeyboardArrowLeft,
+                                    contentDescription = "Previous step",
+                                )
+                            }
                             Text(
-                                "?",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (asking) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    LocalContentColor.current
-                                },
+                                "${at + 1} / ${route.steps.size}",
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
                             )
+                            IconButton(onClick = { stepBy(1) }, enabled = at < last) {
+                                Icon(
+                                    Icons.Filled.KeyboardArrowRight,
+                                    contentDescription = "Next step",
+                                )
+                            }
                         }
                     }
                 }
@@ -539,21 +560,49 @@ private fun BoxScope.TutorPanel(
             // its chapters and the step's own text all cost a solve, and none of it can be
             // seen.
             if (heightPx > peekPx + 1f) {
-                ChapterStrip(state.chapters, at) { onChange(state.stepTo(it)) }
-
+                // One line for what is being walked, what the colours mean, and how far
+                // through this run of the technique you are. The technique's name was
+                // being printed twice - once here and once in the key beside the colour of
+                // its own squares - and the key is the one that earns it.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TutorPicker(state, onChange, route.steps.size, Modifier)
-                    ChapterName(state.chapters, at, Modifier.weight(1f))
+                    Legend(
+                        state.legend,
+                        modifier = Modifier.weight(1f),
+                        evidenceLabel = state.evidenceLabel,
+                    )
+                    ChapterCount(state.chapters, at)
                 }
 
-                Legend(state.legend, evidenceLabel = state.evidenceLabel)
+                ChapterStrip(state.chapters, at) { onChange(state.stepTo(it)) }
 
                 // Sideways for the next step, so the common move needs no button at all.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
+                        // A thread of a scrollbar, so it is visible that there is more
+                        // below without anything being spent on saying so.
+                        .drawWithContent {
+                            drawContent()
+                            if (scroll.maxValue > 0) {
+                                val track = size.height
+                                val thumb = (track * track / (track + scroll.maxValue))
+                                    .coerceAtLeast(24.dp.toPx())
+                                val width = 3.dp.toPx()
+                                drawRoundRect(
+                                    color = bar,
+                                    topLeft = Offset(
+                                        size.width - width,
+                                        (track - thumb) *
+                                            (scroll.value.toFloat() / scroll.maxValue),
+                                    ),
+                                    size = Size(width, thumb),
+                                    cornerRadius = CornerRadius(width / 2f),
+                                )
+                            }
+                        }
+                        .verticalScroll(scroll)
                         .pointerInput(at, last) {
                             var swiped = 0f
                             detectHorizontalDragGestures(
@@ -570,14 +619,8 @@ private fun BoxScope.TutorPanel(
                 ) {
                     Lesson(state, showOutlook = true)
 
-                    if (asking) {
-                        state.guidance?.howTo?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                    state.guidance?.howTo?.let {
+                        HowTo(it, asking) { asking = !asking }
                     }
                 }
             }
@@ -585,8 +628,45 @@ private fun BoxScope.TutorPanel(
     }
 }
 
+/**
+ * The technique's how-to, under the step it belongs to.
+ *
+ * Paragraphs long and the same words every time that technique comes round, so it is not
+ * printed until it is asked for. It sits at the end of the step rather than in the
+ * panel's header, where a question mark beside the stepping controls looked like help
+ * with the controls.
+ */
+@Composable
+private fun HowTo(text: String, open: Boolean, onToggle: () -> Unit) {
+    val turn by animateFloatAsState(if (open) 90f else 0f, label = "how")
+
+    Row(
+        modifier = Modifier.clickable(onClick = onToggle),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "how",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Icon(
+            Icons.Filled.KeyboardArrowRight,
+            contentDescription = if (open) "Hide how to spot one" else "How to spot one",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = turn },
+        )
+    }
+    if (open) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 /** How much of the tutor shows when it is shut: its handle and its title. */
-private val TUTOR_PEEK = 62.dp
+private val TUTOR_PEEK = 56.dp
 
 /**
  * The whole route as one line, a block per run of the same technique.
@@ -630,18 +710,21 @@ private fun ChapterStrip(chapters: List<Chapter>, at: Int, onJump: (Int) -> Unit
     }
 }
 
-/** Which run of the route this step belongs to, and how far through it you are. */
+/**
+ * How far through this run of the technique you are.
+ *
+ * The technique itself is not named here. It is named in the key, beside the colour of the
+ * squares it is talking about, which is the one place it earns its width.
+ */
 @Composable
-private fun ChapterName(chapters: List<Chapter>, at: Int, modifier: Modifier) {
+private fun ChapterCount(chapters: List<Chapter>, at: Int) {
     val here = chapters.firstOrNull { at in it.from until it.until } ?: return
+    if (here.count == 1) return
     Text(
-        if (here.count == 1) here.technique
-        else "${here.technique} - ${at - here.from + 1} of ${here.count}",
+        "${at - here.from + 1} of ${here.count}",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
-        textAlign = TextAlign.End,
-        modifier = modifier,
     )
 }
 
