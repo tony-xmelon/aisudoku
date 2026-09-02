@@ -49,8 +49,29 @@ object GridLocator {
     private const val MIN_SCORING_SIZE = 288
 
     fun locate(image: GrayImage): GridLocation {
+        // Each working size in turn, stopping at the first that finds a grid. A grid that
+        // fills the frame is found at the smallest and cheapest; one that takes a sixth of
+        // a large capture needs the larger, and paying for that only when the first comes
+        // up empty keeps the common case as quick as it was.
+        var nearest: GridLocation.NoGrid? = null
+        for (workingEdge in QuadDetector.workingEdges()) {
+            when (val attempt = look(image, workingEdge)) {
+                is GridLocation.Found -> return attempt
+                is GridLocation.NoGrid ->
+                    // Starting from a made-up miss and only replacing it on a better score
+                    // reported nothing considered whenever every attempt scored zero, which
+                    // reads as "there was nothing square in shot" when there plainly was.
+                    if (nearest == null || attempt.bestScore > nearest.bestScore) {
+                        nearest = attempt
+                    }
+            }
+        }
+        return nearest ?: GridLocation.NoGrid(0.0, 0)
+    }
+
+    private fun look(image: GrayImage, workingEdge: Double): GridLocation {
         val full = image.toMat()
-        val candidates = QuadDetector.detect(image)
+        val candidates = QuadDetector.detect(image, workingEdge)
 
         // Scored at the size the grid actually is in the photograph, not blown up to the
         // working size first.

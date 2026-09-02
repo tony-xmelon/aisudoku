@@ -1,6 +1,7 @@
 package io.github.tonyxmelon.aisudoku.vision
 
 import java.io.File
+import kotlin.math.hypot
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -54,16 +55,18 @@ class FeedbackScreenshotTest {
         for (line in found) println("  found   $line")
         for (line in missed) println("  missed  $line")
 
-        // Whatever it finds must at least be a plausible grid rather than a sliver of
-        // background - the fault the outline drawn on screen made visible.
+        // Whatever is drawn on screen must look like a puzzle rather than a sliver of
+        // background - the fault the outline made visible. The candidates themselves are
+        // deliberately not filtered any more, because doing that lost the real grid; it is
+        // the advisor that decides what is fit to show.
         for (file in shots) {
-            for (quad in QuadDetector.detect(CorpusFixtures.load(file))) {
-                val edges = listOf(quad.topEdge, quad.rightEdge, quad.bottomEdge, quad.leftEdge)
-                assertTrue(
-                    edges.min() / edges.max() > 0.4,
-                    "${file.name}: offered a shape ${edges.min()} by ${edges.max()}",
-                )
-            }
+            val advice = FramingAdvisor().advise(CorpusFixtures.load(file))
+            val outline = advice.outline ?: continue
+            val edges = outline.zipWithNext { a, b -> hypot(a.x - b.x, a.y - b.y) }
+            assertTrue(
+                edges.min() / edges.max() > 0.4,
+                "${file.name}: would draw a shape ${edges.min()} by ${edges.max()}",
+            )
         }
     }
 }

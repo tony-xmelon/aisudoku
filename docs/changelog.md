@@ -8,6 +8,42 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE PHOTOGRAPHS YOU SENT FOUND IT. BOTH OF THEM NOW READ.
+The app was refusing captures that plainly had a grid in them, and sending one
+was what finally reproduced it - the same photograph, through the same check
+here, refused for the same reason. It could not be reproduced from screenshots,
+which is why this took so long.
+
+WHAT IT WAS. Finding the grid works on a shrunk copy of the photograph - a
+thousand pixels along its longest edge - because that is fast and plenty when the
+puzzle fills the frame. Your captures have the puzzle taking about a sixth of a
+very large picture, so by the time it had been shrunk the grid was three hundred
+pixels across and its lines a couple of pixels wide. The border broke into pieces
+that no longer went round anything, and the outline of the puzzle simply was not
+in the list of shapes to consider. Not too small to see, and not too faint - too
+shrunk before anyone looked.
+
+It now tries a second, larger size when the first finds nothing. Both your
+photographs read at that size, and so does every photograph that already worked.
+Going larger still is not free: a puzzle that fills the frame stops being found at
+three thousand pixels, because its lines thicken until the border merges with the
+printing inside it. So it climbs, cheapest first, and stops as soon as it has an
+answer.
+
+AND SHAPES ARE NO LONGER THROWN AWAY BEFORE BEING JUDGED. Candidates were being
+discarded for looking too ragged or too oblong, which sounds harmless: on one of
+your captures the grid's own outline was among the discarded, and the survivor
+covered half the puzzle. Deciding which shape is a grid is what the scoring is
+for. The outline drawn on screen is still checked for looking like a puzzle,
+because that one is a claim to you about what the app can see.
+
+Every photograph and screenshot you have sent now reads. So does the whole test
+set.
+
+The full history is in docs/changelog.md.
+
+---
+
 WHY EVERY UPDATE HAS BEEN WIPING YOUR PUZZLES.
 The release was signed with the debug key. A build machine has no debug key, so
 one is made fresh for every build - and two builds in a row were signed by two

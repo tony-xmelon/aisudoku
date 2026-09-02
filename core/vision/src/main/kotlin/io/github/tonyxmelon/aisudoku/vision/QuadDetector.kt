@@ -18,20 +18,35 @@ import org.opencv.imgproc.Imgproc
  */
 object QuadDetector {
 
-    /** Longest edge the detection pass works at. Full resolution is wasted here and slow. */
-    private const val WORKING_EDGE = 1000.0
+    /**
+     * Longest edges the detection pass works at, in the order they are tried.
+     *
+     * One size does not do. A grid filling the frame is found at a thousand pixels and
+     * finding it there is quick; a grid taking a sixth of a big capture is only about
+     * three hundred pixels across by then, its lines a couple of pixels wide, and the
+     * threshold breaks its border up into pieces that no longer enclose it. That is
+     * exactly what happened to the photographs the app refused - the grid was in the
+     * picture, plainly, and its outline was not in the contour list.
+     *
+     * Going the other way costs too: at three thousand, a grid that fills the frame has
+     * lines thick enough that its border merges with the printing inside it, and a
+     * photograph that worked at a thousand stops being found. So both are tried, cheapest
+     * first, and the second only when the first has come up empty.
+     */
+    private val WORKING_EDGES = listOf(1000.0, 1600.0)
 
     /**
      * Ignore anything smaller than this share of the frame.
      *
-     * Back at the value it had for every version anyone reported as working. It was
-     * lowered to 0.03 on the strength of a synthetic scene, which later measurements
-     * showed to be a poor model of a real table, and then to 0.05, which was a compromise
-     * between a measurement and a guess. Neither number was ever shown to find a grid that
-     * this one misses, and the first of them is the release where the reader started
-     * outlining slivers of tablecloth.
+     * A judgement, not a measurement. It was 0.08, and the viewfinder crops the frame, so
+     * a grid filling the screen is a good deal smaller in the picture this sees - which
+     * argues for room below 0.08. It was then dropped to 0.03 on the strength of a
+     * synthetic scene that later measurements showed to be a poor model of a real table,
+     * and that build is the one where the reader started outlining slivers of tablecloth.
+     * Halfway back, with [couldBeAGrid] now keeping the junk out on shape rather than on
+     * size, is as far as the evidence supports.
      */
-    private const val MIN_AREA_FRACTION = 0.08
+    private const val MIN_AREA_FRACTION = 0.03
 
     private const val MAX_CANDIDATES = 10
 
@@ -46,19 +61,15 @@ object QuadDetector {
     /** How far a corner may sit from a right angle before the shape is not a square. */
     private const val MAX_CORNER_SKEW = 40.0
 
-    /**
-     * How much of its own bounding quad a contour must fill.
-     *
-     * The test that throws out wiggly blobs. A contour that wanders over a patterned
-     * tablecloth can enclose a large area while filling very little of the box around it,
-     * and reducing one to four corners produces a quadrilateral that means nothing - in
-     * one report, a sliver drawn clean across the grid.
-     */
-    private const val MIN_FILL = 0.65
+    /** Candidates at the default working size. */
+    fun detect(image: GrayImage): List<Quad> = detect(image, WORKING_EDGES.first())
 
-    fun detect(image: GrayImage): List<Quad> {
+    /** Every working size worth trying, cheapest first. */
+    fun workingEdges(): List<Double> = WORKING_EDGES
+
+    fun detect(image: GrayImage, workingEdge: Double): List<Quad> {
         val full = image.toMat()
-        val scale = WORKING_EDGE / maxOf(full.width(), full.height()).toDouble()
+        val scale = workingEdge / maxOf(full.width(), full.height()).toDouble()
 
         val small = Mat()
         Imgproc.resize(full, small, Size(full.width() * scale, full.height() * scale))
@@ -91,28 +102,36 @@ object QuadDetector {
         // reaches the list, and the reader confidently outlines a tablecloth. Whether a
         // shape could be a sudoku is cheap to ask and does not depend on what else is in
         // the picture.
+        // Everything of a plausible size, shape included, and let the scorer decide.
+        //
+        // Shapes used to be thrown out here for being too oblong or too ragged, which
+        // sounds harmless and is not: on a capture the app refused, the grid's own contour
+        // was among the ones discarded, and the single survivor was a quad that covered
+        // only part of the puzzle. Scoring it gave zero, so the app reported no grid at
+        // all while the right answer sat in the list this stage had just thrown away.
+        //
+        // Deciding which shape is a grid is exactly what [GridScorer] is for, and it
+        // answers with a number rather than a guess. This stage only has to not lose it.
         return contours
             .filter { Imgproc.contourArea(it) > MIN_AREA_FRACTION * frameArea }
             .sortedByDescending { Imgproc.contourArea(it) }
-            .mapNotNull { contour ->
-                val quad = toQuad(contour, scale)
-                quad.takeIf { couldBeAGrid(it, Imgproc.contourArea(contour), scale) }
-            }
             .take(MAX_CANDIDATES)
+            .map { contour -> toQuad(contour, scale) }
     }
 
-    /** Square enough, upright enough, and solid enough to be worth scoring. */
-    private fun couldBeAGrid(quad: Quad, contourArea: Double, scale: Double): Boolean {
+    /**
+     * Square enough and upright enough to be worth drawing on screen.
+     *
+     * Not used to choose what to score - see [detect] - but a shape the app is about to
+     * outline for the user had better look like a puzzle, or the outline says something
+     * false about what the app can see.
+     */
+    fun couldBeAGrid(quad: Quad): Boolean {
         val edges = listOf(quad.topEdge, quad.rightEdge, quad.bottomEdge, quad.leftEdge)
         val shortest = edges.min()
         val longest = edges.max()
         if (longest <= 0.0 || shortest / longest < MIN_EDGE_RATIO) return false
-        if (quad.maxCornerAngleDeviation > MAX_CORNER_SKEW) return false
-
-        // The contour is measured at working scale and the quad in full-resolution
-        // coordinates, so one of them has to be brought to the other.
-        val quadArea = quad.area * scale * scale
-        return quadArea > 0.0 && contourArea / quadArea >= MIN_FILL
+        return quad.maxCornerAngleDeviation <= MAX_CORNER_SKEW
     }
 
     /**

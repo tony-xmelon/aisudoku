@@ -66,7 +66,14 @@ class FramingAdvisor(
             return Guidance(
                 whyNoGrid(frame, missed),
                 readyToCapture = false,
-                outline = missed?.best?.let { normalise(it, frame) },
+                // Only when the shape could be a puzzle. The scorer is now given every
+                // candidate, including ragged ones, because throwing shapes away before
+                // scoring lost the real grid - but a ragged shape is still no use drawn
+                // over the preview, where it would tell the user the app is looking at
+                // something it is not.
+                outline = missed?.best
+                    ?.takeIf { QuadDetector.couldBeAGrid(it) }
+                    ?.let { normalise(it, frame) },
             )
         }
 
