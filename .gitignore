@@ -41,3 +41,9 @@ tools/recognizer/digits.json
 # Screenshots the user sends as feedback. Same policy as the corpus: they are
 # photographs of a real page, so they stay on this machine.
 feedback/
+
+# Signing keys. The release key must never enter the repository: anyone holding it can
+# publish an update that phones will accept as genuine. It lives on one machine and in
+# the repository's secrets. See docs/signing.md.
+*.jks
+*.keystore
