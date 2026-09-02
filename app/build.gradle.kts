@@ -1,3 +1,7 @@
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.zip.ZipFile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -229,3 +233,71 @@ tasks.register<Exec>("distributeLocal") {
         )
     )
 }
+
+/**
+ * Refuses to ship native libraries that are not 16 KB page aligned.
+ *
+ * Play requires this of anything with native code, and a library that fails it does not
+ * misbehave here - it fails to load on a 16 KB device, which is a phone this build was
+ * never run on. OpenCV 4.11.0 was exactly that case: its own libopencv_java4.so was
+ * aligned correctly while the libc++_shared.so packaged beside it was still on 4 KB, so
+ * the fault sat in a dependency's packaging rather than anywhere in this repository.
+ *
+ * Reading the ELF program headers is the whole check: every PT_LOAD segment of every
+ * 64-bit library has to declare an alignment of at least 16384. Nothing else in the build
+ * would notice, which is the reason to look.
+ */
+tasks.register("checkNativeAlignment") {
+    group = "verification"
+    description = "Check every native library is 16 KB page aligned, as Play requires"
+
+    // Inspecting the built APK means depending on the build that makes it. Without this
+    // Gradle is free to run the check first and pass on a stale APK from an earlier
+    // version - which it duly did, reporting success on libraries it had not looked at.
+    dependsOn("assembleRelease")
+
+    val apkDir = layout.buildDirectory.dir("outputs/apk/release")
+    inputs.dir(apkDir)
+    doLast {
+        val apks = apkDir.get().asFile.listFiles { f: File -> f.extension == "apk" }.orEmpty()
+        check(apks.isNotEmpty()) { "No release APK to inspect in ${apkDir.get().asFile}." }
+
+        val misaligned = mutableListOf<String>()
+        for (apk in apks) {
+            ZipFile(apk).use { zip ->
+                for (entry in zip.entries().asSequence()) {
+                    if (!entry.name.endsWith(".so")) continue
+                    val bytes = zip.getInputStream(entry).readBytes()
+                    // 64-bit ELF only: the 16 KB rule applies to the 64-bit ABIs.
+                    if (bytes.size < 64) continue
+                    val elf = bytes[0] == 0x7f.toByte() && bytes[1] == 'E'.code.toByte() &&
+                        bytes[2] == 'L'.code.toByte() && bytes[3] == 'F'.code.toByte()
+                    if (!elf || bytes[4].toInt() != 2) continue
+
+                    val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                    val headerOffset = buffer.getLong(0x20)
+                    val entrySize = buffer.getShort(0x36).toInt()
+                    val count = buffer.getShort(0x38).toInt()
+                    for (i in 0 until count) {
+                        val at = (headerOffset + i * entrySize).toInt()
+                        if (buffer.getInt(at) != 1) continue          // PT_LOAD only
+                        val align = buffer.getLong(at + 48)
+                        if (align < 16384) {
+                            misaligned += "${entry.name} in ${apk.name} is aligned to " +
+                                "$align, not 16384"
+                        }
+                    }
+                }
+            }
+        }
+        check(misaligned.isEmpty()) {
+            "These native libraries would fail to load on a 16 KB page device, and Play " +
+                "rejects them:\n  " + misaligned.distinct().joinToString("\n  ") +
+                "\nThe alignment comes from whoever packaged the library, so the fix is " +
+                "normally a dependency version rather than anything here."
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("appDistributionUpload") }
+    .configureEach { dependsOn("checkNativeAlignment") }

@@ -2,7 +2,7 @@
 kotlin = "2.2.20"
 agp = "9.3.2"
 opencvJvm = "4.9.0-0"
-opencvAndroid = "4.11.0"
+opencvAndroid = "4.12.0"
 composeBom = "2026.06.01"
 camerax = "1.6.2"
 activityCompose = "1.11.0"

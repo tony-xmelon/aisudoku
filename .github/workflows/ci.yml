@@ -48,10 +48,37 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --console=plain
 
+      # Play refuses native libraries built for 4 KB pages, and they do not fail
+      # gracefully - they fail to load on a 16 KB device, which is a phone no build here
+      # runs on. The check reads the ELF headers, so it catches a dependency regressing.
+      - name: Check the native libraries are 16 KB aligned
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew :app:checkNativeAlignment --console=plain
+
       - uses: actions/upload-artifact@v4
         with:
           name: aisudoku-apk
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      # What Play takes. The APK above stays for Firebase, which wants one file for one
+      # ABI; the bundle carries all four and lets Play send each phone only its own.
+      - name: Assemble the Play bundle
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew :app:bundleRelease --console=plain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aisudoku-bundle
+          path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
 
   distribute:

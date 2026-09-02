@@ -401,6 +401,7 @@ def main():
         print("\n=== leave-one-photograph-out ===")
         print("A model that has never seen the photograph it is scored on.\n")
         total_right = total = 0
+        lopo_wrong = []
         for stem in sorted(set(photos)):
             held = np.array([p == stem for p in photos])
             keep = ~held
@@ -415,8 +416,29 @@ def main():
             total += int(hand.sum())
             print(f"  {stem:<40} all {a_all:.3f}   handwriting {a_hand:.3f} "
                   f"({int(hand.sum())} cells)")
+
+            # Which cells it got wrong, not just how many. A rate says whether to
+            # keep going; the confusions say what to keep going *at* - and these are
+            # the only misreads worth reading, since the shipped model has seen every
+            # cell it is scored on and so reports none at all.
+            model.eval()
+            with torch.no_grad():
+                pred = model(tx.to(DEVICE)).argmax(1).cpu()
+            for pv, tv, hv in zip(pred.tolist(), ty.tolist(), hand.tolist()):
+                if pv != tv:
+                    lopo_wrong.append((tv + 1, pv + 1, "hand" if hv else "print", stem))
         print(f"\n  handwriting, unseen photographs: {total_right}/{total} = "
               f"{total_right / max(1, total):.3f}")
+
+        print()
+        print("  every miss on an unseen photograph (truth -> read):")
+        tally = {}
+        for tv, pv, kind, stem in lopo_wrong:
+            tally[(tv, pv, kind)] = tally.get((tv, pv, kind), 0) + 1
+        for (tv, pv, kind), n in sorted(tally.items(), key=lambda kv: -kv[1]):
+            print(f"    {tv} -> {pv}  ({kind}): {n}")
+        for tv, pv, kind, stem in lopo_wrong:
+            print(f"      {stem}: {tv} read as {pv} ({kind})")
 
     print("\n=== the shipped model, trained on everything ===")
     ax, ay = amplify(xc[:, None], yc, CORPUS_TIMES)

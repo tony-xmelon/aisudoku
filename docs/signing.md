@@ -78,3 +78,18 @@ over, whoever built it.
 The first build signed with the new key still differs from whatever is on the phone now,
 so testers must uninstall once more. Every build after that is an ordinary update, and
 their puzzles and photographs stay put.
+
+## When the app goes to Google Play
+
+Play App Signing changes what this key is for. Google holds the *app signing key* — the one
+every installed copy is verified against — and the key described above becomes the *upload
+key*: it keeps signing what CI builds, and Play re-signs before distributing.
+
+That makes the key less catastrophic to lose than it is today, but not harmless. If it goes
+missing, Google can reset the upload key on request; until they do, nothing can be
+uploaded. Keep it exactly as safe as before.
+
+The certificate recorded above is what Firebase App Distribution builds carry, and what
+testers have installed today. Once Play App Signing is on, a build installed from the
+Play Store will report Google's certificate instead - a difference to expect rather than
+one to investigate.
