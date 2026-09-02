@@ -36,7 +36,12 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchvision import datasets, transforms
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cells import CELLS, components, load_labels, normalise  # noqa: E402
+from cells import (  # noqa: E402
+    NORMALISED as NORMALISED_HINT,
+    export_is_stale,
+    load_labels,
+    normalised_cells,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
@@ -65,11 +70,6 @@ class Net(nn.Module):
         x = x.flatten(1)
         x = self.drop(F.relu(self.fc1(x)))
         return self.fc2(x)
-
-
-def mask_of(gray):
-    local = ndimage.uniform_filter(gray, size=31)
-    return ndimage.binary_opening(gray < (local - 6), np.ones((2, 2)), iterations=1)
 
 
 def normalise_array(ink):
@@ -382,26 +382,45 @@ def mnist_tensors(train):
 
 
 def corpus_cells():
-    """Every labelled digit in the corpus, with the photograph it came from."""
+    """Every labelled digit in the corpus, as the reader itself normalised it.
+
+    These bitmaps are read rather than recomputed. Deriving them here a second time is
+    what let training and inference drift apart: by the time anyone checked, the two
+    disagreed on the ink margin, the resize filter, the morphological anchor and the blob
+    connectivity all at once, and not one cell in 746 came out the same on both sides.
+
+    Requires the export to have been run, which is also what produces the cell PNGs:
+        ./gradlew :core:recognize:test --tests '*ExportNormalisedTest*' -Ddump=true --rerun-tasks
+    """
+    if export_is_stale():
+        raise SystemExit(
+            "CellAnalyzer.kt is newer than the exported bitmaps, so training would "
+            "use images the reader no longer produces. Re-export first: ./gradlew "
+            ":core:recognize:test --tests '*ExportNormalisedTest*' -Ddump=true "
+            "--rerun-tasks")
+
     xs, ys, sources, photos = [], [], [], []
+    missing = []
     for stem, cl in load_labels().items():
-        directory = os.path.join(CELLS, stem)
-        if not os.path.isdir(directory):
+        bitmaps = normalised_cells(stem)
+        if not bitmaps:
+            missing.append(stem)
             continue
         for i in range(81):
             digit, source = cl[i]
-            if digit is None:
+            if digit is None or i not in bitmaps:
                 continue
-            gray = np.array(Image.open(os.path.join(directory, "cell_%02d.png" % i)).convert("L"),
-                            dtype=np.float32)
-            h, w = gray.shape
-            blobs = components(mask_of(gray), h, w)
-            if not blobs:
-                continue
-            xs.append(normalise(gray, max(blobs, key=lambda b: b["size"])))
+            xs.append(bitmaps[i])
             ys.append(digit - 1)
             sources.append(source)
             photos.append(stem)
+    if missing:
+        print("  no exported bitmaps for: " + ", ".join(sorted(missing)))
+    if not xs:
+        raise SystemExit(
+            "No normalised cells found under " + NORMALISED_HINT + ". Run the "
+            "export first: ./gradlew :core:recognize:test --tests "
+            "'*ExportNormalisedTest*' -Ddump=true --rerun-tasks")
     return np.stack(xs), np.array(ys, dtype=np.int64), sources, photos
 
 
