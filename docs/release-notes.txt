@@ -1,27 +1,23 @@
-Two faults, one of them mine from an hour ago.
+Why every update has been wiping your puzzles.
 
-THE PHOTO WAS NOT ALWAYS BEING KEPT, AND THE APP SAID IT WAS. The message after a
-refused scan claimed the photograph had been saved whether or not the saving had
-worked, and the folder it used lives on removable storage that can simply not be
-there. It now writes to private storage when the external folder is missing, and
-says plainly when it could not keep the photo at all.
+The release was signed with the debug key. A build machine has no debug key, so
+one is made fresh for every build - and two builds in a row were signed by two
+different certificates:
 
-AND THE LIST NEVER REFRESHED. The refused photos were read once, when the drawer
-was first built, and the drawer stays built between openings - so a scan that
-failed afterwards never appeared, which looks exactly like nothing having been
-saved. The list is now looked up when the drawer opens, the same way your puzzles
-are. The message also pointed at a menu item that had been moved into the puzzle
-list an hour earlier.
+  0.1.60   SHA-256 0e467993f0438d83b3ab971bfa3e5f3c...
+  0.1.61   SHA-256 8bd7c03cb97d31de9e13c743997c0b22...
 
-THE SIZE FLOOR GOES BACK. A shape smaller than eight per cent of the frame is
-ignored again, as it was in every version anyone reported as working. It was
-dropped to three per cent, then to five, on the strength of a synthetic scene
-that later measurements showed to be a poor model - and neither number was ever
-shown to find a grid that eight per cent misses.
+Android will not update an app whose signature has changed. So every version has
+arrived as an uninstall and a fresh install, taking the puzzle history, the kept
+photographs and the settings with it. Not a storage bug: nothing was ever wrong
+with where any of it was saved.
 
-What stays is what the reported screenshot argues for. On it, the scoring change
-lifts the grid from 0.33 to 0.38, over the line where the old scoring left it
-just under; and the old detector offers a sliver a thousand pixels long and
-three hundred wide, which is the shape you saw drawn across your puzzle.
+The build now signs with a proper key when one is provided, and says loudly when
+it is not. Providing it needs four repository secrets and a keystore, which only
+the owner of the project can make - docs/signing.md has the two commands.
+
+Until then this build behaves as before. Afterwards there is one last uninstall,
+because the new signature differs from whatever is on the phone now; every
+version after that is an ordinary update and your puzzles stay where they are.
 
 The full history is in docs/changelog.md.

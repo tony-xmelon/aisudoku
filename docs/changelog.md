@@ -8,6 +8,31 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+WHY EVERY UPDATE HAS BEEN WIPING YOUR PUZZLES.
+The release was signed with the debug key. A build machine has no debug key, so
+one is made fresh for every build - and two builds in a row were signed by two
+different certificates:
+
+  0.1.60   SHA-256 0e467993f0438d83b3ab971bfa3e5f3c...
+  0.1.61   SHA-256 8bd7c03cb97d31de9e13c743997c0b22...
+
+Android will not update an app whose signature has changed. So every version has
+arrived as an uninstall and a fresh install, taking the puzzle history, the kept
+photographs and the settings with it. Not a storage bug: nothing was ever wrong
+with where any of it was saved.
+
+The build now signs with a proper key when one is provided, and says loudly when
+it is not. Providing it needs four repository secrets and a keystore, which only
+the owner of the project can make - docs/signing.md has the two commands.
+
+Until then this build behaves as before. Afterwards there is one last uninstall,
+because the new signature differs from whatever is on the phone now; every
+version after that is an ordinary update and your puzzles stay where they are.
+
+The full history is in docs/changelog.md.
+
+---
+
 TWO FAULTS, ONE OF THEM MINE FROM AN HOUR AGO.
 THE PHOTO WAS NOT ALWAYS BEING KEPT, AND THE APP SAID IT WAS. The message after a
 refused scan claimed the photograph had been saved whether or not the saving had

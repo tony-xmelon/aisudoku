@@ -29,10 +29,37 @@ android {
         }
     }
 
+    /**
+     * The key the release is signed with, when one has been provided.
+     *
+     * Android will not update an installed app whose signature has changed, so a release
+     * signed with a throwaway key cannot be updated at all - it has to be uninstalled
+     * first, taking every puzzle, photograph and setting with it. That is exactly what was
+     * happening: releases were signed with the *debug* config, and CI runners have no
+     * debug keystore, so the build generated a fresh one every time. Two consecutive
+     * builds were signed by two different certificates.
+     *
+     * Falls back to debug when no keystore is supplied, so a local build still works;
+     * [checkReleaseSigning] is what stops that fallback reaching testers unnoticed.
+     */
+    val keystore = System.getenv("SIGNING_KEYSTORE")?.takeIf { File(it).isFile }
+
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = File(keystore)
+                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -98,6 +125,47 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
+
+/**
+ * Refuses to distribute a release signed with a throwaway key.
+ *
+ * A debug-signed release installs once and can never be updated, because the key differs
+ * on every machine that builds it - so each new version arrives as an uninstall, and the
+ * tester loses everything they had. That is invisible from the build log and obvious only
+ * weeks later, which is exactly the kind of thing worth failing the build over.
+ *
+ * Only the upload is gated. Building and testing a release locally without a keystore
+ * stays as easy as it was.
+ */
+tasks.register("checkReleaseSigning") {
+    group = "verification"
+    description = "Check the release is signed with a stable key before it goes to testers"
+    val named = System.getenv("SIGNING_KEYSTORE")
+    doLast {
+        // A keystore named but not there is a broken setup, and shipping past it would
+        // sign with the debug key while looking configured. That fails.
+        check(named == null || File(named).isFile) {
+            "SIGNING_KEYSTORE points at $named, which is not a file. The release would " +
+                "fall back to the debug key without saying so. See docs/signing.md."
+        }
+
+        // No keystore at all is the state this project has always been in, so it warns
+        // rather than stopping the only route a build has to a phone. It is loud because
+        // the cost is invisible and lands on somebody else: every build a tester installs
+        // is an uninstall, and takes their puzzles and photographs with it.
+        if (named == null) {
+            logger.warn(
+                "WARNING: this release will be signed with the debug key, which is " +
+                    "generated afresh on every machine. Testers cannot update across a " +
+                    "signature change - each build arrives as an uninstall and takes " +
+                    "their puzzles and photographs with it. See docs/signing.md."
+            )
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("appDistributionUpload") }
+    .configureEach { dependsOn("checkReleaseSigning") }
 
 /**
  * Fails fast when the release notes are too long for App Distribution to accept.
