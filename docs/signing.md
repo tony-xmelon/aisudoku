@@ -50,6 +50,10 @@ development machine. What it will not do is reach anybody: `checkReleaseSigning`
 before `appDistributionUpload` and fails the job, because a debug-signed release that
 testers cannot update is worse than no release at all.
 
+That check only started failing once a key existed to use. While there was none it warned
+instead, since stopping the upload would have taken away the only route a build had to a
+phone — which is a thing to say out loud, not to decide quietly on somebody's behalf.
+
 ## The key in use
 
 Set up on 2 September 2026. The keystore and its password live outside the repository, on

@@ -149,17 +149,16 @@ tasks.register("checkReleaseSigning") {
                 "fall back to the debug key without saying so. See docs/signing.md."
         }
 
-        // No keystore at all is the state this project has always been in, so it warns
-        // rather than stopping the only route a build has to a phone. It is loud because
-        // the cost is invisible and lands on somebody else: every build a tester installs
-        // is an uninstall, and takes their puzzles and photographs with it.
-        if (named == null) {
-            logger.warn(
-                "WARNING: this release will be signed with the debug key, which is " +
-                    "generated afresh on every machine. Testers cannot update across a " +
-                    "signature change - each build arrives as an uninstall and takes " +
-                    "their puzzles and photographs with it. See docs/signing.md."
-            )
+        // Now that a key exists, no key is a fault rather than a state of affairs. This
+        // warned while there was none, so as not to take away the only route a build had
+        // to a phone; stopping the upload is the right answer once the alternative is
+        // simply to set the secrets. A release testers cannot update is worse than no
+        // release: it costs them everything they had.
+        check(named != null) {
+            "This release would be signed with the debug key, which is generated afresh " +
+                "on every machine, so testers cannot update over it - they must uninstall " +
+                "and lose their puzzles and photographs. The signing secrets are missing. " +
+                "See docs/signing.md."
         }
     }
 }
