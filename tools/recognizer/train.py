@@ -231,6 +231,112 @@ def curl(x, y, seed=SEED + 3):
     return np.stack(out), np.full(len(out), 8, dtype=np.int64)
 
 
+def written_eights(count=3000, seed=SEED + 5):
+    """An 8 drawn by hand, where the two loops do not reliably close.
+
+    Half the misses on unseen photographs are an 8 read as something with fewer closed
+    loops - twice as a 6, once as a 5. MNIST's eights are drawn in one confident stroke
+    with both loops shut, and a written one is often two circles stacked, joined where the
+    pen lifted. An 8 whose top loop is open on the left is, to a model that has only seen
+    MNIST, a 6 with a flourish; one open at the top is a 5.
+
+    So the loops are drawn as arcs with a gap rather than as closed ellipses, and the gap
+    is put where a pen actually leaves one. This is the same argument as the continental
+    ones and sevens: no font draws the shape, so it has to be drawn here.
+    """
+    rng = np.random.default_rng(seed)
+    xs = []
+    for _ in range(count):
+        canvas = Image.new("L", (96, 96), 0)
+        draw = ImageDraw.Draw(canvas)
+        # Wider than the other drawn shapes: at 3-7 these came out at an ink mean of
+        # 0.11 against the 0.16 of the real eights in the corpus, and a stroke that
+        # thin is a different thing to read than a pen on paper.
+        width = int(rng.integers(5, 9))
+        height = float(rng.uniform(50, 68))
+        top = 96 / 2 - height / 2
+        # The top loop is the smaller of the two far more often than not, and it is never
+        # the wider - an 8 with a fat head reads as a 9 to anybody, model or otherwise.
+        split = float(rng.uniform(0.42, 0.54))
+        top_h = height * split
+        full_w = height * float(rng.uniform(0.52, 0.78))
+        top_w = full_w * float(rng.uniform(0.66, 1.00))
+        cx = 96 / 2 + float(rng.uniform(-3, 3))
+
+        def loop(y0, h, w, gap_centre):
+            box = [cx - w / 2, y0, cx + w / 2, y0 + h]
+            if rng.random() < 0.55:
+                gap = float(rng.uniform(25, 80))
+                draw.arc(box, gap_centre + gap / 2, gap_centre - gap / 2 + 360,
+                         fill=255, width=width)
+            else:
+                draw.ellipse(box, outline=255, width=width)
+
+        # Angles are clockwise from three o'clock, so 270 is the top of the loop and 180
+        # its left side - the two places a pen lifting leaves the shape open.
+        loop(top, top_h, top_w, float(rng.uniform(200, 300)))
+        loop(top + top_h * 0.90, height - top_h * 0.90, full_w, float(rng.uniform(40, 140)))
+
+        a = np.array(canvas, dtype=np.float32) / 255.0
+        a = np.clip(ndimage.rotate(a, float(rng.uniform(-12, 12)), reshape=False, order=1), 0, 1)
+        xs.append(normalise_array(photo_noise(a, rng)))
+    return np.stack(xs), np.full(len(xs), 7, dtype=np.int64)     # class 7 is the digit 8
+
+
+def tta_views(a):
+    """The fixed set of small distortions a cell is judged over.
+
+    Deterministic on purpose. A random set would score differently every run, and the
+    Kotlin reader has to be able to apply exactly these - an average over views the phone
+    cannot reproduce would flatter the figure here and change nothing on the device.
+
+    Measured on 2 September 2026 and it gains nothing at all: 171/175 with the average and
+    171/175 without it, identical on every photograph rather than close. That is a clearer
+    answer than a small win would have been, and the reason is visible in the misses -
+    what is left is not a cell the model nearly gets right from a slightly different
+    angle, it is a shape it has the wrong idea about. Averaging five looks at the wrong
+    idea returns the wrong idea.
+
+    Kept, with the column, because it costs only inference and it is the sort of thing
+    worth being talked out of twice.
+    """
+    views = [a]
+    for angle in (-8.0, 8.0):
+        views.append(np.clip(ndimage.rotate(a, angle, reshape=False, order=1), 0, 1))
+    for factor in (0.92, 1.08):
+        z = ndimage.zoom(a, factor, order=1)
+        out = np.zeros_like(a)
+        if z.shape[0] >= a.shape[0]:                     # zoomed in: take the middle
+            off = (z.shape[0] - a.shape[0]) // 2
+            out[:, :] = z[off:off + a.shape[0], off:off + a.shape[1]]
+        else:                                            # zoomed out: sit it in the middle
+            off = (a.shape[0] - z.shape[0]) // 2
+            out[off:off + z.shape[0], off:off + z.shape[1]] = z
+        views.append(np.clip(out, 0, 1))
+    return views
+
+
+def accuracy_tta(model, x, y, batch=512):
+    """Accuracy with the probabilities averaged over [tta_views] rather than one look."""
+    if len(x) == 0:
+        return float("nan")
+    model.eval()
+
+    # Views are built once per cell, then regrouped so each view goes through the model as
+    # one batch: five passes over the set rather than five per cell.
+    per_cell = [tta_views(x[j, 0].numpy()) for j in range(len(x))]
+    totals = None
+    with torch.no_grad():
+        for k in range(len(per_cell[0])):
+            view = torch.tensor(np.stack([c[k] for c in per_cell]),
+                                dtype=torch.float32).unsqueeze(1)
+            probs = [F.softmax(model(view[i:i + batch].to(DEVICE)), dim=1).cpu()
+                     for i in range(0, len(view), batch)]
+            p = torch.cat(probs)
+            totals = p if totals is None else totals + p
+    return (totals.argmax(1) == y).float().mean().item()
+
+
 def elastic(a, rng, strength=6.0):
     """Random smooth warp: the cheapest way to make a handful of samples into many."""
     dx = ndimage.gaussian_filter(rng.uniform(-1, 1, a.shape), 4) * strength
@@ -378,10 +484,12 @@ def build_sources():
     x7, y7 = continental_sevens()
     print("curling MNIST nines ...")
     x9, y9 = curl(xm, ym)
-    print(f"  {len(x1)} ones, {len(x7)} sevens, {len(x9)} curled nines")
+    print("drawing eights with loops that do not close ...")
+    x8, y8 = written_eights()
+    print(f"  {len(x1)} ones, {len(x7)} sevens, {len(x9)} curled nines, {len(x8)} eights")
 
-    x = np.concatenate([xm[:, 0], xp, x1, x7, x9])[:, None, :, :]
-    y = np.concatenate([ym, yp, y1, y7, y9])
+    x = np.concatenate([xm[:, 0], xp, x1, x7, x9, x8])[:, None, :, :]
+    y = np.concatenate([ym, yp, y1, y7, y9, y8])
     return x, y
 
 
@@ -400,7 +508,7 @@ def main():
     if "--lopo" in sys.argv:
         print("\n=== leave-one-photograph-out ===")
         print("A model that has never seen the photograph it is scored on.\n")
-        total_right = total = 0
+        total_right = total = tta_right = 0
         lopo_wrong = []
         for stem in sorted(set(photos)):
             held = np.array([p == stem for p in photos])
@@ -412,10 +520,12 @@ def main():
             hand = torch.tensor(guess[held])
             a_all = accuracy(model, tx, ty)
             a_hand = accuracy(model, tx[hand], ty[hand])
+            t_hand = accuracy_tta(model, tx[hand], ty[hand]) if int(hand.sum()) else float("nan")
             total_right += round(a_hand * int(hand.sum())) if int(hand.sum()) else 0
             total += int(hand.sum())
+            tta_right += round(t_hand * int(hand.sum())) if int(hand.sum()) else 0
             print(f"  {stem:<40} all {a_all:.3f}   handwriting {a_hand:.3f} "
-                  f"({int(hand.sum())} cells)")
+                  f"-> {t_hand:.3f} with tta ({int(hand.sum())} cells)")
 
             # Which cells it got wrong, not just how many. A rate says whether to
             # keep going; the confusions say what to keep going *at* - and these are
@@ -429,6 +539,8 @@ def main():
                     lopo_wrong.append((tv + 1, pv + 1, "hand" if hv else "print", stem))
         print(f"\n  handwriting, unseen photographs: {total_right}/{total} = "
               f"{total_right / max(1, total):.3f}")
+        print(f"  the same, averaged over five views:  {tta_right}/{total} = "
+              f"{tta_right / max(1, total):.3f}")
 
         print()
         print("  every miss on an unseen photograph (truth -> read):")
