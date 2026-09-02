@@ -1,29 +1,20 @@
-Your finished grid is in the training set, and two things came out of it.
+A second puzzle joins the corpus, and it tests the part that just changed.
 
-FIRST, THE PAPER IS RIGHT. All eighty-one squares agree with the one solution the
-printed givens allow, so the three the app disagreed with were its mistakes and
-not yours.
+The one barely started, thick with pencil candidates - over half its empty squares
+carry them, many written small and high in a corner where they most resemble an
+answer. Every one of its 729 cells is now sorted correctly into print,
+handwriting, pencil or nothing, and its twenty-three printed digits and two
+answers all read right.
 
-THE FAINTEST ANSWERS WERE BEING READ AS EMPTY SQUARES. Not misread - not read at
-all. A pencil stroke laid lightly over a rubbed-out candidate mark did not stand
-far enough below the paper around it to count as ink. That threshold has never
-been tested against a finished grid before, because until now there was no
-finished grid to test it against. Swept against every cell in the corpus it now
-sorts all 648, where before it missed two.
+That matters because the ink threshold was lowered yesterday to catch the faintest
+answers on your finished grid, and lowering it is exactly the change that could
+have started reading pencil dust as digits. On a page covered in pencil, it does
+not.
 
-AND THE MODEL HAS BEEN RETRAINED. Your grid brings fifty-seven handwritten digits
-where the whole corpus held ninety-four, and it is the only completed puzzle in
-it.
-
-Here the honest number is smaller than it looks. Scored the only way that means
-anything - a model that has never seen the photograph it is marking - handwriting
-reads 145 of 151, or 96.0%, against 95.7% before. One photograph does not move
-that much, and anybody quoting the in-training figure of 100% would be quoting
-the model's memory rather than its judgement.
-
-So: nothing on this grid should now be read as empty, and the digits themselves
-are as good as 96% and no better. On eighty-one handwritten squares that is still
-about three you will have to correct. The way that number comes down is more
-finished grids.
+The other puzzle you sent is deliberately not in there. Read by eye it produced
+eleven answers disagreeing with the solution of its own printed givens, which
+means the reading was wrong rather than the paper - eleven mistakes on one grid is
+not what happens. A label that is wrong is worse than no label: it teaches the
+recogniser something false and every later measurement inherits it.
 
 The full history is in docs/changelog.md.

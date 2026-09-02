@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-02-marks-heavy.jpg",
+  "givens": [
+    ".....48..",
+    ".5....1..",
+    "...39....",
+    "..6......",
+    "18..4..7.",
+    "....6..23",
+    "..2..6...",
+    ".7..1...9",
+    "9.5..8..2"
+  ],
+  "written": [
+    ".....48..",
+    ".5....1..",
+    "...39.2..",
+    "..6......",
+    "18..4..7.",
+    "....6..23",
+    "..29.6...",
+    ".7..1...9",
+    "9.5..8..2"
+  ],
+  "notes": "A second puzzle, barely started: twenty-three printed givens and two handwritten answers, at r3c7 and r7c4. Both agree with the unique solution of the givens.\n\nWhat it is here for is the pencil. Well over half the empty squares carry candidate marks, many of them single digits written small and high in the corner, which is the shape most easily mistaken for an answer. The straightened image the app kept, padded back to leave a margin.\n\nThe first puzzle shared alongside this one is deliberately absent. Read by eye it produced eleven answers disagreeing with the solution of its own givens, which means the reading was wrong rather than the paper - and a label that is wrong teaches the recogniser something false."
+}

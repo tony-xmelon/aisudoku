@@ -8,6 +8,28 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+A SECOND PUZZLE JOINS THE CORPUS, AND IT TESTS THE PART THAT JUST CHANGED.
+The one barely started, thick with pencil candidates - over half its empty squares
+carry them, many written small and high in a corner where they most resemble an
+answer. Every one of its 729 cells is now sorted correctly into print,
+handwriting, pencil or nothing, and its twenty-three printed digits and two
+answers all read right.
+
+That matters because the ink threshold was lowered yesterday to catch the faintest
+answers on your finished grid, and lowering it is exactly the change that could
+have started reading pencil dust as digits. On a page covered in pencil, it does
+not.
+
+The other puzzle you sent is deliberately not in there. Read by eye it produced
+eleven answers disagreeing with the solution of its own printed givens, which
+means the reading was wrong rather than the paper - eleven mistakes on one grid is
+not what happens. A label that is wrong is worse than no label: it teaches the
+recogniser something false and every later measurement inherits it.
+
+The full history is in docs/changelog.md.
+
+---
+
 YOUR FINISHED GRID IS IN THE TRAINING SET, AND TWO THINGS CAME OUT OF IT.
 FIRST, THE PAPER IS RIGHT. All eighty-one squares agree with the one solution the
 printed givens allow, so the three the app disagreed with were its mistakes and
