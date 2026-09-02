@@ -8,6 +8,36 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+WHEN A SCAN IS REFUSED, THE APP NOW KEEPS THE PHOTOGRAPH.
+The scan that would not get past the shutter has been chased through every
+measurement available here, and the photograph itself is not the problem: put
+through the very check that rejected it, at nine different sizes, it passes every
+time. Score 0.55, grid found, cells cut cleanly. So whatever the phone
+photographed is not what has been examined here - and a screenshot cannot settle
+that, because it is a picture of a screen showing a cropped and re-encoded copy
+of the frame, nor can a photograph taken with a different camera app.
+
+So a refused photograph is now kept, in the app's own folder, named for the
+reason it was refused, and the message says which file it is. Nothing is sent
+anywhere - the app still has no internet permission - it is simply there to be
+looked at. Twelve are kept, oldest dropped first.
+
+Also here: every screenshot sent back from the phone is now re-read on every test
+run, so a reported failure stays reported.
+
+AND ONE THING TAKEN BACK OUT. A phone's camera frame often carries less contrast
+than a photograph decoded from a JPEG, and the checks here subtract fixed
+amounts, so stretching each frame to the full range before measuring looked like
+an obvious improvement. Measured, it is worth nothing at all - a page at
+video range scores 0.61 where the same page at full range scores 0.60, because
+these checks compare each pixel with its own neighbourhood rather than with any
+fixed level. It also cost two cases out of fourteen on a cluttered table. So it
+is gone, and this note is here instead.
+
+The full history is in docs/changelog.md.
+
+---
+
 IT IS THE SAME READER. IT WAS NOT BEING GIVEN THE SAME PICTURE.
 I said a captured photograph gets a better reader than the live preview. That was
 wrong, and worth correcting: StructuralGate calls exactly the same GridLocator

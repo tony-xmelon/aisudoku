@@ -111,7 +111,15 @@ fun CameraScreen(
             val image = Images.fromJpeg(bytes, proxy.imageInfo.rotationDegrees)
 
             when (val verdict = StructuralGate.assess(image)) {
-                is GateVerdict.Rejected -> failure = verdict.reason.message
+                is GateVerdict.Rejected -> {
+                    // Keep the photograph that was refused. A scan that fails here and
+                    // cannot be made to fail anywhere else is a difference between what
+                    // the phone photographed and what everything else has seen, and the
+                    // only way to close that is to look at the bytes themselves.
+                    val kept = Diagnostics.keep(context, bytes, verdict.reason.toString())
+                    failure = verdict.reason.message +
+                        (kept?.let { " That photo was kept as $it." } ?: "")
+                }
 
                 is GateVerdict.Usable -> {
                     val lines = GridLines(
