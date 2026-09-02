@@ -19,8 +19,10 @@ import java.util.Locale
  * cropped, re-encoded copy of the frame - and neither can a photograph taken with a
  * different camera app. Only the bytes this app itself handled can.
  *
- * Both kinds are worth keeping. A refused photograph explains why a scan would not start;
- * an accepted one explains why the digits came out wrong.
+ * Only refusals are kept here. A photograph that scanned is already saved as a puzzle,
+ * and the straightened copy kept with it is exactly what the recogniser read - so it is
+ * the more useful of the two when the digits come out wrong, and it is already in the
+ * list where anyone would look for it.
  *
  * They live in the app's own external folder, which needs no permission, and are shared
  * one at a time through a provider that grants read access to those files and nothing
@@ -52,11 +54,34 @@ object Diagnostics {
         name
     }.getOrNull()
 
-    /** Every photograph kept so far, newest first. */
-    fun kept(context: Context): List<File> = folder(context)
+    /** A photograph the app would not accept, and why. */
+    data class Refused(val file: File, val at: Date, val reason: String)
+
+    /** Every refused photograph kept so far, newest first. */
+    fun refused(context: Context): List<Refused> = folder(context)
         ?.listFiles { file: File -> file.name.startsWith(PREFIX) }
         ?.sortedByDescending { it.name }
+        ?.mapNotNull { describe(it) }
         .orEmpty()
+
+    /**
+     * Reads back what the file name recorded.
+     *
+     * The name is the whole record - there is no index to keep in step, and a folder of
+     * files that describe themselves survives the app being reinstalled around them.
+     */
+    private fun describe(file: File): Refused? {
+        val parts = file.nameWithoutExtension.removePrefix(PREFIX).split("-")
+        if (parts.size < 3) return null
+        val at = runCatching { stamp.parse("${parts[0]}-${parts[1]}") }.getOrNull() ?: return null
+        val reason = parts.drop(2).joinToString(" ").replaceFirstChar { it.uppercase() }
+        return Refused(file, at, reason)
+    }
+
+    /** Throws one away, when the user is done with it. */
+    fun discard(refused: Refused) {
+        refused.file.delete()
+    }
 
     /**
      * Hands the kept photographs to whatever the user picks to send them with.
@@ -65,17 +90,26 @@ object Diagnostics {
      * app willing to take them, so the caller can say so rather than appearing to do
      * nothing.
      */
-    fun share(context: Context, files: List<File> = kept(context)): Boolean {
+    fun share(context: Context, files: List<File>): Boolean {
         if (files.isEmpty()) return false
 
         val uris = ArrayList(
             files.map { FileProvider.getUriForFile(context, "${context.packageName}.scans", it) }
         )
-        val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-            type = "image/jpeg"
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-            putExtra(Intent.EXTRA_SUBJECT, "AI Sudoku scans")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val send = if (uris.size == 1) {
+            Intent(Intent.ACTION_SEND).apply {
+                type = "image/jpeg"
+                putExtra(Intent.EXTRA_STREAM, uris.first())
+                putExtra(Intent.EXTRA_SUBJECT, "AI Sudoku scan")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } else {
+            Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "image/jpeg"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                putExtra(Intent.EXTRA_SUBJECT, "AI Sudoku scans")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
         }
         return runCatching {
             context.startActivity(

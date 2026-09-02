@@ -122,11 +122,6 @@ fun CameraScreen(
                 }
 
                 is GateVerdict.Usable -> {
-                    // Kept as well. A photograph that scanned but read badly is just as
-                    // much of a report as one that would not scan at all, and by the time
-                    // anyone notices the digits are wrong the photograph is long gone.
-                    Diagnostics.keep(context, bytes, "read")
-
                     val lines = GridLines(
                         vertical = verdict.geometry.verticalLines
                             .map { (it / verdict.rectified.width).toFloat() },

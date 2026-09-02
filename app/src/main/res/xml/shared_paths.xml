@@ -7,5 +7,8 @@
   stays private, because nothing needs to share it.
 -->
 <paths>
+    <!-- Photographs of scans that would not read. -->
     <external-files-path name="scans" path="Pictures/" />
+    <!-- The straightened photograph of each saved puzzle. -->
+    <files-path name="history" path="history/" />
 </paths>

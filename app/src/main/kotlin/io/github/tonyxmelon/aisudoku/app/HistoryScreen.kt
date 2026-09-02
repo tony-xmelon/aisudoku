@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import io.github.tonyxmelon.aisudoku.solver.AnswerCheck
@@ -56,6 +59,12 @@ fun HistoryList(
     onClose: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<HistoryEntry?>(null) }
+
+    // Photographs the app would not read at all. They never became puzzles, so nothing
+    // else in the app knows they happened - and they are exactly the ones worth sending
+    // to somebody who can find out why.
+    val context = LocalContext.current
+    var refused by remember { mutableStateOf(Diagnostics.refused(context)) }
 
     LazyColumn(
         // No inset padding here: ModalDrawerSheet already applies the system bars, and
@@ -156,10 +165,44 @@ fun HistoryList(
                             )
                             Text(summarise(entry), style = MaterialTheme.typography.bodySmall)
                         }
+                        IconButton(onClick = { Diagnostics.share(context, listOf(entry.photo)) }) {
+                            Icon(Icons.Filled.Share, contentDescription = "Send this photo")
+                        }
                         IconButton(onClick = { pendingDelete = entry }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete this puzzle")
                         }
                     }
+                }
+            }
+        }
+
+        if (refused.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) {
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
+                    Text(
+                        "Would not read",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Photos the app could not make a puzzle out of. Send one and it " +
+                            "can be looked at.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            for (scan in refused) {
+                item(key = scan.file.name) {
+                    RefusedRow(
+                        scan = scan,
+                        onSend = { Diagnostics.share(context, listOf(scan.file)) },
+                        onDelete = {
+                            Diagnostics.discard(scan)
+                            refused = Diagnostics.refused(context)
+                        },
+                    )
                 }
             }
         }
@@ -194,6 +237,64 @@ fun HistoryList(
         )
     }
 }
+
+/**
+ * One photograph the app turned down, with its reason.
+ *
+ * Deliberately looks like a puzzle row and is deliberately not one: there is no puzzle to
+ * open, so tapping it does nothing. The thumbnail is the point - it shows at a glance
+ * whether the camera was even pointed at the right thing.
+ */
+@Composable
+private fun RefusedRow(
+    scan: Diagnostics.Refused,
+    onSend: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.size(52.dp)) {
+            val thumbnail = remember(scan.file) {
+                runCatching { BitmapFactory.decodeFile(scan.file.absolutePath, thumbnailOptions()) }
+                    .getOrNull()
+            }
+            thumbnail?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                History.timeOf(scan.at),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(scan.reason, style = MaterialTheme.typography.bodySmall)
+        }
+        IconButton(onClick = onSend) {
+            Icon(Icons.Filled.Share, contentDescription = "Send this photo")
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Filled.Delete, contentDescription = "Delete this photo")
+        }
+    }
+}
+
+/**
+ * A capture is several thousand pixels across and a thumbnail is fifty-two.
+ *
+ * Decoding one at full size to draw it that small is tens of megabytes for nothing, and
+ * with several in a list it is the difference between a drawer that opens and one that
+ * stutters.
+ */
+private fun thumbnailOptions() = BitmapFactory.Options().apply { inSampleSize = 16 }
 
 /** A line telling you which puzzle this is without opening it. */
 private fun summarise(entry: HistoryEntry): String {

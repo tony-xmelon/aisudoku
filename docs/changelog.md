@@ -8,6 +8,26 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+EVERY PHOTO IS IN YOUR PUZZLE LIST NOW, WITH A SEND BUTTON BESIDE IT.
+Each saved puzzle has one, and it sends the straightened photograph - which is
+exactly what the recogniser read, so it is the useful one when the digits come
+out wrong.
+
+Underneath them, a "Would not read" section: the photos the app refused, which
+never became puzzles and so were invisible until now. Same thumbnail, the reason
+it was turned down, send and delete. Six are kept, oldest dropped.
+
+The separate menu item is gone. One list of everything the camera produced is
+easier to find than a share buried in a menu, and there is no longer a photograph
+in the app that cannot be looked at.
+
+The app still has no internet permission and makes no network calls. It hands
+the one file you pick to the app you pick, read-only; that app does the sending.
+
+The full history is in docs/changelog.md.
+
+---
+
 YOU CAN NOW SEND A SCAN FROM THE PHONE.
 The app keeps the last six photographs it took, and there is a "Send last scans"
 item in the menu when it has any. Pick whatever you send things with; the photos

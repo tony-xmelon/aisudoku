@@ -1,17 +1,18 @@
-You can now send a scan from the phone.
+Every photo is in your puzzle list now, with a send button beside it.
 
-The app keeps the last six photographs it took, and there is a "Send last scans"
-item in the menu when it has any. Pick whatever you send things with; the photos
-go along as attachments.
+Each saved puzzle has one, and it sends the straightened photograph - which is
+exactly what the recogniser read, so it is the useful one when the digits come
+out wrong.
 
-Both kinds are kept now, not just refusals. A photograph the app would not scan
-explains why a scan will not start; one it scanned happily explains why the
-digits came out wrong - and by the time anyone notices the digits are wrong the
-photograph is long gone.
+Underneath them, a "Would not read" section: the photos the app refused, which
+never became puzzles and so were invisible until now. Same thumbnail, the reason
+it was turned down, send and delete. Six are kept, oldest dropped.
 
-The app still has no internet permission and still makes no network calls. It
-hands the file to the app you choose, read-only and one file at a time, and that
-app does the sending. Nothing else it holds - your puzzles, their photographs -
-is shared by this.
+The separate menu item is gone. One list of everything the camera produced is
+easier to find than a share buried in a menu, and there is no longer a photograph
+in the app that cannot be looked at.
+
+The app still has no internet permission and makes no network calls. It hands
+the one file you pick to the app you pick, read-only; that app does the sending.
 
 The full history is in docs/changelog.md.

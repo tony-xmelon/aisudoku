@@ -115,5 +115,8 @@ class History(context: Context) {
                 .sortedByDescending { (_, group) -> group.maxOf { it.id } }
 
         fun timeOf(entry: HistoryEntry): String = TIME.format(entry.date)
+
+        /** The same clock, for anything else that happened at a moment worth showing. */
+        fun timeOf(at: Date): String = TIME.format(at)
     }
 }
