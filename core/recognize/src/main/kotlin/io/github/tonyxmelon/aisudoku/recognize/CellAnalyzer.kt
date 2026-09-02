@@ -55,8 +55,19 @@ object CellAnalyzer {
     /** Window for the local mean used as the ink threshold. */
     private const val LOCAL_WINDOW = 31
 
-    /** How far below the local mean a pixel must be to count as ink. */
-    private const val INK_MARGIN = 6.0
+    /**
+     * How far below the local mean a pixel must be to count as ink.
+     *
+     * Six missed the faintest answers on a finished grid - pencil pressed lightly over a
+     * rubbed-out candidate mark, which came out as an empty square rather than as a wrong
+     * digit. Swept against every cell in the corpus, four is the best there is: it sorts
+     * all 648, where three and five each get one wrong and six gets two.
+     *
+     * A peak one step wide on 648 cells is not a law of nature. It is the measured best,
+     * and the neighbours are one cell worse rather than a cliff, so it is a reasonable
+     * place to stand until more finished grids say otherwise.
+     */
+    private const val INK_MARGIN = 4.0
 
     /** Smallest blob worth considering, in pixels. */
     private const val MIN_BLOB_AREA = 12

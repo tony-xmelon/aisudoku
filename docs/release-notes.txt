@@ -1,34 +1,29 @@
-The photographs you sent found it. Both of them now read.
+Your finished grid is in the training set, and two things came out of it.
 
-The app was refusing captures that plainly had a grid in them, and sending one
-was what finally reproduced it - the same photograph, through the same check
-here, refused for the same reason. It could not be reproduced from screenshots,
-which is why this took so long.
+FIRST, THE PAPER IS RIGHT. All eighty-one squares agree with the one solution the
+printed givens allow, so the three the app disagreed with were its mistakes and
+not yours.
 
-WHAT IT WAS. Finding the grid works on a shrunk copy of the photograph - a
-thousand pixels along its longest edge - because that is fast and plenty when the
-puzzle fills the frame. Your captures have the puzzle taking about a sixth of a
-very large picture, so by the time it had been shrunk the grid was three hundred
-pixels across and its lines a couple of pixels wide. The border broke into pieces
-that no longer went round anything, and the outline of the puzzle simply was not
-in the list of shapes to consider. Not too small to see, and not too faint - too
-shrunk before anyone looked.
+THE FAINTEST ANSWERS WERE BEING READ AS EMPTY SQUARES. Not misread - not read at
+all. A pencil stroke laid lightly over a rubbed-out candidate mark did not stand
+far enough below the paper around it to count as ink. That threshold has never
+been tested against a finished grid before, because until now there was no
+finished grid to test it against. Swept against every cell in the corpus it now
+sorts all 648, where before it missed two.
 
-It now tries a second, larger size when the first finds nothing. Both your
-photographs read at that size, and so does every photograph that already worked.
-Going larger still is not free: a puzzle that fills the frame stops being found at
-three thousand pixels, because its lines thicken until the border merges with the
-printing inside it. So it climbs, cheapest first, and stops as soon as it has an
-answer.
+AND THE MODEL HAS BEEN RETRAINED. Your grid brings fifty-seven handwritten digits
+where the whole corpus held ninety-four, and it is the only completed puzzle in
+it.
 
-AND SHAPES ARE NO LONGER THROWN AWAY BEFORE BEING JUDGED. Candidates were being
-discarded for looking too ragged or too oblong, which sounds harmless: on one of
-your captures the grid's own outline was among the discarded, and the survivor
-covered half the puzzle. Deciding which shape is a grid is what the scoring is
-for. The outline drawn on screen is still checked for looking like a puzzle,
-because that one is a claim to you about what the app can see.
+Here the honest number is smaller than it looks. Scored the only way that means
+anything - a model that has never seen the photograph it is marking - handwriting
+reads 145 of 151, or 96.0%, against 95.7% before. One photograph does not move
+that much, and anybody quoting the in-training figure of 100% would be quoting
+the model's memory rather than its judgement.
 
-Every photograph and screenshot you have sent now reads. So does the whole test
-set.
+So: nothing on this grid should now be read as empty, and the digits themselves
+are as good as 96% and no better. On eighty-one handwritten squares that is still
+about three you will have to correct. The way that number comes down is more
+finished grids.
 
 The full history is in docs/changelog.md.

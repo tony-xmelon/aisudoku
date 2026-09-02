@@ -8,6 +8,37 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+YOUR FINISHED GRID IS IN THE TRAINING SET, AND TWO THINGS CAME OUT OF IT.
+FIRST, THE PAPER IS RIGHT. All eighty-one squares agree with the one solution the
+printed givens allow, so the three the app disagreed with were its mistakes and
+not yours.
+
+THE FAINTEST ANSWERS WERE BEING READ AS EMPTY SQUARES. Not misread - not read at
+all. A pencil stroke laid lightly over a rubbed-out candidate mark did not stand
+far enough below the paper around it to count as ink. That threshold has never
+been tested against a finished grid before, because until now there was no
+finished grid to test it against. Swept against every cell in the corpus it now
+sorts all 648, where before it missed two.
+
+AND THE MODEL HAS BEEN RETRAINED. Your grid brings fifty-seven handwritten digits
+where the whole corpus held ninety-four, and it is the only completed puzzle in
+it.
+
+Here the honest number is smaller than it looks. Scored the only way that means
+anything - a model that has never seen the photograph it is marking - handwriting
+reads 145 of 151, or 96.0%, against 95.7% before. One photograph does not move
+that much, and anybody quoting the in-training figure of 100% would be quoting
+the model's memory rather than its judgement.
+
+So: nothing on this grid should now be read as empty, and the digits themselves
+are as good as 96% and no better. On eighty-one handwritten squares that is still
+about three you will have to correct. The way that number comes down is more
+finished grids.
+
+The full history is in docs/changelog.md.
+
+---
+
 THE PHOTOGRAPHS YOU SENT FOUND IT. BOTH OF THEM NOW READ.
 The app was refusing captures that plainly had a grid in them, and sending one
 was what finally reproduced it - the same photograph, through the same check
