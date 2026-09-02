@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -246,6 +247,11 @@ fun OverflowMenu(
     glass: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    // Counted when the menu opens rather than on every frame: it reads a directory, and
+    // the answer only matters at the moment the menu is drawn.
+    val scans = remember(open) { if (open) Diagnostics.kept(context) else emptyList() }
 
     Box {
         if (glass) {
@@ -277,6 +283,24 @@ fun OverflowMenu(
                     onAbout()
                 },
             )
+
+            // Only when there is something to send. The app keeps the last few
+            // photographs it took so a scan that misbehaved can be looked at by somebody
+            // else; this hands them to whatever app the user picks.
+            if (scans.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (scans.size == 1) "Send last scan"
+                            else "Send last ${scans.size} scans"
+                        )
+                    },
+                    onClick = {
+                        open = false
+                        Diagnostics.share(context, scans)
+                    },
+                )
+            }
         }
     }
 }

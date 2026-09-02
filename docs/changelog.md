@@ -8,6 +8,25 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+YOU CAN NOW SEND A SCAN FROM THE PHONE.
+The app keeps the last six photographs it took, and there is a "Send last scans"
+item in the menu when it has any. Pick whatever you send things with; the photos
+go along as attachments.
+
+Both kinds are kept now, not just refusals. A photograph the app would not scan
+explains why a scan will not start; one it scanned happily explains why the
+digits came out wrong - and by the time anyone notices the digits are wrong the
+photograph is long gone.
+
+The app still has no internet permission and still makes no network calls. It
+hands the file to the app you choose, read-only and one file at a time, and that
+app does the sending. Nothing else it holds - your puzzles, their photographs -
+is shared by this.
+
+The full history is in docs/changelog.md.
+
+---
+
 WHEN A SCAN IS REFUSED, THE APP NOW KEEPS THE PHOTOGRAPH.
 The scan that would not get past the shutter has been chased through every
 measurement available here, and the photograph itself is not the problem: put

@@ -116,12 +116,17 @@ fun CameraScreen(
                     // cannot be made to fail anywhere else is a difference between what
                     // the phone photographed and what everything else has seen, and the
                     // only way to close that is to look at the bytes themselves.
-                    val kept = Diagnostics.keep(context, bytes, verdict.reason.toString())
+                    Diagnostics.keep(context, bytes, verdict.reason.toString())
                     failure = verdict.reason.message +
-                        (kept?.let { " That photo was kept as $it." } ?: "")
+                        " The photo was kept - you can send it from the menu."
                 }
 
                 is GateVerdict.Usable -> {
+                    // Kept as well. A photograph that scanned but read badly is just as
+                    // much of a report as one that would not scan at all, and by the time
+                    // anyone notices the digits are wrong the photograph is long gone.
+                    Diagnostics.keep(context, bytes, "read")
+
                     val lines = GridLines(
                         vertical = verdict.geometry.verticalLines
                             .map { (it / verdict.rectified.width).toFloat() },

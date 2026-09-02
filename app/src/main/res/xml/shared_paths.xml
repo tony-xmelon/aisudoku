@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The one folder the app is willing to hand out, and only the one.
+
+  Photographs kept back from a scan live here so they can be sent to somebody who can
+  look at them. Everything else the app holds - the puzzle history and its photographs -
+  stays private, because nothing needs to share it.
+-->
+<paths>
+    <external-files-path name="scans" path="Pictures/" />
+</paths>

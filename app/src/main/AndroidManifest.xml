@@ -31,5 +31,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Lets a photograph kept from a scan be handed to another app to send, one URI at
+          a time and read-only. It grants nothing by itself: the receiving app is given
+          permission to the exact files named in the share, and to nothing else.
+
+          Sharing needs no internet permission of its own - this app still has none, and
+          whatever the user picks does the sending.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.scans"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_paths" />
+        </provider>
     </application>
 </manifest>
