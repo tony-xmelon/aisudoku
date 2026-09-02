@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-02-eleven-wrong.jpg",
+  "givens": [
+    "2.....894",
+    ".3.5.2...",
+    "..1......",
+    "6....3...",
+    "7.2...4.6",
+    ".....8..2",
+    "......57.",
+    "97.6.....",
+    "...18...."
+  ],
+  "written": [
+    "2....1894",
+    "83.5.2.6.",
+    "..18.6...",
+    "6....3.8.",
+    "782915436",
+    "....68..2",
+    ".....9578",
+    "978654...",
+    ".2.187649"
+  ],
+  "notes": "Twenty-three printed givens and twenty-two handwritten answers, ELEVEN OF THEM WRONG - confirmed by the person who wrote them. The givens still have exactly one solution; the paper simply disagrees with it at r1c6, r2c8, r3c6, r5c5, r5c6, r7c6, r8c5, r8c6, r9c7, r9c8 and r9c9.\n\nThat is why it is here. Every other label in this corpus records a page that agrees with its own solution, so a recogniser that quietly leaned towards the solution instead of the ink would score perfectly on all of them and be wrong about what it is for. This one punishes that: reading the paper correctly means reproducing eleven mistakes.\n\nIt also carries pencil candidates in a dozen squares, several as multi-digit clusters, so the triage has to separate wrong answers from marks rather than from blanks."
+}
