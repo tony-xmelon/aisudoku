@@ -299,6 +299,9 @@ def corpus_cells():
     return np.stack(xs), np.array(ys, dtype=np.int64), sources, photos
 
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def accuracy(model, x, y, batch=1024):
     if len(x) == 0:
         return float("nan")
@@ -306,16 +309,33 @@ def accuracy(model, x, y, batch=1024):
     correct = 0
     with torch.no_grad():
         for i in range(0, len(x), batch):
-            correct += (model(x[i:i + batch]).argmax(1) == y[i:i + batch]).sum().item()
+            xb = x[i:i + batch].to(DEVICE)
+            yb = y[i:i + batch].to(DEVICE)
+            correct += (model(xb).argmax(1) == yb).sum().item()
     return correct / len(x)
 
 
 def fit(x, y, epochs=6, seed=SEED):
+    """Trains on the GPU when there is one, and on the CPU otherwise.
+
+    The whole training set is a hundred and twenty thousand 28x28 images and the model is
+    about a hundred thousand parameters, so it fits on any card several times over. Moving
+    it once, up front, rather than a batch at a time is what makes the difference: at this
+    size a step is over before a batch could be copied, so per-batch transfer would leave
+    the card waiting on the bus rather than the arithmetic.
+
+    Same seed, so a run is reproducible on either - though not bit-for-bit *between* them,
+    since the two use different reduction orders. The numbers below move in the third
+    decimal place when the device changes, which is worth knowing before reading anything
+    into a small difference.
+    """
     torch.manual_seed(seed)
-    model = Net()
+    model = Net().to(DEVICE)
     optimiser = torch.optim.Adam(model.parameters(), lr=1e-3)
-    loader = DataLoader(TensorDataset(torch.tensor(x), torch.tensor(y)),
-                        batch_size=256, shuffle=True)
+    loader = DataLoader(
+        TensorDataset(torch.tensor(x).to(DEVICE), torch.tensor(y).to(DEVICE)),
+        batch_size=256, shuffle=True,
+    )
     for _ in range(epochs):
         model.train()
         for xb, yb in loader:
@@ -366,6 +386,9 @@ def build_sources():
 
 
 def main():
+    print("training on %s" % (
+        torch.cuda.get_device_name(0) if DEVICE.type == "cuda" else "the CPU"
+    ))
     np.random.seed(SEED)
     base_x, base_y = build_sources()
 
@@ -408,7 +431,8 @@ def main():
           f"corpus printed {accuracy(model, tx[given], ty[given]):.4f}   "
           f"corpus handwriting {accuracy(model, tx[guess], ty[guess]):.4f}")
 
-    torch.save(model.state_dict(), os.path.join(HERE, "digits.pt"))
+    torch.save({k: v.cpu() for k, v in model.state_dict().items()},
+               os.path.join(HERE, "digits.pt"))
     target = os.path.join(HERE, "digits.bin")
     shapes = export(model, target)
     with open(os.path.join(HERE, "digits.json"), "w", encoding="utf-8") as f:
@@ -418,7 +442,7 @@ def main():
 
     model.eval()
     with torch.no_grad():
-        pred = model(tx).argmax(1)
+        pred = model(tx.to(DEVICE)).argmax(1).cpu()
     wrong = {}
     for p, t, s in zip(pred.tolist(), yc.tolist(), sources):
         if p != t:
