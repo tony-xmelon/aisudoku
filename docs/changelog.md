@@ -8,6 +8,32 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+IT IS THE SAME READER. IT WAS NOT BEING GIVEN THE SAME PICTURE.
+I said a captured photograph gets a better reader than the live preview. That was
+wrong, and worth correcting: StructuralGate calls exactly the same GridLocator
+the live advisor does. What differs is the picture handed to it - a full-size,
+focused, still exposure against a small preview frame taken mid-movement - and
+the rules applied afterwards, which are in fact stricter for a capture, not
+looser.
+
+Which leaves one real question: if the finder is the same, why give it the worse
+picture? Partly there is no choice, since analysing at full resolution would take
+seconds a frame. But the app was asking for 960x720 and telling the camera to
+fall back to the next size *down* when that exact mode was unavailable - so on
+many phones it was quietly working from 640x480, or less, and never saying so. It
+now asks for 1280x960 and falls back upward. That costs almost nothing, because
+the detector reduces whatever it is given to a fixed working size before looking
+for shapes.
+
+And the message when no grid is found no longer reads like a refusal. The shutter
+is live whatever it says, and a photograph gets judged again at full size, so a
+live frame the app cannot make sense of is a reason to suggest something - never
+a reason to stop you taking the picture.
+
+The full history is in docs/changelog.md.
+
+---
+
 SCANNING: THE READER NO LONGER OFFERS SHAPES THAT ARE NOT SHAPES.
 WHAT THE SCREENSHOTS SHOWED. An outline slicing diagonally across the grid, and
 another spanning the whole screen. Neither is a mistake about where to draw - a

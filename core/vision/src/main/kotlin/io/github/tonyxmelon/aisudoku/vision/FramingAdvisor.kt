@@ -138,8 +138,12 @@ class FramingAdvisor(
             missed.bestScore >= GridLocator.MIN_GRID_SCORE * 0.6 ->
                 "Almost - hold the page flat and square to the camera"
 
-            else -> "That is not reading as a nine by nine grid. Try to fill the frame " +
-                "with the grid alone, straight on and flat"
+            // Steering, not refusing. The shutter is live whatever this says, and a
+            // photograph is judged again at full size by the same reader with a far better
+            // picture to work from - so a live frame it cannot make sense of is a reason to
+            // suggest something, never a reason to stop the user.
+            else -> "Not reading as a nine by nine grid yet - try filling the frame with " +
+                "the grid alone, or just take the photo"
         }
     }
 

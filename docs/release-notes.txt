@@ -1,30 +1,24 @@
-Scanning: the reader no longer offers shapes that are not shapes.
+It is the same reader. It was not being given the same picture.
 
-WHAT THE SCREENSHOTS SHOWED. An outline slicing diagonally across the grid, and
-another spanning the whole screen. Neither is a mistake about where to draw - a
-contour that is not four-sided was being reduced to its four extreme points,
-which for a wandering blob of pattern is a sliver that means nothing. And the
-last build had lowered the size at which a shape is considered at all, so far
-more of those blobs got in, and the ten largest shapes in the picture could all
-be tablecloth while the puzzle waited outside the list.
+I said a captured photograph gets a better reader than the live preview. That was
+wrong, and worth correcting: StructuralGate calls exactly the same GridLocator
+the live advisor does. What differs is the picture handed to it - a full-size,
+focused, still exposure against a small preview frame taken mid-movement - and
+the rules applied afterwards, which are in fact stricter for a capture, not
+looser.
 
-A candidate now has to be square enough, upright enough and solid enough to be a
-sudoku before it is considered - questions that cost nothing to ask and do not
-depend on what else is in the picture. When a contour is not four-sided, the
-smallest rectangle around it stands in, rather than its extreme points.
+Which leaves one real question: if the finder is the same, why give it the worse
+picture? Partly there is no choice, since analysing at full resolution would take
+seconds a frame. But the app was asking for 960x720 and telling the camera to
+fall back to the next size *down* when that exact mode was unavailable - so on
+many phones it was quietly working from 640x480, or less, and never saying so. It
+now asks for 1280x960 and falls back upward. That costs almost nothing, because
+the detector reduces whatever it is given to a fixed working size before looking
+for shapes.
 
-The size floor goes back most of the way: it was 0.08, went to 0.03 on the
-strength of a synthetic scene that later measurements showed was a poor model of
-a real table, and is now 0.05.
-
-WHAT IS NOT THE CAUSE, measured rather than assumed: the resolution the camera
-analyses at, camera shake, the viewfinder cropping the frame, and - which
-surprised me - how much pencil is on the page. A grid buried in annotations
-scores exactly what a clean one does.
-
-If a puzzle still will not scan, press the shutter anyway. The button is always
-live, and a captured photograph is examined at full resolution by a far better
-reader than the live one. If what comes back is wrong, that photograph is the
-most useful thing you can send.
+And the message when no grid is found no longer reads like a refusal. The shutter
+is live whatever it says, and a photograph gets judged again at full size, so a
+live frame the app cannot make sense of is a reason to suggest something - never
+a reason to stop you taking the picture.
 
 The full history is in docs/changelog.md.

@@ -186,8 +186,18 @@ fun CameraScreen(
                     ResolutionSelector.Builder()
                         .setResolutionStrategy(
                             ResolutionStrategy(
-                                android.util.Size(960, 720),
-                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                                // The same code reads a preview frame and a captured
+                                // photograph; the only thing that differs is the picture it
+                                // is given. So the live frame should be as good as it can
+                                // cheaply be - and asking for the next size *up* when the
+                                // exact one is unavailable costs almost nothing, because
+                                // the detector downsamples to a fixed working size anyway.
+                                //
+                                // It used to ask for the next size down, which on a phone
+                                // without this exact mode means quietly analysing 640x480,
+                                // or less, and never saying so.
+                                android.util.Size(1280, 960),
+                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
                             )
                         )
                         .build()
