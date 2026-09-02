@@ -57,14 +57,21 @@ fun HistoryList(
     onDelete: (HistoryEntry) -> Unit,
     onCamera: () -> Unit,
     onClose: () -> Unit,
+    /** Photographs the app would not read, newest first. */
+    refused: List<Diagnostics.Refused> = emptyList(),
+    onDiscard: (Diagnostics.Refused) -> Unit = {},
 ) {
     var pendingDelete by remember { mutableStateOf<HistoryEntry?>(null) }
 
     // Photographs the app would not read at all. They never became puzzles, so nothing
     // else in the app knows they happened - and they are exactly the ones worth sending
     // to somebody who can find out why.
+    //
+    // Handed in and refreshed when the drawer opens, the same way the puzzles are. Reading
+    // the folder once inside this composable is not enough: the drawer's contents stay
+    // composed between openings, so a scan that failed afterwards never appeared - which
+    // looks exactly like the photograph never having been kept.
     val context = LocalContext.current
-    var refused by remember { mutableStateOf(Diagnostics.refused(context)) }
 
     LazyColumn(
         // No inset padding here: ModalDrawerSheet already applies the system bars, and
@@ -198,10 +205,7 @@ fun HistoryList(
                     RefusedRow(
                         scan = scan,
                         onSend = { Diagnostics.share(context, listOf(scan.file)) },
-                        onDelete = {
-                            Diagnostics.discard(scan)
-                            refused = Diagnostics.refused(context)
-                        },
+                        onDelete = { onDiscard(scan) },
                     )
                 }
             }

@@ -93,6 +93,8 @@ private fun AppRoot() {
     var settings by remember { mutableStateOf(Settings.load(context)) }
     var puzzle by remember { mutableStateOf<PuzzleState?>(null) }
     var entries by remember { mutableStateOf(history.list()) }
+    // Photographs the app refused. Looked up with the puzzles, since the drawer shows both.
+    var refused by remember { mutableStateOf(Diagnostics.refused(context)) }
     var nav by remember { mutableStateOf(Navigation(Screen.CAMERA)) }
     val screen = nav.screen
 
@@ -108,6 +110,7 @@ private fun AppRoot() {
 
     fun openDrawer() {
         entries = history.list()
+        refused = Diagnostics.refused(context)
         scope.launch { drawer.open() }
     }
 
@@ -219,6 +222,11 @@ private fun AppRoot() {
                     onCamera = {
                         takePhoto()
                         closeDrawer()
+                    },
+                    refused = refused,
+                    onDiscard = { scan ->
+                        Diagnostics.discard(scan)
+                        refused = Diagnostics.refused(context)
                     },
                     onClose = ::closeDrawer,
                 )

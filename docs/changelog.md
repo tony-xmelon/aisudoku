@@ -8,6 +8,35 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+TWO FAULTS, ONE OF THEM MINE FROM AN HOUR AGO.
+THE PHOTO WAS NOT ALWAYS BEING KEPT, AND THE APP SAID IT WAS. The message after a
+refused scan claimed the photograph had been saved whether or not the saving had
+worked, and the folder it used lives on removable storage that can simply not be
+there. It now writes to private storage when the external folder is missing, and
+says plainly when it could not keep the photo at all.
+
+AND THE LIST NEVER REFRESHED. The refused photos were read once, when the drawer
+was first built, and the drawer stays built between openings - so a scan that
+failed afterwards never appeared, which looks exactly like nothing having been
+saved. The list is now looked up when the drawer opens, the same way your puzzles
+are. The message also pointed at a menu item that had been moved into the puzzle
+list an hour earlier.
+
+THE SIZE FLOOR GOES BACK. A shape smaller than eight per cent of the frame is
+ignored again, as it was in every version anyone reported as working. It was
+dropped to three per cent, then to five, on the strength of a synthetic scene
+that later measurements showed to be a poor model - and neither number was ever
+shown to find a grid that eight per cent misses.
+
+What stays is what the reported screenshot argues for. On it, the scoring change
+lifts the grid from 0.33 to 0.38, over the line where the old scoring left it
+just under; and the old detector offers a sliver a thousand pixels long and
+three hundred wide, which is the shape you saw drawn across your puzzle.
+
+The full history is in docs/changelog.md.
+
+---
+
 EVERY PHOTO IS IN YOUR PUZZLE LIST NOW, WITH A SEND BUTTON BESIDE IT.
 Each saved puzzle has one, and it sends the straightened photograph - which is
 exactly what the recogniser read, so it is the useful one when the digits come

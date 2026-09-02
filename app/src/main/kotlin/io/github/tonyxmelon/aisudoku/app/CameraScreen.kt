@@ -116,9 +116,15 @@ fun CameraScreen(
                     // cannot be made to fail anywhere else is a difference between what
                     // the phone photographed and what everything else has seen, and the
                     // only way to close that is to look at the bytes themselves.
-                    Diagnostics.keep(context, bytes, verdict.reason.toString())
-                    failure = verdict.reason.message +
-                        " The photo was kept - you can send it from the menu."
+                    // Only say the photo was kept if it was. The message used to claim it
+                    // unconditionally, so a write that quietly failed left the user hunting
+                    // a list for something that had never been put in it.
+                    val kept = Diagnostics.keep(context, bytes, verdict.reason.toString())
+                    failure = verdict.reason.message + if (kept != null) {
+                        " The photo is in your puzzle list, under \"Would not read\"."
+                    } else {
+                        " That photo could not be kept, so there is nothing to send."
+                    }
                 }
 
                 is GateVerdict.Usable -> {
@@ -204,8 +210,8 @@ fun CameraScreen(
                                 // It used to ask for the next size down, which on a phone
                                 // without this exact mode means quietly analysing 640x480,
                                 // or less, and never saying so.
-                                android.util.Size(1280, 960),
-                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                                android.util.Size(960, 720),
+                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
                             )
                         )
                         .build()

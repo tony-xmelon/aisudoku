@@ -45,7 +45,7 @@ object Diagnostics {
      * diagnostic that gets in the way of the thing it is diagnosing is worse than none.
      */
     fun keep(context: Context, bytes: ByteArray, outcome: String): String? = runCatching {
-        val folder = folder(context) ?: return null
+        val folder = folder(context)
         folder.mkdirs()
 
         val name = "$PREFIX${stamp.format(Date())}-${slug(outcome)}.jpg"
@@ -59,7 +59,7 @@ object Diagnostics {
 
     /** Every refused photograph kept so far, newest first. */
     fun refused(context: Context): List<Refused> = folder(context)
-        ?.listFiles { file: File -> file.name.startsWith(PREFIX) }
+        .listFiles { file: File -> file.name.startsWith(PREFIX) }
         ?.sortedByDescending { it.name }
         ?.mapNotNull { describe(it) }
         .orEmpty()
@@ -120,8 +120,18 @@ object Diagnostics {
         }.getOrDefault(false)
     }
 
-    private fun folder(context: Context): File? =
+    /**
+     * Where the photographs go.
+     *
+     * The external folder first, because it can be reached over a cable without the app's
+     * help. But it is on removable storage and can simply not be there, and when that
+     * happened the write failed, the failure was swallowed, and the app cheerfully said
+     * the photo had been kept - so there is a fallback inside private storage, which
+     * always exists. Both are shareable.
+     */
+    private fun folder(context: Context): File =
         context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            ?: File(context.filesDir, "scans")
 
     /** The outcome as a file-name fragment: lower case, words joined by dashes. */
     private fun slug(outcome: String): String = outcome

@@ -24,15 +24,14 @@ object QuadDetector {
     /**
      * Ignore anything smaller than this share of the frame.
      *
-     * A judgement, not a measurement. It was 0.08, and the viewfinder crops the frame, so
-     * a grid filling the screen is a good deal smaller in the picture this sees - which
-     * argues for room below 0.08. It was then dropped to 0.03 on the strength of a
-     * synthetic scene that later measurements showed to be a poor model of a real table,
-     * and that build is the one where the reader started outlining slivers of tablecloth.
-     * Halfway back, with [couldBeAGrid] now keeping the junk out on shape rather than on
-     * size, is as far as the evidence supports.
+     * Back at the value it had for every version anyone reported as working. It was
+     * lowered to 0.03 on the strength of a synthetic scene, which later measurements
+     * showed to be a poor model of a real table, and then to 0.05, which was a compromise
+     * between a measurement and a guess. Neither number was ever shown to find a grid that
+     * this one misses, and the first of them is the release where the reader started
+     * outlining slivers of tablecloth.
      */
-    private const val MIN_AREA_FRACTION = 0.05
+    private const val MIN_AREA_FRACTION = 0.08
 
     private const val MAX_CANDIDATES = 10
 
