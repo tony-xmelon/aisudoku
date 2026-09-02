@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-02-89114-solved.jpg",
+  "givens": [
+    ".9...4.7.",
+    "...2..8..",
+    "...9.8.51",
+    "1.4......",
+    "..2...3.6",
+    "..6..3.2.",
+    "..5...78.",
+    "...51....",
+    "7......1."
+  ],
+  "written": [
+    "598164273",
+    "341275869",
+    "267938451",
+    "134682597",
+    "852791346",
+    "976453128",
+    "615329784",
+    "489517632",
+    "723846915"
+  ],
+  "notes": "Puzzle #89114, difficulty \"hardest\", finished. Twenty-four printed givens and FIFTY-SEVEN handwritten answers, every one of them correct - checked cell by cell against the unique solution of the givens. More handwriting than the rest of the corpus put together, and the only completed grid in it.\n\nThis is the straightened image the app itself produced and kept, not a fresh photograph, so it is exactly what the recogniser was given when it misread three squares and flagged four as doubtful. Pencil is faint against grey paper and several answers are written over rubbed-out candidate marks."
+}
