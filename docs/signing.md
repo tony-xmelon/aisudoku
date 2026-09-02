@@ -50,6 +50,25 @@ development machine. What it will not do is reach anybody: `checkReleaseSigning`
 before `appDistributionUpload` and fails the job, because a debug-signed release that
 testers cannot update is worse than no release at all.
 
+## The key in use
+
+Set up on 2 September 2026. The keystore and its password live outside the repository, on
+the machine that made them; the four secrets are on the repository. What follows is public
+- it is the certificate every genuine build carries, and it is the thing to check an APK
+against if you ever need to know whether it came from here.
+
+    CN=AI Sudoku, O=AI Sudoku, C=BG
+    SHA-256  a5:10:d8:2b:87:e7:06:9b:53:d5:20:be:ca:91:5b:35:2a:e9:6c:ea:85:0c:68:ca:00:61:17:e3:5d:75:d3:e5
+
+To check a build:
+
+```bash
+apksigner verify --print-certs app-arm64-v8a-release.apk
+```
+
+Anything reporting `CN=Android Debug` was built without the secrets and cannot be updated
+over, whoever built it.
+
 ## The one last uninstall
 
 The first build signed with the new key still differs from whatever is on the phone now,
