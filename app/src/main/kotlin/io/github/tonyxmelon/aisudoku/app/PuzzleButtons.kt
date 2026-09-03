@@ -1,23 +1,26 @@
 package io.github.tonyxmelon.aisudoku.app
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
+
 /*
  * The small controls the puzzle screen is built from.
  *
@@ -52,19 +55,13 @@ internal fun HintButton(
     val rungs = if (state.hintStyle == HintStyle.EXPLAIN) PuzzleLogic.HINT_DEPTHS else 1
     val filled = if (showing) (state.hintDepth + 1f) / rungs else 0f
     val poured by animateFloatAsState(filled.coerceIn(0f, 1f), label = "hint")
-    val colour = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
 
-    // Behind the button rather than in it, so the label stays the one colour throughout
-    // and stays readable over both the filled part and the empty part.
     Pill(
         "Hint",
         selected = false,
         enabled = state.hint != null,
-        modifier = modifier
-            .clip(ButtonDefaults.outlinedShape)
-            .drawBehind {
-                if (poured > 0f) drawRect(colour, size = Size(size.width * poured, size.height))
-            },
+        modifier = modifier,
+        fill = poured,
     ) {
         onChange(state.show(OverlayMode.HINT))
     }
@@ -82,16 +79,47 @@ private fun Pill(
     selected: Boolean,
     enabled: Boolean,
     modifier: Modifier,
+    /** How much of the pill to shade, 0 to 1. See [HintButton]. */
+    fill: Float = 0f,
     onClick: () -> Unit,
 ) {
-    val padding = PaddingValues(horizontal = 2.dp, vertical = 8.dp)
-    val text: @Composable () -> Unit = {
-        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
+    val shading = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+
+    // The shading is drawn by the content, inside the button, and never by a modifier
+    // wrapped around it. A button's own node is grown to the minimum touch target, which
+    // is taller than the button you can see, so anything drawn out there is drawn on the
+    // touch target: it stood 8dp proud of the outline, and rounding it to a pill at that
+    // larger size pushed its end cap outside the border as well. In here the button's
+    // surface clips it to exactly the shape on screen.
+    val content: @Composable RowScope.() -> Unit = {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .drawBehind {
+                    if (fill > 0f) {
+                        drawRect(shading, size = Size(size.width * fill, size.height))
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
     }
+
+    // No content padding: the box above is the padding, and it has to reach the edges of
+    // the pill for the shading to fill it.
     if (selected) {
-        Button(onClick, modifier, enabled, contentPadding = padding) { text() }
+        Button(onClick, modifier, enabled, contentPadding = PaddingValues(0.dp), content = content)
     } else {
-        OutlinedButton(onClick, modifier, enabled, contentPadding = padding) { text() }
+        OutlinedButton(
+            onClick, modifier, enabled, contentPadding = PaddingValues(0.dp), content = content,
+        )
     }
 }
 
