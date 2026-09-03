@@ -8,6 +8,30 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE NOTES YOU WERE SENT WERE ABOUT THE WRONG BUILD, AND THE READER HAS BEEN RETRAINED.
+Seventeen consecutive builds carried the same paragraph about a corpus photograph,
+because `docs/release-notes.txt` is written by hand and nothing failed when it was
+not rewritten. Each build now generates its own first two lines - the version, and
+the subject of the commit it was built from - and puts them above whatever prose is
+there, so that at least those are true when the rest has gone stale.
+
+The reader was retrained on the two pages added since: the one whose pencil marks
+wrap onto a second line, and a sudoku photographed off a laptop screen, which is
+the first grid in the corpus that is not on paper. Held out photograph by
+photograph, handwriting reads 174 of 180 squares, against single runs of 168 to
+172 out of 175 on the smaller corpus before it - the same, in other words, within
+the wobble between runs. Two pages was never going to move a rate; what they buy
+is that the next change is measured against a corpus that has a screen and a
+thicket of pencil in it.
+
+Also in this round: an erased digit is no longer read as an answer you wrote; the
+shutter no longer fires by itself on framing that is about to be refused;
+photographs the reader could not make a puzzle of are kept, where before only the
+ones the grid detector rejected were; there is a Send diagnostics entry in the
+overflow menu; the app works in landscape and keeps your scan when you turn the
+phone; and the shading in the Hint button is drawn inside the button rather than
+on its touch target, which is why it used to stand proud of the outline.
+
 A SECOND PUZZLE JOINS THE CORPUS, AND IT TESTS THE PART THAT JUST CHANGED.
 The one barely started, thick with pencil candidates - over half its empty squares
 carry them, many written small and high in a corner where they most resemble an

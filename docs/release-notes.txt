@@ -25,6 +25,14 @@ Where a square holds four or more marks, the second line sits low and centred -
 exactly where an answer goes, at nearly the size of one - and three of them on that
 page were a lone 9 under a row of three digits.
 
+The digit reader has been retrained on the two pages added since - the one with
+the two-line candidate marks, and a sudoku photographed off a laptop screen,
+which is the first thing in the collection that is not paper. Scored the honest
+way, with each photograph read by a model that has never seen it, handwriting is
+174 of 180 squares. That is the same as before within the run-to-run wobble, which
+is what two more pages should do: nothing measurable yet, and a little more ground
+under the next change.
+
 THE CAMERA
 
 The shutter no longer fires by itself on framing the app is about to refuse. It
