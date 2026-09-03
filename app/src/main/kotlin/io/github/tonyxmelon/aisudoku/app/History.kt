@@ -3,8 +3,6 @@ package io.github.tonyxmelon.aisudoku.app
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import io.github.tonyxmelon.aisudoku.model.Cell
-import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
 import java.io.File
 import java.time.ZoneId
@@ -40,7 +38,7 @@ class History(context: Context) {
         val id = System.currentTimeMillis()
         val image = File(directory, "$id.jpg")
         image.outputStream().use { photo.compress(Bitmap.CompressFormat.JPEG, 85, it) }
-        File(directory, "$id.txt").writeText(encode(grid))
+        File(directory, "$id.txt").writeText(HistoryFormat.encode(grid))
         return HistoryEntry(id, image, grid)
     }
 
@@ -50,7 +48,7 @@ class History(context: Context) {
      */
     fun update(id: Long, grid: Grid) {
         val text = File(directory, "$id.txt")
-        if (text.isFile) text.writeText(encode(grid))
+        if (text.isFile) text.writeText(HistoryFormat.encode(grid))
     }
 
     /** Newest first. */
@@ -60,7 +58,7 @@ class History(context: Context) {
                 val id = text.nameWithoutExtension.toLongOrNull() ?: return@mapNotNull null
                 val image = File(directory, "$id.jpg")
                 if (!image.isFile) return@mapNotNull null
-                val grid = runCatching { decode(text.readText()) }.getOrNull() ?: return@mapNotNull null
+                val grid = runCatching { HistoryFormat.decode(text.readText()) }.getOrNull() ?: return@mapNotNull null
                 HistoryEntry(id, image, grid)
             }
             ?.sortedByDescending { it.id }
@@ -76,33 +74,6 @@ class History(context: Context) {
 
     fun clear() {
         directory.listFiles()?.forEach { it.delete() }
-    }
-
-    private fun encode(grid: Grid): String {
-        fun rows(predicate: (Cell) -> Boolean) = (0 until 9).joinToString("\n") { r ->
-            (0 until 9).joinToString("") { c ->
-                val cell = grid[r * 9 + c]
-                if (cell.isFilled && predicate(cell)) cell.digit.toString() else "."
-            }
-        }
-        return rows { it.source == CellSource.GIVEN } + "\n--\n" + rows { true }
-    }
-
-    private fun decode(text: String): Grid {
-        val (givensBlock, writtenBlock) = text.split("\n--\n")
-        val givens = givensBlock.filterNot { it.isWhitespace() }
-        val written = writtenBlock.filterNot { it.isWhitespace() }
-        require(givens.length == 81 && written.length == 81) { "malformed history entry" }
-
-        var grid = Grid.Empty
-        for (i in 0 until 81) {
-            grid = when {
-                givens[i] != '.' -> grid.with(i, Cell.given(givens[i] - '0'))
-                written[i] != '.' -> grid.with(i, Cell.guess(written[i] - '0'))
-                else -> grid
-            }
-        }
-        return grid
     }
 
     companion object {

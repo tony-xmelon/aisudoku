@@ -70,7 +70,8 @@ object Diagnostics {
      * The name is the whole record - there is no index to keep in step, and a folder of
      * files that describe themselves survives the app being reinstalled around them.
      */
-    private fun describe(file: File): Refused? {
+    /** Internal so the parsing can be tested; the file name is the whole record. */
+    internal fun describe(file: File): Refused? {
         val parts = file.nameWithoutExtension.removePrefix(PREFIX).split("-")
         if (parts.size < 3) return null
         val at = runCatching { stamp.parse("${parts[0]}-${parts[1]}") }.getOrNull() ?: return null
