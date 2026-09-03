@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-03-two-line-candidates.jpg",
+  "givens": [
+    "2.....894",
+    ".3.5.2...",
+    "..1......",
+    "6....3...",
+    "7.2...4.6",
+    ".....8..2",
+    "......57.",
+    "97.6.....",
+    "...18...."
+  ],
+  "written": [
+    "2.....894",
+    ".3.5.2...",
+    "..1......",
+    "6....3...",
+    "7829..436",
+    "....68..2",
+    "......57.",
+    "97.6.....",
+    "...187..."
+  ],
+  "notes": "Twenty-three printed givens and five handwritten answers, at r5c2, r5c4, r5c8, r6c5 and r9c6. All five agree with the unique solution of the givens.\n\nWhat it is here for is the candidate lists that run to two lines. Where a cell holds four or more marks they wrap, and the second line sits low and centred in the square - which is exactly where an answer goes, at close to the size of one. Three of them are a lone 9 under a row of three digits: r2c5 reads 147 over 9, r3c5 reads 347 over 9, r3c6 reads 468 over 9. Read as answers they would put a 9 twice in column 5 and twice in row 3, so the puzzle itself says they are marks - but nothing in the shape of the ink does.\n\nThe existing corpus has the opposite case: marks written small and high in a corner. This is the one that defeats a rule based on where in the square the ink sits.\n\nThe page is also the most heavily worked so far - forty-one squares carry marks, and the bottom two rows have ghost digits from erasing, at r7c9, r8c3, r8c7, r9c7 and r9c9. The large faint 9 in the bottom right corner is erased, not an answer.\n\nValidated by machine: the givens have exactly one solution, every handwritten answer equals it, and thirty-seven of the forty-one candidate lists contain the true digit for their square. The four that do not - r7c2, r8c5, r9c3, r9c8 - are stale working in the faintest part of the page, and marks are not part of this label."
+}
