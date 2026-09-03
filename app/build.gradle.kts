@@ -107,7 +107,8 @@ firebaseAppDistributionDefault {
         ?.takeIf { it.isNotBlank() }
         ?.let { serviceCredentialsFile = it }
 
-    releaseNotesFile = "$rootDir/docs/release-notes.txt"
+    // Composed, not the source file: see composeReleaseNotes.
+    releaseNotesFile = layout.buildDirectory.file("release-notes.txt").get().asFile.path
     groups = "testers"
 }
 
@@ -196,12 +197,16 @@ tasks.register("checkReleaseNotes") {
     val notes = releaseNotes
     inputs.file(notes)
     doLast {
-        val limit = 16_384
+        // What is uploaded is this file with a generated header on top, so the room the
+        // header takes comes off the limit here. Two lines and a blank one; 200 is
+        // several times what it needs and still leaves 16,000 characters of prose.
+        val header = 200
+        val limit = 16_384 - header
         val length = notes.asFile.readText().length
         check(length <= limit) {
             "docs/release-notes.txt is $length characters, over App Distribution's " +
-                "limit of $limit. Move older entries to docs/changelog.md - that file is " +
-                "for reading and is never uploaded."
+                "limit of 16384 less $header for the version header. Move older entries " +
+                "to docs/changelog.md - that file is for reading and is never uploaded."
         }
     }
 }
@@ -209,6 +214,55 @@ tasks.register("checkReleaseNotes") {
 tasks.named("check") { dependsOn("checkReleaseNotes") }
 tasks.matching { it.name.startsWith("appDistributionUpload") }
     .configureEach { dependsOn("checkReleaseNotes") }
+
+/**
+ * Puts the version and the change that produced it at the top of the notes.
+ *
+ * Seventeen builds went out carrying notes about a corpus change from two days earlier,
+ * because the prose is written by hand and nothing failed when it was not. Prose worth
+ * reading cannot be generated, so this does not try: it prepends the two facts that can
+ * be, and those two are enough to tell whether the rest is about the build in hand.
+ *
+ * The subject comes from git, which CI has - a shallow clone still has the commit it
+ * checked out. When there is no git at all the header keeps the version and drops the
+ * subject, because a release must never fail over its own notes.
+ */
+val composedNotes = layout.buildDirectory.file("release-notes.txt")
+
+tasks.register("composeReleaseNotes") {
+    group = "publishing"
+    description = "Prepend the version and the last change to the notes sent to testers"
+    val source = releaseNotes
+    val target = composedNotes
+    val version = "0.1." + (System.getenv("BUILD_NUMBER") ?: "0")
+    val root = rootProject.layout.projectDirectory.asFile
+    inputs.file(source)
+    outputs.file(target)
+    doLast {
+        val subject = runCatching {
+            val process = ProcessBuilder("git", "log", "-1", "--pretty=%s")
+                .directory(root)
+                .redirectErrorStream(true)
+                .start()
+            process.inputStream.bufferedReader().readText().trim()
+                .takeIf { process.waitFor() == 0 }
+        }.getOrNull()
+
+        val file = target.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            buildString {
+                appendLine("AI Sudoku $version")
+                if (!subject.isNullOrBlank()) appendLine(subject)
+                appendLine()
+                append(source.asFile.readText())
+            }
+        )
+    }
+}
+
+tasks.matching { it.name.startsWith("appDistributionUpload") }
+    .configureEach { dependsOn("composeReleaseNotes") }
 
 /**
  * Builds and distributes a release using the locally signed-in Firebase CLI.

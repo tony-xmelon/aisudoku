@@ -1,20 +1,58 @@
-A second puzzle joins the corpus, and it tests the part that just changed.
+These notes were wrong on your last seventeen builds.
 
-The one barely started, thick with pencil candidates - over half its empty squares
-carry them, many written small and high in a corner where they most resemble an
-answer. Every one of its 729 cells is now sorted correctly into print,
-handwriting, pencil or nothing, and its twenty-three printed digits and two
-answers all read right.
+The file that reaches you is written by hand, and nothing ever failed when it was
+not rewritten - so every build since the second of September arrived carrying the
+same paragraph about a corpus photograph. Each build now prints its own version and
+the change that produced it at the top of these notes, generated rather than typed,
+so that those two lines are true even when the rest has gone stale.
 
-That matters because the ink threshold was lowered yesterday to catch the faintest
-answers on your finished grid, and lowering it is exactly the change that could
-have started reading pencil dust as digits. On a page covered in pencil, it does
-not.
+Here is what has actually reached you since then.
 
-The other puzzle you sent is deliberately not in there. Read by eye it produced
-eleven answers disagreeing with the solution of its own printed givens, which
-means the reading was wrong rather than the paper - eleven mistakes on one grid is
-not what happens. A label that is wrong is worse than no label: it teaches the
-recogniser something false and every later measurement inherits it.
+THE PAGE
 
-The full history is in docs/changelog.md.
+An erased digit is no longer offered back to you as your own answer. On the page
+you sent with the two-line candidate marks, one square held a rubbed-out digit with
+two marks penciled over it, and the app read the ghost as something you had
+written. Nothing about its shape says it is gone - it is digit-sized, and it sits
+in the middle of the square, because it was a digit written there. What gives it
+away is that it is faint AND that something darker is written in the same square,
+which is what you leave behind when you rub a digit out and pencil over the ruins.
+Either half alone would have cost real answers: the faintest answer in the corpus
+is fainter than that erasure.
+
+The candidate marks that wrap onto a second line no longer read as answers either.
+Where a square holds four or more marks, the second line sits low and centred -
+exactly where an answer goes, at nearly the size of one - and three of them on that
+page were a lone 9 under a row of three digits.
+
+THE CAMERA
+
+The shutter no longer fires by itself on framing the app is about to refuse. It
+allowed more tilt than the check that judges the photograph did, and did not look
+at perspective at all, so it would tell you to hold still, take a picture, and then
+refuse what it had just taken. Both now use the same limits, so what you are told
+while aiming is what the photograph will be judged by.
+
+Photographs refused because the digits could not be read are now kept, like the
+ones refused for the grid. Only half of the refusals were being saved, and it was
+the harder half that was thrown away - a grid the app found but could not read
+depends on the page, the light and the lens together, and is the case worth having
+the picture of.
+
+THE APP
+
+It works in landscape, and turning the phone no longer loses the puzzle you have
+open. The grid moves to the left with everything else beside it, rather than
+shrinking to a thumbnail on a screen twice as wide.
+
+There is a Send diagnostics entry in the menu at the top right. It sends every
+refused photograph at once with a short report - the version, the phone, and what
+was refused - instead of one photograph at a time from the bottom of the puzzle
+list. With nothing refused it sends the report alone, which is still an answer.
+
+The shading that shows how far into a hint you are is now drawn inside the Hint
+button rather than on its touch target, which is 8dp taller than the button you can
+see. That is why it stood proud of the outline with its end cap outside the border.
+
+Please keep sending photos of anything it gets wrong. Every fix above came from one
+photograph that failed.
