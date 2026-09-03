@@ -180,7 +180,18 @@ def continental_ones(count=4000, seed=SEED + 1):
 
 
 def continental_sevens(count=2500, seed=SEED + 2):
-    """A 7 with the crossbar, which MNIST has too few of to learn from."""
+    """A 7 with the crossbar, which MNIST has too few of to learn from.
+
+    A quarter of them are drawn as a cross rather than as a seven: a bar longer than the
+    roof, and a roof short enough that the bar is the widest thing in the cell. That is
+    how the corpus writer draws a 7, and two of the misses on unseen photographs were
+    theirs - one read as a 4 with complete confidence, which is what a plus sign looks
+    like to a network that has only been shown sevens with a modest bar.
+
+    Worth about half a cell over three seeds, better on two of them and worse on none.
+    That is inside the noise of any single run and is not claimed as more: the reason it
+    is here is that the shape exists and the generator could not produce it.
+    """
     rng = np.random.default_rng(seed)
     xs = []
     for _ in range(count):
@@ -193,11 +204,14 @@ def continental_sevens(count=2500, seed=SEED + 2):
         left = 96 / 2 - span / 2
         lean = span * float(rng.uniform(0.15, 0.45))
 
-        draw.line([(left, top), (left + span, top)], fill=255, width=width)
+        # A short roof is what turns the shape into a cross; most sevens keep a full one.
+        roof = span * (float(rng.uniform(0.35, 0.65)) if rng.random() < 0.25 else 1.0)
+        draw.line([(left + span - roof, top), (left + span, top)], fill=255, width=width)
         draw.line([(left + span, top), (left + lean, top + height)], fill=255, width=width)
         if rng.random() < 0.75:
-            bar_y = top + height * float(rng.uniform(0.45, 0.60))
-            bar = span * float(rng.uniform(0.30, 0.55))
+            bar_y = top + height * float(rng.uniform(0.40, 0.62))
+            # Up past the full span, so the bar can reach out both sides of the stem.
+            bar = span * float(rng.uniform(0.30, 1.15))
             centre = left + span - (span - lean) * (bar_y - top) / height
             draw.line([(centre - bar / 2, bar_y), (centre + bar / 2, bar_y)], fill=255, width=width)
         xs.append(normalise_array(photo_noise(np.array(canvas, dtype=np.float32) / 255.0, rng)))
@@ -455,6 +469,14 @@ def fit(x, y, epochs=6, seed=SEED):
     into a small difference.
     """
     torch.manual_seed(seed)
+
+    # Without this, two runs of the same seed disagree about which cells they get wrong.
+    # cuDNN picks convolution algorithms by benchmark and some of them accumulate in a
+    # non-deterministic order, which is invisible at three decimal places and very
+    # visible when comparing one change against another on 175 cells.
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     model = Net().to(DEVICE)
     optimiser = torch.optim.Adam(model.parameters(), lr=1e-3)
     loader = DataLoader(

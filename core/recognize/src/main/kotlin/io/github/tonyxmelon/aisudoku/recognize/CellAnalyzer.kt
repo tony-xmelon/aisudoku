@@ -194,7 +194,20 @@ object CellAnalyzer {
         val newWidth = maxOf(1, Math.round(blob.width * scale).toInt())
         val newHeight = maxOf(1, Math.round(blob.height * scale).toInt())
         val small = Mat()
-        Imgproc.resize(ink, small, Size(newWidth.toDouble(), newHeight.toDouble()), 0.0, 0.0, Imgproc.INTER_LINEAR)
+        // INTER_AREA, not INTER_LINEAR. A cell is around ninety pixels across and this
+        // shrinks it to twenty, and at that reduction INTER_LINEAR is the wrong operation:
+        // it samples a two-by-two neighbourhood wherever it lands, so a one-pixel stroke is
+        // kept or dropped according to where the grid falls, and the result aliases.
+        // INTER_AREA averages the whole source region, which is what turns a thin stroke
+        // into a grey one rather than into a broken one.
+        //
+        // Worth about a third of a cell on the corpus, which is inside the noise of a
+        // single run - it is here because it is the right operation for the reduction, and
+        // because over three seeds it was never worse, not because the number proves it.
+        Imgproc.resize(
+            ink, small, Size(newWidth.toDouble(), newHeight.toDouble()),
+            0.0, 0.0, Imgproc.INTER_AREA,
+        )
 
         var massY = 0.0
         var massX = 0.0
