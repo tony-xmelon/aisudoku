@@ -2,8 +2,10 @@ package io.github.tonyxmelon.aisudoku.app
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Environment
 import androidx.core.content.FileProvider
+import io.github.tonyxmelon.aisudoku.BuildConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -24,10 +26,12 @@ import java.util.Locale
  * the more useful of the two when the digits come out wrong, and it is already in the
  * list where anyone would look for it.
  *
- * They live in the app's own external folder, which needs no permission, and are shared
- * one at a time through a provider that grants read access to those files and nothing
- * else. The app still has no internet permission: sharing hands the file to whatever the
- * user picks, and that app does the sending.
+ * They live in the app's own external folder, which needs no permission, and go out
+ * through a provider that grants read access to those files and nothing else - one at a
+ * time from the list, or all of them at once with [shareAll] from the overflow menu,
+ * which is where they are wanted the moment a scan has just failed. The app still has no
+ * internet permission: sharing hands the files to whatever the user picks, and that app
+ * does the sending.
  */
 object Diagnostics {
 
@@ -85,13 +89,67 @@ object Diagnostics {
     }
 
     /**
+     * What is worth saying about this phone alongside the photographs.
+     *
+     * The build number is here because it is the first question asked of any report - the
+     * app shows it under the title for the same reason - and the phone and its Android
+     * version because a scan that fails on one phone and nowhere else is the whole reason
+     * this exists. Nothing here identifies the user: no account, no location, no file
+     * paths outside the app's own folder.
+     */
+    fun report(context: Context): String {
+        val kept = refused(context)
+        val when_ = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.UK).format(Date())
+        return buildString {
+            appendLine("AI Sudoku ${BuildConfig.VERSION_NAME}")
+            appendLine("$when_, ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}")
+            appendLine()
+            if (kept.isEmpty()) {
+                appendLine("No photograph has been refused since the app was last installed.")
+            } else {
+                appendLine("${kept.size} refused photograph(s), newest first:")
+                for (scan in kept) {
+                    appendLine("  ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK).format(scan.at)}  ${scan.reason}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Hands over everything gathered at once: every refused photograph, and the report.
+     *
+     * Sending them one at a time was the only way to do this, which meant that reporting
+     * a bad run of five meant five separate shares, each one a separate message at the
+     * other end with nothing saying which phone or which build it came from.
+     *
+     * Returns false only when nothing could be sent at all, so the caller can say so.
+     */
+    fun shareAll(context: Context): Boolean {
+        val files = refused(context).map { it.file }
+        val note = report(context)
+
+        // With no photographs there is still something worth sending: which build is on
+        // the phone, and that nothing was refused - which is itself an answer, and the
+        // one the user gets when the trouble was that the shutter never fired at all.
+        if (files.isEmpty()) {
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "AI Sudoku diagnostics")
+                putExtra(Intent.EXTRA_TEXT, note)
+            }
+            return start(context, send, "Send diagnostics")
+        }
+        return share(context, files, note)
+    }
+
+    /**
      * Hands the kept photographs to whatever the user picks to send them with.
      *
      * Read-only, and only these files. Returns false when there is nothing to send or no
      * app willing to take them, so the caller can say so rather than appearing to do
      * nothing.
      */
-    fun share(context: Context, files: List<File>): Boolean {
+    fun share(context: Context, files: List<File>, note: String? = null): Boolean {
         if (files.isEmpty()) return false
 
         val uris = ArrayList(
@@ -102,6 +160,7 @@ object Diagnostics {
                 type = "image/jpeg"
                 putExtra(Intent.EXTRA_STREAM, uris.first())
                 putExtra(Intent.EXTRA_SUBJECT, "AI Sudoku scan")
+                note?.let { putExtra(Intent.EXTRA_TEXT, it) }
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         } else {
@@ -109,17 +168,25 @@ object Diagnostics {
                 type = "image/jpeg"
                 putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
                 putExtra(Intent.EXTRA_SUBJECT, "AI Sudoku scans")
+                note?.let { putExtra(Intent.EXTRA_TEXT, it) }
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
-        return runCatching {
-            context.startActivity(
-                Intent.createChooser(send, "Send these scans")
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-            true
-        }.getOrDefault(false)
+        return start(context, send, "Send these scans")
     }
+
+    /**
+     * Puts the chooser on screen, and says whether anything was willing to take it.
+     *
+     * A phone with nothing that can send an image is unusual but not impossible, and the
+     * caller needs to be able to say so rather than appearing to do nothing.
+     */
+    private fun start(context: Context, send: Intent, title: String): Boolean = runCatching {
+        context.startActivity(
+            Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        true
+    }.getOrDefault(false)
 
     /**
      * Where the photographs go.

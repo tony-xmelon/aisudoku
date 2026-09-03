@@ -1,9 +1,9 @@
 package io.github.tonyxmelon.aisudoku.app
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +38,9 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+
 
 /**
  * The colours the overlay is drawn in, and what each one means.
@@ -246,6 +250,12 @@ fun OverflowMenu(
     glass: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    // Counted when the menu opens rather than on every recomposition: it is a directory
+    // listing, and it can change while the app is running - a scan refused a moment ago
+    // is exactly what the user is about to send.
+    val kept = remember(open) { if (open) Diagnostics.refused(context).size else 0 }
 
     Box {
         if (glass) {
@@ -278,6 +288,28 @@ fun OverflowMenu(
                 },
             )
 
+            // Here rather than only at the foot of the puzzle list, because this is
+            // wanted at the moment a scan has just failed - which is the one moment the
+            // user is not looking at their puzzles. The count is on the label so that
+            // "nothing was refused" is answered before the menu is even used.
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (kept == 0) "Send diagnostics" else "Send diagnostics ($kept)"
+                    )
+                },
+                onClick = {
+                    open = false
+                    if (!Diagnostics.shareAll(context)) {
+                        Toast.makeText(
+                            context,
+                            "Nothing could be sent from this phone.",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
+            )
         }
     }
 }
