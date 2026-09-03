@@ -84,6 +84,14 @@ android {
     }
 }
 
+// The core modules have failed on warnings from the start; the app did not, and had
+// quietly accumulated three deprecated arrow icons that do not mirror in a right-to-left
+// layout and a LocalLifecycleOwner that had moved. Both are the kind of thing a warning
+// is for and nobody reads warnings that do not stop anything.
+kotlin {
+    compilerOptions { allWarningsAsErrors.set(true) }
+}
+
 firebaseAppDistributionDefault {
     // The app id identifies the Firebase app and is not a secret - it is derivable from
     // any built APK - so it is committed and the build works out of the box. The service
@@ -113,6 +121,8 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // Supplies the non-deprecated LocalLifecycleOwner the camera screen needs.
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

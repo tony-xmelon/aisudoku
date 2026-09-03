@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
 import io.github.tonyxmelon.aisudoku.vision.OpenCvNatives
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
@@ -235,7 +234,10 @@ private fun AppRoot() {
     ) {
         when {
             screen == Screen.STRATEGIES -> StrategiesScreen(
-                findings = puzzle?.let { TechniqueSolver.findingCounts(it.grid) }.orEmpty(),
+                // PuzzleState already caches this; calling the solver here instead ran
+                // all twenty-three techniques again on every recomposition, on the main
+                // thread, for a number it was holding the whole time.
+                findings = puzzle?.findingCounts.orEmpty(),
                 onExplore = { technique ->
                     puzzle = puzzle?.tutor(technique)
                     leaveOverlay()

@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The paper the icon is printed on, the ink it is ruled in, and the app's cyan. -->
+    <!--
+      The paper the icon is printed on and the ink it is ruled in. Only what XML
+      needs: the icon and the theme. Every colour drawn over the photograph lives in
+      Overlays, in Kotlin, where the key and the drawing are defined together - the
+      app's cyan was also declared here, identical and unread, which is the sort of
+      second copy that stays right until it does not.
+    -->
     <color name="brand_paper">#F3F6F8</color>
     <color name="brand_ink">#0E1218</color>
-    <color name="brand_cyan">#4DD0E1</color>
 </resources>

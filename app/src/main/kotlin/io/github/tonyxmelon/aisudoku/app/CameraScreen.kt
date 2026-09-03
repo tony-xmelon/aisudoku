@@ -39,6 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +49,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,6 +61,9 @@ import io.github.tonyxmelon.aisudoku.vision.GateVerdict
 import io.github.tonyxmelon.aisudoku.vision.StructuralGate
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Live camera with framing guidance and automatic capture.
@@ -93,6 +97,7 @@ fun CameraScreen(
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     val advisor = remember { FramingAdvisor() }
     val capturing = remember { AtomicBoolean(false) }
+    val scope = rememberCoroutineScope()
     val capture = remember {
         ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
@@ -104,66 +109,43 @@ fun CameraScreen(
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
     }
 
+    /**
+     * Hands the photograph to a background thread, and only the result back to this one.
+     *
+     * Everything except pulling the bytes out of the proxy happens off the main thread.
+     * It used to happen on it - see [PhotoReading] - which is why the spinner set on the
+     * line above never appeared: nothing could draw it until the work it announced had
+     * already finished.
+     *
+     */
     fun handleCaptured(proxy: ImageProxy) {
-        try {
+        // Both of these have to be taken before the proxy is closed, and the proxy has to
+        // be closed before the slow part starts, or the camera stalls holding its buffer.
+        val rotation = proxy.imageInfo.rotationDegrees
+        val bytes = try {
             val buffer = proxy.planes[0].buffer
-            val bytes = ByteArray(buffer.remaining()).also { buffer.get(it) }
-            val image = Images.fromJpeg(bytes, proxy.imageInfo.rotationDegrees)
-
-            when (val verdict = StructuralGate.assess(image)) {
-                is GateVerdict.Rejected -> {
-                    // Keep the photograph that was refused. A scan that fails here and
-                    // cannot be made to fail anywhere else is a difference between what
-                    // the phone photographed and what everything else has seen, and the
-                    // only way to close that is to look at the bytes themselves.
-                    // Only say the photo was kept if it was. The message used to claim it
-                    // unconditionally, so a write that quietly failed left the user hunting
-                    // a list for something that had never been put in it.
-                    val kept = Diagnostics.keep(context, bytes, verdict.reason.toString())
-                    failure = verdict.reason.message + if (kept != null) {
-                        " The photo is in your puzzle list, under \"Would not read\"."
-                    } else {
-                        " That photo could not be kept, so there is nothing to send."
-                    }
-                }
-
-                is GateVerdict.Usable -> {
-                    val lines = GridLines(
-                        vertical = verdict.geometry.verticalLines
-                            .map { (it / verdict.rectified.width).toFloat() },
-                        horizontal = verdict.geometry.horizontalLines
-                            .map { (it / verdict.rectified.height).toFloat() },
-                    )
-                    when (val read = GridReader().read(verdict.cells)) {
-                        is ReadResult.Unreadable -> failure = read.reason
-                        is ReadResult.Accepted -> onRead(
-                            PuzzleState(
-                                photo = Images.toBitmap(verdict.rectified),
-                                grid = read.grid,
-                                uncertainCells = emptySet(),
-                                readingNote = null,
-                                lines = lines,
-                                reports = read.readings.map(CellReport::of),
-                            )
-                        )
-
-                        is ReadResult.NeedsConfirmation -> onRead(
-                            PuzzleState(
-                                photo = Images.toBitmap(verdict.rectified),
-                                grid = read.grid,
-                                uncertainCells = read.uncertainCells,
-                                readingNote = read.reason,
-                                lines = lines,
-                                reports = read.readings.map(CellReport::of),
-                            )
-                        )
-                    }
-                }
-            }
+            ByteArray(buffer.remaining()).also { buffer.get(it) }
         } catch (e: Exception) {
             failure = e.message ?: "Something went wrong reading that photo."
+            busy = false
+            capturing.set(false)
+            return
         } finally {
             proxy.close()
+        }
+
+        scope.launch {
+            val outcome = withContext(Dispatchers.Default) {
+                runCatching { PhotoReading.read(context, bytes, rotation) }
+            }
+            outcome
+                .onSuccess { result ->
+                    when (result) {
+                        is PhotoOutcome.Read -> onRead(result.state)
+                        is PhotoOutcome.Refused -> failure = result.message
+                    }
+                }
+                .onFailure { failure = it.message ?: "Something went wrong reading that photo." }
             busy = false
             capturing.set(false)
             advisor.reset()

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The pre-Android-12 half of data_extraction_rules.xml, saying the same thing.
+
+  android:allowBackup="false" already covers every version, so neither file changes what
+  the app does today. They are here so the intent survives that attribute's deprecation,
+  and lint asks for both because dataExtractionRules alone is silent below API 31.
+-->
+<full-backup-content>
+    <exclude domain="root" />
+</full-backup-content>

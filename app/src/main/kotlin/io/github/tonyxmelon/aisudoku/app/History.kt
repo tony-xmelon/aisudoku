@@ -7,7 +7,8 @@ import io.github.tonyxmelon.aisudoku.model.Cell
 import io.github.tonyxmelon.aisudoku.model.CellSource
 import io.github.tonyxmelon.aisudoku.model.Grid
 import java.io.File
-import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
@@ -105,18 +106,35 @@ class History(context: Context) {
     }
 
     companion object {
-        private val DAY = SimpleDateFormat("EEEE d MMMM yyyy", Locale.getDefault())
-        private val TIME = SimpleDateFormat("HH:mm", Locale.getDefault())
+        /**
+         * Patterns rather than formatters, with the locale applied at the moment of use.
+         *
+         * These were two static SimpleDateFormats built with Locale.getDefault(). That
+         * binds whatever locale happened to be set when the class first loaded, so a
+         * phone switched to another language went on printing dates in the old one until
+         * the process was killed. SimpleDateFormat is also mutable and not thread-safe,
+         * and these were shared - harmless while only the main thread formats a date, and
+         * exactly the sort of thing that stops being harmless quietly.
+         *
+         * DateTimeFormatter is immutable, so withLocale returns a new one and the shared
+         * value is never written to.
+         */
+        private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy")
+        private val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+        private fun format(pattern: DateTimeFormatter, at: Date): String =
+            pattern.withLocale(Locale.getDefault())
+                .format(at.toInstant().atZone(ZoneId.systemDefault()))
 
         /** Groups entries under day headings, newest day first, for a list that grows. */
         fun byDay(entries: List<HistoryEntry>): List<Pair<String, List<HistoryEntry>>> =
-            entries.groupBy { DAY.format(it.date) }
+            entries.groupBy { format(DAY, it.date) }
                 .toList()
                 .sortedByDescending { (_, group) -> group.maxOf { it.id } }
 
-        fun timeOf(entry: HistoryEntry): String = TIME.format(entry.date)
+        fun timeOf(entry: HistoryEntry): String = format(TIME, entry.date)
 
         /** The same clock, for anything else that happened at a moment worth showing. */
-        fun timeOf(at: Date): String = TIME.format(at)
+        fun timeOf(at: Date): String = format(TIME, at)
     }
 }

@@ -35,8 +35,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -667,7 +667,7 @@ private fun BoxScope.TutorPanel(
                             // Swiping is quick and coarse; these land on one step exactly.
                             IconButton(onClick = { stepBy(-1) }, enabled = at > 0) {
                                 Icon(
-                                    Icons.Filled.KeyboardArrowLeft,
+                                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                     contentDescription = "Previous step",
                                 )
                             }
@@ -678,7 +678,7 @@ private fun BoxScope.TutorPanel(
                             )
                             IconButton(onClick = { stepBy(1) }, enabled = at < last) {
                                 Icon(
-                                    Icons.Filled.KeyboardArrowRight,
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     contentDescription = "Next step",
                                 )
                             }
@@ -792,7 +792,7 @@ private fun HowTo(open: Boolean, onToggle: () -> Unit) {
             color = MaterialTheme.colorScheme.primary,
         )
         Icon(
-            Icons.Filled.KeyboardArrowRight,
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = if (open) "Hide how to spot one" else "How to spot one",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = turn },
