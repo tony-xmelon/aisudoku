@@ -89,9 +89,7 @@ class FramingAdvisor(
             touchesEdge(quad, frame) -> "Fit the whole grid in view"
             shortestSide < frameShortSide * 0.30 -> "Move closer"
             shortestSide > frameShortSide * 0.98 -> "Move back"
-            quad.maxCornerAngleDeviation > 18.0 -> "Hold the phone flat"
-            abs(quad.rotationDegrees) > 15.0 -> "Straighten up"
-            else -> null
+            else -> shapeComplaint(quad)
         }
 
         val outline = normalise(quad, frame)
@@ -113,6 +111,31 @@ class FramingAdvisor(
             outline = outline,
             outlineAccepted = true,
         )
+    }
+
+    /**
+     * What to say about the shape of the grid, or null when there is nothing to say.
+     *
+     * Every limit here is the gate's own, because this is what decides when the shutter
+     * fires by itself. When these were looser, the app captured at between 15 and 18
+     * degrees of corner deviation - and at any amount of perspective at all, which was
+     * not checked - and the gate then refused what it had just taken. The user saw the
+     * app photograph a page it had said to hold still for, and then complain about it.
+     *
+     * Kept apart from [advise] so it can be checked on shapes rather than on
+     * photographs: no synthetic image can be built with a chosen corner angle, and the
+     * corpus has no page skewed enough to test the boundary.
+     */
+    internal fun shapeComplaint(quad: Quad): String? = when {
+        quad.maxCornerAngleDeviation > StructuralGate.MAX_CORNER_ANGLE_DEVIATION ->
+            "Hold the phone flat"
+
+        quad.oppositeSideRatio > StructuralGate.MAX_OPPOSITE_SIDE_RATIO ->
+            "Hold the phone flat above the puzzle"
+
+        abs(quad.rotationDegrees) > StructuralGate.MAX_ROTATION_DEGREES -> "Straighten up"
+
+        else -> null
     }
 
     /** A quad in pixels, as fractions of the frame, so the screen can place it. */

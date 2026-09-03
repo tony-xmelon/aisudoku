@@ -59,9 +59,19 @@ object StructuralGate {
     /** Minimum rectified grid side, in source pixels, for roughly 78px per cell. */
     private const val MIN_GRID_SIDE = 700.0
 
-    private const val MAX_OPPOSITE_SIDE_RATIO = 1.25
-    private const val MAX_CORNER_ANGLE_DEVIATION = 15.0
-    private const val MAX_ROTATION_DEGREES = 15.0
+    /**
+     * The three shape limits, shared with [FramingAdvisor].
+     *
+     * They are internal rather than private because the advisor must not be looser than
+     * the gate on any of them. When it was, the app fired the shutter by itself on
+     * framing this object then refused - "hold still", a photograph, and an instruction
+     * to hold the phone flat, over and over, with nothing on screen having warned that
+     * the shot was not going to be accepted. Steering the user and judging the result are
+     * allowed to differ in how they are worded, never in where the line is.
+     */
+    internal const val MAX_OPPOSITE_SIDE_RATIO = 1.25
+    internal const val MAX_CORNER_ANGLE_DEVIATION = 15.0
+    internal const val MAX_ROTATION_DEGREES = 15.0
 
     /**
      * How close to the frame edge a corner may sit before the grid is treated as clipped.

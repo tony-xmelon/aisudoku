@@ -33,8 +33,29 @@ data class Blob(
     internal val maskLabel: Int,
 )
 
-/** The ink of one cell: its biggest blob, and that blob ready for the classifier. */
-class CellInk(val blob: Blob, val normalised: FloatArray)
+/**
+ * The ink of one cell: its biggest blob, and that blob ready for the classifier.
+ *
+ * The two measurements beside it are about the blob's standing in its own square, which
+ * is what tells fresh ink from what is left of a rubbed-out digit.
+ */
+class CellInk(
+    val blob: Blob,
+    val normalised: FloatArray,
+    /**
+     * How far the blob stands out from the paper of its own cell, in grey levels.
+     *
+     * Measured against the cell's own paper rather than against the print, so that it
+     * does not move with the exposure of the photograph: a lightly written answer on a
+     * bright page and the same answer on a dark one have much the same contrast.
+     */
+    val contrast: Double,
+    /**
+     * How much darker the darkest other blob in the same cell is, in grey levels; zero
+     * when the biggest blob is also the darkest, which is the ordinary case.
+     */
+    val outshoneBy: Double,
+)
 
 /**
  * Finds the ink in a cell and measures it, without judging what it is.
@@ -84,11 +105,23 @@ object CellAnalyzer {
      */
     fun inspect(cells: List<GrayImage>): List<CellInk?> = cells.map { cell ->
         val gray = Mat(cell.height, cell.width, CvType.CV_8UC1).also { it.put(0, 0, cell.pixels) }
-        val largest = findBlobs(gray, cell).maxByOrNull { it.area } ?: return@map null
-        CellInk(largest, normalise(gray, largest, cell))
+        val blobs = findBlobs(gray, cell)
+        val largest = blobs.maxByOrNull { it.area } ?: return@map null
+
+        // The median of the cell is its paper: ink is the minority of any square, even a
+        // crowded one.
+        val paper = cell.pixels.map { it.toInt() and 0xFF }.sorted()[cell.pixels.size / 2]
+        val darkest = blobs.minOf { it.darkness }
+
+        CellInk(
+            blob = largest,
+            normalised = normalise(gray, largest, cell),
+            contrast = paper - largest.darkness,
+            outshoneBy = largest.darkness - darkest,
+        )
     }
 
-    private fun findBlobs(gray: Mat, cell: GrayImage): List<Blob> {
+    internal fun findBlobs(gray: Mat, cell: GrayImage): List<Blob> {
         val grayF = Mat()
         gray.convertTo(grayF, CvType.CV_32F)
 

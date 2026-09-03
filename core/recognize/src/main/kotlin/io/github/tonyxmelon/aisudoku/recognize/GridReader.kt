@@ -89,7 +89,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
             )
 
         val readings = ink.mapIndexed { index, cell ->
-            val kind = if (cell == null) Ink.NONE else classify(cell.blob, core)
+            val kind = if (cell == null) Ink.NONE else classify(cell, core)
             CellReading(
                 index = index,
                 ink = kind,
@@ -182,16 +182,43 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
      * middle of it. Measured, no mark reaching digit size sits lower than 0.14 of a cell
      * above centre, no printed digit higher than 0.15, and no answer higher than 0.10.
      */
-    private fun classify(blob: Blob, core: PrintedCore): Ink {
+    internal fun classify(ink: CellInk, core: PrintedCore): Ink {
+        val blob = ink.blob
         val relative = blob.heightRatio / core.height
         return when {
             relative in PRINTED_MIN..PRINTED_MAX && blob.verticalOffset >= PRINTED_TOP_LIMIT ->
                 Ink.PRINTED
 
-            relative >= ANSWER_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT -> Ink.ANSWER
+            relative >= ANSWER_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT ->
+                if (isResidue(ink)) Ink.MARK else Ink.ANSWER
+
             else -> Ink.MARK
         }
     }
+
+    /**
+     * Whether digit-sized ink is what is left of an erased digit rather than an answer.
+     *
+     * A rubbed-out digit keeps its size and its place in the middle of the square, so
+     * nothing about its shape says it is gone; only the graphite is gone. Two things
+     * together say so, and neither would on its own:
+     *
+     * The ink is faint against its own paper. Alone this is useless - the faintest real
+     * answer in the corpus is fainter, in absolute grey levels, than some erasures.
+     *
+     * And something darker is written in the same square. A player who erases a digit
+     * and pencils candidates over it leaves the candidates darker than the ruins; a
+     * player who writes an answer leaves it the darkest thing in the square, which is
+     * why 174 of the 180 answers in the corpus are outshone by nothing at all.
+     *
+     * Measured on one erasure, which is one more than a threshold usually gets and far
+     * fewer than it deserves. What makes it worth standing on is that the conditions are
+     * independent and both are far from the nearest real answer: every threshold from
+     * 25 to 35 grey levels of contrast, against 15 to 30 of being outshone, catches the
+     * erasure and loses none of the 180 answers. This sits in the middle of that.
+     */
+    private fun isResidue(ink: CellInk): Boolean =
+        ink.contrast < RESIDUE_CONTRAST && ink.outshoneBy > RESIDUE_OUTSHONE
 
     private fun assemble(readings: List<CellReading>): Grid {
         var grid = Grid.Empty
@@ -316,6 +343,15 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
          */
         private const val PRINTED_TOP_LIMIT = -0.18
         private const val ANSWER_TOP_LIMIT = -0.12
+
+        /**
+         * How faint digit-sized ink must be, in grey levels against its own cell's
+         * paper, before being outshone in the same square condemns it as an erasure.
+         */
+        private const val RESIDUE_CONTRAST = 30.0
+
+        /** How much darker other ink in the same square must be to condemn it. */
+        private const val RESIDUE_OUTSHONE = 22.0
 
         /** Gap between the top two probabilities below which a cell counts as weak. */
         private const val CONFIDENT_MARGIN = 0.60f
