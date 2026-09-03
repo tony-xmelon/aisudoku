@@ -31,28 +31,38 @@ sealed interface PhotoOutcome {
  */
 object PhotoReading {
 
+    /**
+     * Refuses a photograph, keeping it so it can be looked at afterwards.
+     *
+     * [label] becomes part of the file name and is what the list shows, so it is short
+     * and says which check refused; [message] is the sentence the user reads now.
+     *
+     * Only claim the photograph was kept if it was. The message used to say so
+     * unconditionally, which left a user whose write had quietly failed hunting a list
+     * for something that had never been put in it.
+     */
+    private fun refuse(
+        context: Context,
+        bytes: ByteArray,
+        message: String,
+        label: String,
+    ): PhotoOutcome.Refused {
+        val kept = Diagnostics.keep(context, bytes, label)
+        return PhotoOutcome.Refused(
+            message + if (kept != null) {
+                " The photo is in your puzzle list, under \"Would not read\"."
+            } else {
+                " That photo could not be kept, so there is nothing to send."
+            }
+        )
+    }
+
     fun read(context: Context, bytes: ByteArray, rotationDegrees: Int): PhotoOutcome {
         val image = Images.fromJpeg(bytes, rotationDegrees)
 
         return when (val verdict = StructuralGate.assess(image)) {
-            is GateVerdict.Rejected -> {
-                // Keep the photograph that was refused. A scan that fails here and cannot
-                // be made to fail anywhere else is a difference between what the phone
-                // photographed and what everything else has seen, and the only way to
-                // close that is to look at the bytes themselves.
-                //
-                // Only say the photo was kept if it was: the message used to claim it
-                // unconditionally, so a write that quietly failed left the user hunting a
-                // list for something that had never been put in it.
-                val kept = Diagnostics.keep(context, bytes, verdict.reason.toString())
-                PhotoOutcome.Refused(
-                    verdict.reason.message + if (kept != null) {
-                        " The photo is in your puzzle list, under \"Would not read\"."
-                    } else {
-                        " That photo could not be kept, so there is nothing to send."
-                    }
-                )
-            }
+            is GateVerdict.Rejected ->
+                refuse(context, bytes, verdict.reason.message, verdict.reason.toString())
 
             is GateVerdict.Usable -> {
                 val lines = GridLines(
@@ -74,7 +84,15 @@ object PhotoReading {
                     )
 
                 when (val result = GridReader().read(verdict.cells)) {
-                    is ReadResult.Unreadable -> PhotoOutcome.Refused(result.reason)
+                    // Kept for the same reason a photograph the gate turned away is
+                    // kept. This path refuses a photograph the gate was happy with -
+                    // the grid was found, and the digits in it could not be made into a
+                    // puzzle - which is the harder failure of the two to reproduce, and
+                    // the one it kept no evidence of at all. A user who could not get a
+                    // page to scan was told to look in a list that nothing was ever put
+                    // in, and there was nothing to send afterwards.
+                    is ReadResult.Unreadable ->
+                        refuse(context, bytes, result.reason, "Digits not read")
 
                     is ReadResult.Accepted ->
                         PhotoOutcome.Read(puzzle(result.grid, emptySet(), null, result.readings))

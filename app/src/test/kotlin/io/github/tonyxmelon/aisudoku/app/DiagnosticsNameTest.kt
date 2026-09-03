@@ -41,6 +41,13 @@ class DiagnosticsNameTest {
     }
 
     @Test
+    fun `a photograph the reader could not make a puzzle of reads back as such`() {
+        // The label [PhotoReading] uses for the refusal that keeps no evidence until
+        // now: the gate was satisfied, and the digits inside the grid were not.
+        assertEquals("Digits not read", refused("scan-20260903-091500-digits-not-read.jpg")?.reason)
+    }
+
+    @Test
     fun `names that are not records are ignored rather than guessed at`() {
         assertNull(refused("scan-20260902.jpg"), "no time and no reason")
         assertNull(refused("scan-notadate-174233-blurred.jpg"), "unparseable date")
