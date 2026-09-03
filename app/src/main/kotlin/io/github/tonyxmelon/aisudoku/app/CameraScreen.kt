@@ -1,6 +1,7 @@
 package io.github.tonyxmelon.aisudoku.app
 
 import android.annotation.SuppressLint
+import android.hardware.display.DisplayManager
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
@@ -103,10 +104,58 @@ fun CameraScreen(
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             .build()
     }
+    val analysisUseCase = remember {
+        ImageAnalysis.Builder()
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            // The same code reads a preview frame and a captured
+                            // photograph; the only thing that differs is the picture it
+                            // is given. So the live frame should be as good as it can
+                            // cheaply be - and asking for the next size *up* when the
+                            // exact one is unavailable costs almost nothing, because
+                            // the detector downsamples to a fixed working size anyway.
+                            //
+                            // It used to ask for the next size down, which on a phone
+                            // without this exact mode means quietly analysing 640x480,
+                            // or less, and never saying so.
+                            android.util.Size(960, 720),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                        )
+                    )
+                    .build()
+            )
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+    }
+
     // FILL_CENTER is not just the default here, it is the geometry [Framing] undoes to
     // put the outline back over the thing it outlines. Set it where it can be seen.
     val previewView = remember {
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+    }
+
+    // A use case is told which way up the display is when it is bound, and never again.
+    // That was harmless while the activity was locked to portrait and recreated on every
+    // rotation; now that it is not, a photograph taken sideways would arrive turned a
+    // quarter, and a grid of sideways digits reads as nothing at all. The listener is
+    // the display's own, rather than a configuration change, because turning a phone
+    // through 180 degrees moves the camera without changing the configuration.
+    DisposableEffect(previewView) {
+        val displays = context.getSystemService(DisplayManager::class.java)
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) = Unit
+            override fun onDisplayChanged(displayId: Int) {
+                val display = previewView.display ?: return
+                if (display.displayId != displayId) return
+                capture.targetRotation = display.rotation
+                analysisUseCase.targetRotation = display.rotation
+            }
+        }
+        displays.registerDisplayListener(listener, null)
+        onDispose { displays.unregisterDisplayListener(listener) }
     }
 
     /**
@@ -177,29 +226,7 @@ fun CameraScreen(
             val preview = Preview.Builder().build().also {
                 it.surfaceProvider = previewView.surfaceProvider
             }
-            val analysis = ImageAnalysis.Builder()
-                .setResolutionSelector(
-                    ResolutionSelector.Builder()
-                        .setResolutionStrategy(
-                            ResolutionStrategy(
-                                // The same code reads a preview frame and a captured
-                                // photograph; the only thing that differs is the picture it
-                                // is given. So the live frame should be as good as it can
-                                // cheaply be - and asking for the next size *up* when the
-                                // exact one is unavailable costs almost nothing, because
-                                // the detector downsamples to a fixed working size anyway.
-                                //
-                                // It used to ask for the next size down, which on a phone
-                                // without this exact mode means quietly analysing 640x480,
-                                // or less, and never saying so.
-                                android.util.Size(960, 720),
-                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
-                            )
-                        )
-                        .build()
-                )
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
+            val analysis = analysisUseCase
 
             analysis.setAnalyzer(analysisExecutor) { proxy ->
                 try {

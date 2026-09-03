@@ -6,17 +6,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,10 +39,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.tonyxmelon.aisudoku.BuildConfig
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PuzzleScreen(
@@ -53,7 +61,8 @@ fun PuzzleScreen(
     val sheetState = rememberModalBottomSheetState()
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val photoSide = (maxWidth - 24.dp).coerceAtMost(maxHeight * 0.52f)
+        val arrangement = PuzzleLayout.forWindow(maxWidth.value, maxHeight.value)
+        val photoSide = arrangement.photoSide.dp
 
         Column(modifier = Modifier.fillMaxSize()) {
             AppBar(
@@ -67,69 +76,28 @@ fun PuzzleScreen(
                 OverflowMenu(onStrategies, onSettings, onAbout)
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(
+            // Turned sideways there is no room to stack, so the pane moves to the right
+            // of the photograph instead of under it. Both arrangements hold the same two
+            // pieces in the same order - grid first, then everything said about it.
+            if (arrangement.sideBySide) {
+                Row(
                     modifier = Modifier
-                        .size(photoSide)
-                        .pointerInput(state.grid, state.lines) {
-                            detectTapGestures { offset ->
-                                val column = state.lines.vertical
-                                    .indexOfLast { it * size.width <= offset.x }
-                                    .coerceIn(0, 8)
-                                val row = state.lines.horizontal
-                                    .indexOfLast { it * size.height <= offset.y }
-                                    .coerceIn(0, 8)
-                                onChange(state.copy(selectedCell = row * 9 + column))
-                            }
-                        }
-                        .drawWithContent {
-                            drawContent()
-                            drawOverlay(state, measurer)
-                        },
+                        .weight(1f)
+                        .fillMaxWidth()
+                        // Sideways, the notch and the navigation bar are down the edges
+                        // rather than the ends, and would sit over the grid. Only the
+                        // horizontal inset is taken here: the bottom one belongs to the
+                        // tutor panel, which already carries it for the buttons.
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                        ),
                 ) {
-                    Image(
-                        bitmap = state.photo.asImageBitmap(),
-                        contentDescription = "The puzzle you photographed",
-                        contentScale = ContentScale.FillBounds,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    PhotoPane(state, onChange, photoSide, measurer)
+                    ControlsPane(state, onChange, Modifier.weight(1f).fillMaxHeight())
                 }
-
-                // How many squares are still empty, in the corner under the grid it
-                // counts. It was a sentence in the pane below, where it was the only
-                // thing said most of the time and cost a line that the reasoning needed.
-                Text(
-                    state.progress,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    modifier = Modifier.width(photoSide).padding(top = 2.dp),
-                )
-            }
-
-            // Everything below the photograph. The tutor rests across the foot of it and
-            // grows to fill the whole of it, buttons included, while the grid above never
-            // moves - which is the reason the photograph takes its size from the window
-            // rather than from what is left over.
-            BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                val route = state.walkthrough?.takeIf { !it.isEmpty }
-                val peek = TUTOR_PEEK +
-                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-                Controls(
-                    state,
-                    onChange,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = if (route != null) peek else 0.dp),
-                )
-                route?.let { TutorPanel(state, it, onChange, peek, maxHeight) }
+            } else {
+                PhotoPane(state, onChange, photoSide, measurer, Modifier.fillMaxWidth())
+                ControlsPane(state, onChange, Modifier.weight(1f).fillMaxWidth())
             }
         }
     }
@@ -141,6 +109,92 @@ fun PuzzleScreen(
         ) {
             CellEditor(state, index, onChange)
         }
+    }
+}
+
+/**
+ * The photograph, at the size [PuzzleLayout] chose, with the empty-count under it.
+ *
+ * Its size comes from the window rather than from what is left over, so that the grid
+ * stays exactly where it is while the tutor panel grows and shrinks beside or below it.
+ */
+@Composable
+private fun PhotoPane(
+    state: PuzzleState,
+    onChange: (PuzzleState) -> Unit,
+    photoSide: Dp,
+    measurer: TextMeasurer,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(photoSide)
+                .pointerInput(state.grid, state.lines) {
+                    detectTapGestures { offset ->
+                        val column = state.lines.vertical
+                            .indexOfLast { it * size.width <= offset.x }
+                            .coerceIn(0, 8)
+                        val row = state.lines.horizontal
+                            .indexOfLast { it * size.height <= offset.y }
+                            .coerceIn(0, 8)
+                        onChange(state.copy(selectedCell = row * 9 + column))
+                    }
+                }
+                .drawWithContent {
+                    drawContent()
+                    drawOverlay(state, measurer)
+                },
+        ) {
+            Image(
+                bitmap = state.photo.asImageBitmap(),
+                contentDescription = "The puzzle you photographed",
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        // How many squares are still empty, in the corner under the grid it counts. It
+        // was a sentence in the pane below, where it was the only thing said most of the
+        // time and cost a line that the reasoning needed.
+        Text(
+            state.progress,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            modifier = Modifier.width(photoSide).padding(top = 2.dp),
+        )
+    }
+}
+
+/**
+ * Everything said about the photograph, with the tutor panel pulling up over it. The
+ * panel fills this pane and no more, which is why it is the pane - not the screen - that
+ * is measured here.
+ */
+@Composable
+private fun ControlsPane(
+    state: PuzzleState,
+    onChange: (PuzzleState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val route = state.walkthrough?.takeIf { !it.isEmpty }
+        val peek = TUTOR_PEEK +
+            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+        Controls(
+            state,
+            onChange,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = if (route != null) peek else 0.dp),
+        )
+        route?.let { TutorPanel(state, it, onChange, peek, maxHeight) }
     }
 }
 
