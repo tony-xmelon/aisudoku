@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-laptop-screen.jpg",
+  "givens": [
+    "..4..2..5",
+    "3.9.....4",
+    "7....53..",
+    "..16...9.",
+    ".6.....1.",
+    ".3...96..",
+    "..34....6",
+    "4.....8.2",
+    "2..7..4.."
+  ],
+  "written": [
+    "..4..2..5",
+    "3.9.....4",
+    "7....53..",
+    "..16...9.",
+    ".6.....1.",
+    ".3...96..",
+    "..34....6",
+    "4.....8.2",
+    "2..7..4.."
+  ],
+  "notes": "The first photograph in the corpus that is not of paper. Tony photographed a sudoku on a laptop screen with the app, and it scanned; this is the straightened image the app kept, padded back to leave a margin as the other app-saved grids are.\n\nTwenty-six printed digits, no handwriting and no candidate marks at all, so `written` is `givens` unchanged. The givens have exactly one solution.\n\nWhat it is here for is everything that is different about a screen. The digits are anti-aliased glyphs rather than toner, so their edges are grey rather than sharp; the paper is a backlit panel, so it is brighter than its surroundings instead of darker; and the whole page carries the fine cross-hatch of the panel's own pixel grid, which is visible in every empty square and is the sort of texture an ink threshold has to ignore.\n\nIt also has the site's own shading: five of the nine boxes are tinted, and the tint boundaries run through the middle of the grid, so the local background changes from square to square in a way no sheet of paper does.\n\nFive earlier photographs of a screen were left out. They arrived downscaled to 900px, which is a fifth of what the phone took, and a label read off a picture that small would be recording what survived the downscaling rather than what the app was given."
+}
