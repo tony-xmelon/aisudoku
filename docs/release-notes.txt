@@ -1,66 +1,59 @@
-These notes were wrong on your last seventeen builds.
+Three things this build does that the last one would not.
 
-The file that reaches you is written by hand, and nothing ever failed when it was
-not rewritten - so every build since the second of September arrived carrying the
-same paragraph about a corpus photograph. Each build now prints its own version and
-the change that produced it at the top of these notes, generated rather than typed,
-so that those two lines are true even when the rest has gone stale.
+A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
-Here is what has actually reached you since then.
+The app finds the printed digits first and everything follows from that: what
+is taller is your handwriting, what is smaller is a pencilled candidate. That
+rests on the print being the one thing on the page with a single size, and on
+your writing being bigger than it - which it is, on every page you have sent.
 
-THE PAGE
+On a set of newspaper puzzles from another reader it is not. They write at
+exactly the size of the print, so the app took their answers for givens and
+came out with a puzzle of seventy-odd clues, which is not a puzzle at all. Ten
+such pages simply would not read.
 
-An erased digit is no longer offered back to you as your own answer. On the page
-you sent with the two-line candidate marks, one square held a rubbed-out digit with
-two marks penciled over it, and the app read the ghost as something you had
-written. Nothing about its shape says it is gone - it is digit-sized, and it sits
-in the middle of the square, because it was a digit written there. What gives it
-away is that it is faint AND that something darker is written in the same square,
-which is what you leave behind when you rub a digit out and pencil over the ruins.
-Either half alone would have cost real answers: the faintest answer in the corpus
-is fainter than that erasure.
+They read now. When a page comes back with more printed digits than any sudoku
+has, the app sorts that page again by ink instead of by size: print is toner,
+laid down heavy and even and standing out sharply from the paper beside it,
+where a pen is none of those. It is a finer measure and a riskier one, so it
+is used only on a page that has already shown the cheaper test failed on it -
+your own pages take exactly the path they took before.
 
-The candidate marks that wrap onto a second line no longer read as answers either.
-Where a square holds four or more marks, the second line sits low and centred -
-exactly where an answer goes, at nearly the size of one - and three of them on that
-page were a lone 9 under a row of three digits.
+PHOTOGRAPHS TAKEN FURTHER BACK ARE ACCEPTED
 
-The digit reader has been retrained on the two pages added since - the one with
-the two-line candidate marks, and a sudoku photographed off a laptop screen,
-which is the first thing in the collection that is not paper. Scored the honest
-way, with each photograph read by a model that has never seen it, handwriting is
-174 of 180 squares. That is the same as before within the run-to-run wobble, which
-is what two more pages should do: nothing measurable yet, and a little more ground
-under the next change.
+The grid had to be 700 pixels across or the app said it was too small to read.
+That number was chosen from how many pixels a cell ought to want, and it was
+wrong: measured properly, by shrinking every photograph in the collection until
+its grid is a given size and reading it again, printed digits come out perfect
+down to 360 pixels and handwriting down to 440.
 
-THE CAMERA
+The limit is now 550, which is still well clear of anything that failed. Two
+photographs that were refused at 692 and 681 pixels read perfectly once let
+through.
 
-The shutter no longer fires by itself on framing the app is about to refuse. It
-allowed more tilt than the check that judges the photograph did, and did not look
-at perspective at all, so it would tell you to hold still, take a picture, and then
-refuse what it had just taken. Both now use the same limits, so what you are told
-while aiming is what the photograph will be judged by.
+A GRID THE APP COULD SEE BUT WOULD NOT TAKE
 
-Photographs refused because the digits could not be read are now kept, like the
-ones refused for the grid. Only half of the refusals were being saved, and it was
-the harder half that was thrown away - a grid the app found but could not read
-depends on the page, the light and the lens together, and is the case worth having
-the picture of.
+One photograph came back as no grid found while the puzzle sat squarely in
+shot. The outline the app had traced round the grid was a shade inside the
+grid's own printed rule - and since it judges a grid on the weakest of the
+twenty lines one must have, the two outer rules falling just outside that
+outline took the whole score to nothing.
 
-THE APP
+When nothing else has worked, it now tries the best few outlines a couple of
+percent larger before giving up. That photograph reads. It costs nothing on a
+photograph that was already going to read, because it only runs after
+everything else has failed.
 
-It works in landscape, and turning the phone no longer loses the puzzle you have
-open. The grid moves to the left with everything else beside it, rather than
-shrinking to a thumbnail on a screen twice as wide.
+THE READER
 
-There is a Send diagnostics entry in the menu at the top right. It sends every
-refused photograph at once with a short report - the version, the phone, and what
-was refused - instead of one photograph at a time from the bottom of the puzzle
-list. With nothing refused it sends the report alone, which is still an answer.
+Retrained on twenty-two photographs. The collection has grown from six of your
+pages to twenty-two, and the handwriting it is measured against from 180 digits
+to 650 - newsprint, ballpoint, creases, a sudoku on a laptop screen, and one
+page finished wrongly, which is the only thing that tests Check properly.
 
-The shading that shows how far into a hint you are is now drawn inside the Hint
-button rather than on its touch target, which is 8dp taller than the button you can
-see. That is why it stood proud of the outline with its end cap outside the border.
+Scored the honest way, with every page read by a model that has never seen it,
+handwriting is 612 of 650 squares. It was 174 of 180 when the collection was half the
+size and all of it was yours.
 
-Please keep sending photos of anything it gets wrong. Every fix above came from one
-photograph that failed.
+Please keep sending photos of anything it gets wrong. Every one of these came
+from a page that failed.

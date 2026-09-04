@@ -48,6 +48,12 @@ object GridLocator {
      */
     private const val MIN_SCORING_SIZE = 288
 
+    /** How many of the failed candidates to look at again, best score first. */
+    private const val RESCUE_CANDIDATES = 3
+
+    /** And how much larger to try them. Beyond these the quad takes in the page around it. */
+    private val RESCUE_GROWTHS = listOf(1.02, 1.04)
+
     fun locate(image: GrayImage): GridLocation {
         // Each working size in turn, stopping at the first that finds a grid. A grid that
         // fills the frame is found at the smallest and cheapest; one that takes a sixth of
@@ -100,12 +106,47 @@ object GridLocator {
         val winner = scored.maxByOrNull { it.second }
             ?: return GridLocation.NoGrid(bestScore = 0.0, candidatesConsidered = 0)
 
-        if (winner.second < MIN_GRID_SCORE) {
-            return GridLocation.NoGrid(winner.second, candidates.size, winner.first)
-        }
-        val rectified = rectify(full, winner.first, RECTIFIED_SIZE.toDouble())
-        return GridLocation.Found(winner.first, winner.second, rectified.toGrayImage())
+        val best = if (winner.second >= MIN_GRID_SCORE) winner else rescueByGrowing(full, scored)
+            ?: return GridLocation.NoGrid(winner.second, candidates.size, winner.first)
+
+        val rectified = rectify(full, best.first, RECTIFIED_SIZE.toDouble())
+        return GridLocation.Found(best.first, best.second, rectified.toGrayImage())
     }
+
+    /**
+     * A last look at candidates that scored too low, grown very slightly.
+     *
+     * A contour traced round the grid's own rule can come back a shade inside it, and the
+     * score is the weakest of the twenty lines a grid must have - so the two outer rules
+     * falling a few pixels outside the quad take the whole score down with them. On one
+     * newsprint photograph the grid scored 0.11 as traced and 0.38 two percent larger,
+     * against 0.35 needed: not a grid that was missed, a rectification a hair out of
+     * place. Straightened at that size it is the whole puzzle, square and complete.
+     *
+     * Only when everything has already failed, so a photograph that reads today is scored
+     * exactly as often as before and takes the same path. Two percent and four are the
+     * only sizes tried: at six the quad has swallowed enough of the page around it that
+     * the score falls back to zero, so this cannot wander far from what was traced.
+     */
+    private fun rescueByGrowing(
+        full: Mat,
+        scored: List<Pair<Quad, Double>>,
+    ): Pair<Quad, Double>? {
+        val attempts = scored.sortedByDescending { it.second }.take(RESCUE_CANDIDATES)
+            .flatMap { (quad, _) -> RESCUE_GROWTHS.map { grown(quad, it) } }
+            .map { quad -> quad to GridScorer.score(rectify(full, quad, scoringSize(quad))) }
+        return attempts.maxByOrNull { it.second }?.takeIf { it.second >= MIN_GRID_SCORE }
+    }
+
+    /** The same quad, larger about its own centre. */
+    private fun grown(quad: Quad, by: Double): Quad {
+        val cx = quad.corners.sumOf { it.x } / 4
+        val cy = quad.corners.sumOf { it.y } / 4
+        val c = quad.corners.map { Corner(cx + (it.x - cx) * by, cy + (it.y - cy) * by) }
+        return Quad(c[0], c[1], c[2], c[3])
+    }
+
+
 
     /** The grid's own size in the photograph, within the bounds worth working at. */
     private fun scoringSize(quad: Quad): Double {

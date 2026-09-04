@@ -69,6 +69,27 @@ class ContourDumpTest {
                                     q.maxCornerAngleDeviation,
                                     grown.joinToString(" ") { "%.2f@%.2f".format(it.second, it.first) })
                     )
+                    // When growing it takes a candidate over the bar, write the grid it
+                    // would then be read from. A score is a number; a picture of the
+                    // straightened puzzle says whether the shape really was the grid.
+                    val best = grown.maxByOrNull { it.second }
+                    if (best != null && best.second >= GridLocator.MIN_GRID_SCORE) {
+                        val cx = q.corners.sumOf { it.x } / 4
+                        val cy = q.corners.sumOf { it.y } / 4
+                        val c = q.corners.map {
+                            Corner(cx + (it.x - cx) * best.first, cy + (it.y - cy) * best.first)
+                        }
+                        val flat = GridLocator.rectifyFor(image, Quad(c[0], c[1], c[2], c[3]))
+                        val png = java.awt.image.BufferedImage(
+                            flat.width, flat.height, java.awt.image.BufferedImage.TYPE_BYTE_GRAY,
+                        )
+                        png.raster.setDataElements(0, 0, flat.width, flat.height, flat.pixels)
+                        javax.imageio.ImageIO.write(
+                            png, "png",
+                            File(out, file.nameWithoutExtension + "-grown.png"),
+                        )
+                        println("       ^ written out, grown by %.2f".format(best.first))
+                    }
                 }
             }
 

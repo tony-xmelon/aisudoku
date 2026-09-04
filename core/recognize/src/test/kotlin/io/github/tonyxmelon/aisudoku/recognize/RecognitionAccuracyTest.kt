@@ -24,10 +24,11 @@ class RecognitionAccuracyTest {
          *
          * Everything downstream rests on finding the printed digits first, and that rested
          * entirely on size: the print is one population sharing a font, a colour and a
-         * size, and the writing was always taller. On these nine it is not. Their
+         * size, and the writing was always taller. On these ten it is not. Their
          * handwriting sits at 1.02 to 1.12 of the printed height where the print sits at
          * 0.98 to 1.01, so the printed band swallowed the answers and a finished page came
-         * out claiming seventy-odd givens and no puzzle. It cost 220 cells of 729.
+         * out claiming seventy-odd givens and no puzzle. It cost 220 cells of 729,
+         * measured over the nine such pages there were at the time.
          *
          * It now costs 77. What separates them is ink - contrast against the paper of the
          * cell itself, times stroke width, both as fractions of the print's own - and it
@@ -35,11 +36,11 @@ class RecognitionAccuracyTest {
          * printed digits than any sudoku has. Sorting every page that way costs printed
          * digits on pages where nothing was wrong, and lost three of them outright.
          *
-         * What is left is 77 cells on nine pages, and they are the ones whose ink is
+         * What is left is 94 cells on ten pages, and they are the ones whose ink is
          * genuinely ambiguous: a pen bearing down as hard as the press did. The count is a
          * ceiling rather than a target.
          */
-        const val SAME_SIZE_HANDWRITING_MISSORTS = 77
+        const val SAME_SIZE_HANDWRITING_MISSORTS = 94
     }
 
     private fun setUp() {

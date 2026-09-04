@@ -8,6 +8,39 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+A PAGE FILLED IN AT THE SIZE OF ITS PRINT NOW SCANS, AND SO DOES ONE PHOTOGRAPHED
+FURTHER BACK.
+Three faults, all of them found by photographs from another reader.
+
+The first is the one that mattered. Finding the printed digits first rests on the
+print being the one population on the page with a single size, and on handwriting
+being bigger - which it is on every page Tony has sent, and is not on any of the ten
+that arrived from someone who writes at the size of the print. Their answers were
+taken for givens, the puzzle came out with seventy-odd clues, and the page would not
+read at all. A page that returns more printed digits than any sudoku has is now
+sorted again by ink rather than by size: print is toner, laid down heavy and even
+and standing out from the paper, where a pen is none of those. It is the finer
+measure and the riskier one, so it runs only where the cheap one has already failed.
+That took the fault from 220 wrong cells to 77, and to 94 as more such pages
+arrived, without costing a cell on any page that already read.
+
+The second was a number chosen rather than measured. The gate refused any grid under
+700 pixels; measured by shrinking every labelled photograph until its grid is a given
+size and reading it again, printed digits are perfect down to 360 and handwriting to
+440. Two photographs refused at 692 and 681 pixels read perfectly once let through.
+The limit is 550 now, still well clear of anything that failed.
+
+The third was a grid the app could see and would not take. The outline traced round
+it sat a shade inside the grid's own printed rule, and since a grid is judged on the
+weakest of the twenty lines it must have, the two outer rules falling outside that
+outline took the score to nothing. When everything else has failed, the best few
+outlines are now tried a couple of percent larger before giving up. One photograph
+that reported no grid now reads.
+
+The collection is twenty-two photographs and 1,701 labelled cells: newsprint,
+ballpoint, creases, a sudoku on a laptop screen, one page finished wrongly, and one
+still in progress. Handwriting held out photograph by photograph is 612 of 650.
+
 THE NOTES YOU WERE SENT WERE ABOUT THE WRONG BUILD, AND THE READER HAS BEEN RETRAINED.
 Seventeen consecutive builds carried the same paragraph about a corpus photograph,
 because `docs/release-notes.txt` is written by hand and nothing failed when it was

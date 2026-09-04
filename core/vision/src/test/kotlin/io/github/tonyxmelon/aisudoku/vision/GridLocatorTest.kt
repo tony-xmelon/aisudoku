@@ -47,9 +47,24 @@ class GridLocatorTest {
         val scores = CorpusFixtures.photos.associate { file ->
             file.name to (GridLocator.locate(CorpusFixtures.load(file)) as GridLocation.Found).gridScore
         }
-        // The worst corpus photo measured 0.41 against a 0.35 threshold. If this drops,
-        // a parameter change has eaten the margin - investigate before lowering it.
-        assertTrue(scores.values.min() >= 0.38, "grid score margin has regressed: $scores")
+        // The worst corpus photograph measured 0.41 against a 0.35 threshold. If this
+        // drops, a parameter change has eaten the margin - investigate before lowering it.
+        //
+        // One page is exempt and named rather than the floor being lowered for all of
+        // them. Its grid is only found at all because the outline traced round it comes
+        // back a shade inside its own printed rule, and the locator tries the best few
+        // outlines slightly larger before giving up; grown, it scores 0.375. That is
+        // thin, and it is thin because the photograph is thin - not because anything
+        // regressed - and it is the page that proves the rescue works. Lowering the
+        // floor to suit it would stop this test noticing the day something really does
+        // eat the margin on the other twenty-one.
+        val marginal = setOf("aisudoku-2026-09-04-newsprint-blue-4.jpg")
+        val ordinary = scores.filterKeys { it !in marginal }
+        assertTrue(ordinary.values.min() >= 0.38, "grid score margin has regressed: $ordinary")
+        assertTrue(
+            scores.filterKeys { it in marginal }.values.all { it >= GridLocator.MIN_GRID_SCORE },
+            "a photograph that needed rescuing no longer clears the threshold: $scores",
+        )
     }
 
     @Test
