@@ -17,6 +17,27 @@ object CorpusLabels {
 
     enum class Source { GIVEN, GUESS, EMPTY }
 
+    /**
+     * Pages whose handwriting is the size of the print, which the triage cannot sort.
+     *
+     * Finding the printed digits first rests on their being the one population that
+     * shares a font, a colour and a size. On these five the reader wrote at the size of
+     * the print, so the printed core swallows the answers and a finished page comes out
+     * claiming seventy-odd givens and no puzzle. The cause and the measured cost are set
+     * out in [RecognitionAccuracyTest]; they are named here because every test that walks
+     * the corpus meets them.
+     *
+     * They stay in the corpus. A page the reader cannot sort is the reason to keep it,
+     * and their digits are still scored by the classifier.
+     */
+    val sameSizeHandwriting = setOf(
+        "aisudoku-2026-09-04-newsprint-blue-1.jpg",
+        "aisudoku-2026-09-04-newsprint-blue-2.jpg",
+        "aisudoku-2026-09-04-newsprint-red-1.jpg",
+        "aisudoku-2026-09-04-newsprint-red-2.jpg",
+        "aisudoku-2026-09-04-newsprint-red-mistakes.jpg",
+    )
+
     data class Truth(val digit: Int?, val source: Source)
 
     private val directory = File("../../corpus-labels").canonicalFile

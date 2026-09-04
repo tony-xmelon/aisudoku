@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-blue-2.jpg",
+  "givens": [
+    ".2..9....",
+    "...2.1..5",
+    "..4.6312.",
+    "41......2",
+    "6..438..1",
+    "8......67",
+    ".9152.8..",
+    "2..3.6...",
+    "....8..4."
+  ],
+  "written": [
+    "126895734",
+    "783241695",
+    "954763128",
+    "419657382",
+    "672438951",
+    "835912467",
+    "391524876",
+    "248376519",
+    "567189243"
+  ],
+  "notes": "Completed in blue ballpoint. Thirty-one printed digits, and all fifty written answers agree with their unique solution. A hard crease crosses the seventh row, and the paper is bright enough there to lose the bottom of the digits.\n\nOne of a set sent in by another reader, so the only copies are the ones that arrived: 1600 by 900, which is a fifth of the resolution the phone took them at. The grid comes to about 710 pixels, which is just over the 700 the app asks for, so these sit exactly at its designed minimum rather than below it - a fair hard case rather than a broken one. The label does not depend on the resolution: the complete grid was checked to be a valid solution, and the printed digits to have exactly one solution, which is what makes a reading verifiable rather than plausible."
+}

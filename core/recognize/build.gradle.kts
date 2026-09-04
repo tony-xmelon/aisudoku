@@ -29,4 +29,8 @@ tasks.test {
     // A folder of photographs to look at that are not in the corpus - see
     // ScanFolderDumpTest. Empty means the test does nothing.
     systemProperty("scan", providers.systemProperty("scan").getOrElse(""))
+
+    // Where ScanFolderDumpTest writes the straightened grid of each photograph, for
+    // reading by eye. Empty means it writes none.
+    systemProperty("write", providers.systemProperty("write").getOrElse(""))
 }

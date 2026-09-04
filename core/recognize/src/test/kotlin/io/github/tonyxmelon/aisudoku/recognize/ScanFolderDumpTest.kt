@@ -55,6 +55,23 @@ class ScanFolderDumpTest {
             when (val verdict = StructuralGate.assess(image)) {
                 is GateVerdict.Rejected -> println("  GATE REFUSED: ${verdict.reason::class.simpleName}")
                 is GateVerdict.Usable -> {
+                    // The straightened grid, for reading by eye. A label transcribed off
+                    // the original is a label transcribed off a photograph taken at an
+                    // angle on creased paper; this is the same picture the reader works
+                    // from, square and flat.
+                    System.getProperty("write")?.takeIf { it.isNotEmpty() }?.let { out ->
+                        val r = verdict.rectified
+                        val image = java.awt.image.BufferedImage(
+                            r.width, r.height, java.awt.image.BufferedImage.TYPE_BYTE_GRAY,
+                        )
+                        image.raster.setDataElements(0, 0, r.width, r.height, r.pixels)
+                        java.io.File(out).mkdirs()
+                        javax.imageio.ImageIO.write(
+                            image, "png",
+                            java.io.File(out, file.nameWithoutExtension + "-flat.png"),
+                        )
+                    }
+
                     val side = minOf(
                         verdict.quad.topEdge, verdict.quad.rightEdge,
                         verdict.quad.bottomEdge, verdict.quad.leftEdge,

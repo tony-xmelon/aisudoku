@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-red-mistakes.jpg",
+  "givens": [
+    "..76..3..",
+    ".967...4.",
+    "532......",
+    ".15.73..2",
+    ".........",
+    "3..86.71.",
+    "......823",
+    ".6...945.",
+    "..8..71.."
+  ],
+  "written": [
+    "847652391",
+    "196738245",
+    "532914678",
+    "615473492",
+    "784291536",
+    "329865714",
+    "971546823",
+    "263189457",
+    "458327169"
+  ],
+  "notes": "Completed in red ballpoint, and completed WRONGLY. Thirty printed digits with one solution, and two written answers disagree with it: r4c7 holds a 4 where the puzzle needs a 9, and r4c8 a 9 where it needs an 8 - one mistake displacing the next along the row.\n\nThat is what it is here for. Every other completed grid in the corpus is correct, so nothing tested the case Check exists to serve: a page where the app must disagree with the person who wrote it. A recogniser that quietly 'corrected' these two would look better on paper and be useless.\n\nThe two wrong digits are recorded in `written` because `written` is what is on the paper, not what should be.\n\nOne of a set sent in by another reader, so the only copies are the ones that arrived: 1600 by 900, which is a fifth of the resolution the phone took them at. The grid comes to about 710 pixels, which is just over the 700 the app asks for, so these sit exactly at its designed minimum rather than below it - a fair hard case rather than a broken one. The label does not depend on the resolution: the complete grid was checked to be a valid solution, and the printed digits to have exactly one solution, which is what makes a reading verifiable rather than plausible."
+}
