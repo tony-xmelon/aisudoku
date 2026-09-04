@@ -56,8 +56,26 @@ sealed interface GateVerdict {
  */
 object StructuralGate {
 
-    /** Minimum rectified grid side, in source pixels, for roughly 78px per cell. */
-    private const val MIN_GRID_SIDE = 700.0
+    /**
+     * Minimum rectified grid side, in source pixels: about 61 pixels to a cell.
+     *
+     * It was 700, chosen from how many pixels a cell ought to want rather than from what
+     * the reader can do, and it was turning away photographs that read perfectly. Grids
+     * of 681 and 692 pixels arrived from a reader and were refused; let through, both
+     * were read confidently and correctly.
+     *
+     * Measured properly by shrinking every labelled photograph until its grid is a given
+     * size and putting it back through the whole pipeline - see SmallestReadableGridTest.
+     * Printed digits come out perfect at every size down to 360, and handwriting is
+     * perfect to 440 and misses two of 175 at 400.
+     *
+     * This sits well above that, deliberately. Shrinking a sharp photograph is kinder
+     * than standing further back with the same camera: the sweep loses resolution without
+     * gaining blur or noise, so the measured edge flatters what a real distant shot would
+     * do. 550 keeps most of the ground the old number gave away while staying clear of
+     * anything measured to fail.
+     */
+    private const val MIN_GRID_SIDE = 550.0
 
     /**
      * The three shape limits, shared with [FramingAdvisor].

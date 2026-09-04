@@ -109,13 +109,23 @@ class ClutteredSceneTest {
         )
     }
 
-    /** The shape offered to the user has to be a plausible grid, not a sliver of pattern. */
+    /**
+     * The shape offered to the user has to be a plausible grid, not a sliver of pattern.
+     *
+     * What is offered is not the candidate list. [QuadDetector.detect] returns ragged
+     * shapes on purpose - throwing them away before scoring lost the real grid on a busy
+     * ground, which is the bug this whole file exists for - and [QuadDetector.couldBeAGrid]
+     * is what stands between them and the outline drawn over the preview. This once
+     * asserted over every candidate, which held only until a photograph arrived that
+     * produced a sliver: newsprint on a patterned table yields a 72 by 578 shape, and the
+     * user never sees it.
+     */
     @Test
     fun `whatever it offers is square enough to be a sudoku`() {
         for (file in CorpusFixtures.photos) {
             val frame = onPatternedTable(CorpusFixtures.load(file), 0.8)
-            val quads = QuadDetector.detect(frame)
-            for (quad in quads) {
+            val offered = QuadDetector.detect(frame).filter { QuadDetector.couldBeAGrid(it) }
+            for (quad in offered) {
                 val edges = listOf(quad.topEdge, quad.rightEdge, quad.bottomEdge, quad.leftEdge)
                 assertTrue(
                     edges.min() / edges.max() > 0.4,

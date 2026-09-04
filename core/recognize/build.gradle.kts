@@ -26,6 +26,15 @@ tasks.test {
     // never see it. Passed through explicitly, as in :core:vision.
     systemProperty("dump", providers.systemProperty("dump").getOrElse("false"))
 
+    // The corpus is an input to these tests even though it is not on the compile path,
+    // and Gradle cannot know that. Without it a task stays up to date when a photograph
+    // is added, so a new page can break a test and the build still reports success -
+    // which is exactly what happened when the newsprint pages arrived. A file tree of a
+    // directory that does not exist is simply empty, so CI is unaffected.
+    inputs.files(rootProject.fileTree("corpus"), rootProject.fileTree("corpus-labels"))
+        .withPropertyName("corpus")
+        .optional()
+
     // A folder of photographs to look at that are not in the corpus - see
     // ScanFolderDumpTest. Empty means the test does nothing.
     systemProperty("scan", providers.systemProperty("scan").getOrElse(""))
