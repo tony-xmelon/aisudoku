@@ -69,6 +69,15 @@ object GridLocator {
         return nearest ?: GridLocation.NoGrid(0.0, 0)
     }
 
+    /**
+     * The rectified image a candidate would be scored on.
+     *
+     * Exposed so that a measurement can score a shape the detector did not choose, which
+     * is the only way to ask why a photograph came back with no grid.
+     */
+    internal fun rectifyFor(image: GrayImage, quad: Quad): GrayImage =
+        rectify(image.toMat(), quad, scoringSize(quad)).toGrayImage()
+
     private fun look(image: GrayImage, workingEdge: Double): GridLocation {
         val full = image.toMat()
         val candidates = QuadDetector.detect(image, workingEdge)

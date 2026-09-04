@@ -30,6 +30,8 @@ tasks.test {
     // Gradle does not forward -D to the forked test JVM, so DumpCorpusTest would never
     // see it. Passed through explicitly.
     systemProperty("dump", providers.systemProperty("dump").getOrElse("false"))
+    systemProperty("scan", providers.systemProperty("scan").getOrElse(""))
+    systemProperty("write", providers.systemProperty("write").getOrElse(""))
 
     // The corpus is an input to these tests even though it is not on the compile path,
     // and Gradle cannot know that. Without it a task stays up to date when a photograph
