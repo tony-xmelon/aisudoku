@@ -32,7 +32,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
-from torch.utils.data import DataLoader, TensorDataset
 from torchvision import datasets, transforms
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -375,6 +374,132 @@ def amplify(x, y, times, seed=SEED + 4):
     return np.stack(xs), np.array(ys, dtype=np.int64)
 
 
+def _gaussian_kernel(sigma, device):
+    """A separable gaussian as wide as scipy's: four standard deviations each side."""
+    radius = int(4.0 * sigma + 0.5)
+    t = torch.arange(-radius, radius + 1, device=device, dtype=torch.float32)
+    k = torch.exp(-(t ** 2) / (2 * sigma * sigma))
+    return (k / k.sum()).view(1, 1, 1, -1)
+
+
+def _blur(field, sigma):
+    """Separable gaussian blur over a batch of (B,C,H,W), reflecting at the edges."""
+    k = _gaussian_kernel(sigma, field.device)
+    pad = k.shape[-1] // 2
+    b, c, h, w = field.shape
+    flat = field.reshape(b * c, 1, h, w)
+    flat = F.conv2d(F.pad(flat, (pad, pad, 0, 0), mode="reflect"), k)
+    flat = F.conv2d(F.pad(flat, (0, 0, pad, pad), mode="reflect"), k.transpose(-1, -2))
+    return flat.reshape(b, c, h, w)
+
+
+def _centre_on_mass(warped):
+    """Crop each image to its ink, scale the longer side to 20, centre it by mass in 28.
+
+    What [normalise_array] does one image at a time with PIL, written as one sampling
+    grid so that a whole batch goes through together.
+    """
+    b = warped.shape[0]
+    device = warped.device
+    ink = (warped[:, 0] > 0.2).float()
+    rows, cols = ink.amax(2), ink.amax(1)
+    idx = torch.arange(28, device=device, dtype=torch.float32)
+    far = torch.full_like(idx, 1e4)
+
+    top = torch.where(rows > 0, idx, far).amin(1)
+    bottom = torch.where(rows > 0, idx, -far).amax(1)
+    left = torch.where(cols > 0, idx, far).amin(1)
+    right = torch.where(cols > 0, idx, -far).amax(1)
+    height = (bottom - top + 1).clamp(min=1)
+    width = (right - left + 1).clamp(min=1)
+
+    # How far across the input one step of the output moves: the longer side into 20.
+    step = torch.maximum(height, width) / 20.0
+
+    weight = (warped[:, 0] * ink).clamp(min=0)
+    total = weight.sum((1, 2)).clamp(min=1e-6)
+    centre_y = (weight * idx.view(1, -1, 1)).sum((1, 2)) / total
+    centre_x = (weight * idx.view(1, 1, -1)).sum((1, 2)) / total
+
+    out = idx.view(1, -1) - 13.5
+    in_y = out * step.view(-1, 1) + centre_y.view(-1, 1)
+    in_x = out * step.view(-1, 1) + centre_x.view(-1, 1)
+    gy = ((in_y + 0.5) * 2 / 28 - 1).view(b, 28, 1).expand(b, 28, 28)
+    gx = ((in_x + 0.5) * 2 / 28 - 1).view(b, 1, 28).expand(b, 28, 28)
+    grid = torch.stack((gx, gy), dim=-1)
+
+    centred = F.grid_sample(warped, grid, align_corners=False, padding_mode="zeros")
+    # A square with no ink in it stays empty rather than becoming nothing magnified.
+    return torch.where(total.view(-1, 1, 1, 1) > 1e-5, centred, torch.zeros_like(centred))
+
+
+def amplify_on_gpu(x, y, times, seed=SEED + 4, batch=8192):
+    """[amplify] done on the card in batches instead of one image at a time on a core.
+
+    The augmentation was the expensive half of a training round by a wide margin. Every
+    step of it - the elastic warp, the rotation, the crop-and-centre - is a sampling
+    grid, which is the one thing a GPU is unambiguously for. Measured on real corpus
+    cells: 1,694 images a second on a core against 109,000 on the card, so a fold's
+    worth goes from minutes to under two seconds.
+
+    Threads were tried first and are no faster, because scipy holds the interpreter
+    lock; processes gave half of what the cores promised, because each one pays to
+    import torch before it can do anything.
+
+    The numbers are not bit-for-bit scipy's - a different interpolator, and the zoom is
+    so this is a change to be measured rather than assumed. It was: dropping the zoom on
+    the grounds that the crop-and-centre undoes it cost seven cells of 650, which the
+    four-page subset could not see and a full round could.
+    """
+    source = torch.tensor(x[:, 0] if x.ndim == 4 else x, dtype=torch.float32, device=DEVICE)
+    count = len(source)
+    generator = torch.Generator(device=DEVICE).manual_seed(seed)
+    idx = torch.arange(28, device=DEVICE, dtype=torch.float32)
+    pieces = []
+
+    for start in range(0, count * times, batch):
+        size = min(batch, count * times - start)
+        which = torch.arange(start, start + size, device=DEVICE) // times
+        images = source[which].unsqueeze(1)
+
+        strength = torch.empty(size, 1, 1, 1, device=DEVICE).uniform_(2, 7, generator=generator)
+        noise = torch.empty(size, 2, 28, 28, device=DEVICE).uniform_(-1, 1, generator=generator)
+        displacement = _blur(noise, 4.0) * strength
+
+        degrees = torch.empty(size, device=DEVICE).uniform_(-12, 12, generator=generator)
+        angle = degrees * (torch.pi / 180)
+        # The zoom is kept even though the crop-and-centre afterwards undoes the scale.
+        # Dropping it cost seven cells of 650 on a full round - it is not the scale that
+        # matters but the resampling it forces, which is a blur of a size that varies.
+        zoom = torch.empty(size, device=DEVICE).uniform_(0.88, 1.12, generator=generator)
+        cos = (angle.cos() / zoom).view(-1, 1, 1)
+        sin = (angle.sin() / zoom).view(-1, 1, 1)
+
+        out_y = (idx.view(1, -1, 1) - 13.5).expand(size, 28, 28)
+        out_x = (idx.view(1, 1, -1) - 13.5).expand(size, 28, 28)
+        in_y = cos * out_y - sin * out_x + 13.5 + displacement[:, 0]
+        in_x = sin * out_y + cos * out_x + 13.5 + displacement[:, 1]
+        grid = torch.stack(((in_x + 0.5) * 2 / 28 - 1, (in_y + 0.5) * 2 / 28 - 1), dim=-1)
+
+        warped = F.grid_sample(images, grid, align_corners=False, padding_mode="zeros")
+        pieces.append(_centre_on_mass(warped.clamp(0, 1)).cpu())
+
+    return torch.cat(pieces).numpy()[:, 0], np.repeat(y, times)
+
+
+def amplify_chosen(x, y, times):
+    """The reference augmentation unless --fast-aug asked for the other one.
+
+    The card's version is twelve times faster over a whole round and reads seven cells
+    of 650 worse, which is beyond the spread between seeds and so is a real difference
+    rather than noise. That makes it the wrong thing to build a shipped model on and the
+    right thing to compare two settings with, so it is opt-in and says which it used.
+    """
+    if "--fast-aug" in sys.argv and DEVICE.type == "cuda":
+        return amplify_on_gpu(x, y, times)
+    return amplify(x, y, times)
+
+
 def augment_mnist(x, seed=SEED):
     """Rotation and blur, so MNIST looks a little more like paper."""
     rng = np.random.default_rng(seed)
@@ -454,7 +579,7 @@ def accuracy(model, x, y, batch=1024):
     return correct / len(x)
 
 
-def fit(x, y, epochs=6, seed=SEED):
+def fit(x, y, epochs=6, seed=SEED, batch=256):
     """Trains on the GPU when there is one, and on the CPU otherwise.
 
     The whole training set is a hundred and twenty thousand 28x28 images and the model is
@@ -479,15 +604,24 @@ def fit(x, y, epochs=6, seed=SEED):
 
     model = Net().to(DEVICE)
     optimiser = torch.optim.Adam(model.parameters(), lr=1e-3)
-    loader = DataLoader(
-        TensorDataset(torch.tensor(x).to(DEVICE), torch.tensor(y).to(DEVICE)),
-        batch_size=256, shuffle=True,
-    )
+
+    images = torch.tensor(x).to(DEVICE)
+    labels = torch.tensor(y).to(DEVICE)
+
+    # Batches are taken by indexing tensors that already live on the card, rather than
+    # through a DataLoader. A DataLoader over a TensorDataset that is already on the GPU
+    # still walks it sample by sample in Python and stacks each batch, and at this size
+    # that costs more than the arithmetic it feeds: 11.2 milliseconds a step against 5.4
+    # for the same batches taken by index. Nothing else changes - the same batch size,
+    # the same number of updates, the same optimiser.
+    count = len(images)
     for _ in range(epochs):
         model.train()
-        for xb, yb in loader:
+        order = torch.randperm(count, device=DEVICE)
+        for start in range(0, count, batch):
+            chosen = order[start:start + batch]
             optimiser.zero_grad()
-            F.cross_entropy(model(xb), yb).backward()
+            F.cross_entropy(model(images[chosen]), labels[chosen]).backward()
             optimiser.step()
     return model
 
@@ -565,7 +699,7 @@ def main():
                 continue
             held = np.array([p == stem for p in photos])
             keep = ~held
-            ax, ay = amplify(xc[keep][:, None], yc[keep], CORPUS_TIMES)
+            ax, ay = amplify_chosen(xc[keep][:, None], yc[keep], CORPUS_TIMES)
             model = fit(np.concatenate([base_x, ax[:, None]]), np.concatenate([base_y, ay]))
             tx = torch.tensor(xc[held][:, None])
             ty = torch.tensor(yc[held])
@@ -605,7 +739,7 @@ def main():
             print(f"      {stem}: {tv} read as {pv} ({kind})")
 
     print("\n=== the shipped model, trained on everything ===")
-    ax, ay = amplify(xc[:, None], yc, CORPUS_TIMES)
+    ax, ay = amplify_chosen(xc[:, None], yc, CORPUS_TIMES)
     x = np.concatenate([base_x, ax[:, None]])
     y = np.concatenate([base_y, ay])
     print(f"  training set {len(x)}")
