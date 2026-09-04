@@ -54,13 +54,16 @@ class RecognitionAccuracyTest {
          *
          * So the mark/answer boundary has to be re-derived in the same change, and it
          * cannot rest on size either. That is the next attempt, and it now has numbers to
-         * beat: 71 on these pages, without losing the viber page or that mark.
+         * beat: 71 on the five pages it was measured over, without losing the viber page
+         * or that mark. Nine pages carry the fault now, and the count below moved with
+         * them - from 122 over five to 220 over nine - so the figure to beat scales with
+         * it rather than being a constant.
          *
          * The pages themselves are listed in [CorpusLabels.sameSizeHandwriting]. They are
          * not skipped here: their digits are still scored, and this count - what the
          * collision costs today, measured - is a ceiling rather than a target.
          */
-        const val SAME_SIZE_HANDWRITING_MISSORTS = 122
+        const val SAME_SIZE_HANDWRITING_MISSORTS = 220
     }
 
     private fun setUp() {

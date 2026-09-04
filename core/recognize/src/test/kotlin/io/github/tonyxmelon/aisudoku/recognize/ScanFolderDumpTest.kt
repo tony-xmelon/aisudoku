@@ -49,7 +49,24 @@ class ScanFolderDumpTest {
                                 located.gridScore, q.rotationDegrees)
                 )
             } else {
-                println("  no grid located at all")
+                // Why it gave up, not just that it did: how many shapes it looked at and
+                // how close the best of them came to reading as nine rows and columns.
+                val missed = located as io.github.tonyxmelon.aisudoku.vision.GridLocation.NoGrid
+                println(
+                    "  no grid: %d candidates considered, best scored %.2f against %.2f needed"
+                        .format(
+                            missed.candidatesConsidered, missed.bestScore,
+                            io.github.tonyxmelon.aisudoku.vision.GridLocator.MIN_GRID_SCORE,
+                        )
+                )
+                missed.best?.let { q ->
+                    val edges = listOf(q.topEdge, q.rightEdge, q.bottomEdge, q.leftEdge)
+                    println(
+                        "    its best shape: %.0f by %.0f, squareness %.2f, skew %.1f deg"
+                            .format(edges.max(), edges.min(), edges.min() / edges.max(),
+                                    q.maxCornerAngleDeviation)
+                    )
+                }
             }
 
             when (val verdict = StructuralGate.assess(image)) {

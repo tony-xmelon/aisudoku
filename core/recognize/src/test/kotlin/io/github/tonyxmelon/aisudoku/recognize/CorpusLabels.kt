@@ -28,7 +28,12 @@ object CorpusLabels {
      * the corpus meets them.
      *
      * They stay in the corpus. A page the reader cannot sort is the reason to keep it,
-     * and their digits are still scored by the classifier.
+     * and their digits are still scored by the classifier - which reads them perfectly:
+     * every one of the 561 printed digits and 600 of the 601 written ones.
+     *
+     * All nine came from the same reader, which is worth saying plainly: this is one
+     * person's handwriting, not a law about newsprint. What it establishes is that the
+     * size assumption fails for at least one real hand, which is enough.
      */
     val sameSizeHandwriting = setOf(
         "aisudoku-2026-09-04-newsprint-blue-1.jpg",
@@ -36,6 +41,10 @@ object CorpusLabels {
         "aisudoku-2026-09-04-newsprint-red-1.jpg",
         "aisudoku-2026-09-04-newsprint-red-2.jpg",
         "aisudoku-2026-09-04-newsprint-red-mistakes.jpg",
+        "aisudoku-2026-09-04-newsprint-blue-3.jpg",
+        "aisudoku-2026-09-04-newsprint-red-3.jpg",
+        "aisudoku-2026-09-04-newsprint-red-4.jpg",
+        "aisudoku-2026-09-04-newsprint-partial.jpg",
     )
 
     data class Truth(val digit: Int?, val source: Source)

@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-red-4.jpg",
+  "givens": [
+    ".2...1...",
+    "6.8......",
+    "41.2.86.9",
+    "..1.7..8.",
+    "3..914..7",
+    ".7..8.9..",
+    "2.46.7.18",
+    "......4.6",
+    "...1...5."
+  ],
+  "written": [
+    "729461835",
+    "638795124",
+    "415238679",
+    "941576283",
+    "382914567",
+    "576382941",
+    "294657318",
+    "157823496",
+    "863149752"
+  ],
+  "notes": "Completed in red ballpoint. Thirty-one printed digits and fifty written answers, all agreeing with the unique solution. It is one of the two the gate refused at 692 pixels that the reader then read confidently and correctly - which is what sent the minimum to be measured.\n\nOne of the set sent in by another reader, and one of the four the gate used to refuse for size. Their grids come to between 681 and 696 pixels, under the 700 the gate asked for until it was measured: shrinking every labelled photograph until its grid is a given size and reading it again shows printed digits perfect down to 360 and handwriting to 440, so the old number was turning away pages the reader reads. The label does not depend on the resolution: the complete grid was checked to be a valid solution and the printed digits to have exactly one, which is the page."
+}

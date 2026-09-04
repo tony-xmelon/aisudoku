@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-red-3.jpg",
+  "givens": [
+    ".4..18..2",
+    ".9....87.",
+    ".5..7.9.1",
+    "3..4.....",
+    "4..793..8",
+    ".....1..9",
+    "9.8.2..6.",
+    ".75....8.",
+    "2..85..9."
+  ],
+  "written": [
+    "743918652",
+    "196532874",
+    "852674931",
+    "329485716",
+    "461793528",
+    "587261349",
+    "918327465",
+    "675149283",
+    "234856197"
+  ],
+  "notes": "Completed in red ballpoint. Thirty-one printed digits, fifty written answers, all agreeing with the unique solution. The sheet is folded across the third row and the fold has taken the paper out of plane badly enough to bow the grid lines.\n\nOne of the set sent in by another reader, and one of the four the gate used to refuse for size. Their grids come to between 681 and 696 pixels, under the 700 the gate asked for until it was measured: shrinking every labelled photograph until its grid is a given size and reading it again shows printed digits perfect down to 360 and handwriting to 440, so the old number was turning away pages the reader reads. The label does not depend on the resolution: the complete grid was checked to be a valid solution and the printed digits to have exactly one, which is the page."
+}

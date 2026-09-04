@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-partial.jpg",
+  "givens": [
+    "....7..4.",
+    "..84...1.",
+    ".4.69...7",
+    "..9.5...8",
+    "4.37.89.1",
+    "1...3.7..",
+    "3...87.2.",
+    ".5...61..",
+    ".6..1...."
+  ],
+  "written": [
+    "..687..4.",
+    "7.842..1.",
+    ".4.69..87",
+    "67915..38",
+    "423768951",
+    "185.3.76.",
+    "3...87.2.",
+    "85..461..",
+    ".6..1.8.."
+  ],
+  "notes": "The first newsprint page in the corpus that is not finished: thirty printed digits, eighteen written answers and thirty-three squares still empty, all eighteen agreeing with the unique solution of the givens.\n\nIt matters because every other page from this set is complete, and a complete page cannot test the thing the app is actually for. This one is a puzzle in progress, in the same ballpoint at the same size as its print, on the same creased newsprint.\n\nOne of the set sent in by another reader, and one of the four the gate used to refuse for size. Their grids come to between 681 and 696 pixels, under the 700 the gate asked for until it was measured: shrinking every labelled photograph until its grid is a given size and reading it again shows printed digits perfect down to 360 and handwriting to 440, so the old number was turning away pages the reader reads. The label does not depend on the resolution: the complete grid was checked to be a valid solution and the printed digits to have exactly one, which is the page."
+}

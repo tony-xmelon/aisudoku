@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-blue-3.jpg",
+  "givens": [
+    "....5....",
+    "8.6....5.",
+    "45...32..",
+    "..8491.2.",
+    "19..3..46",
+    ".4.5863..",
+    "..98...72",
+    ".6....9.5",
+    "....7...."
+  ],
+  "written": [
+    "923158764",
+    "876924153",
+    "451763298",
+    "638491527",
+    "195237846",
+    "247586319",
+    "319845672",
+    "764312985",
+    "582679431"
+  ],
+  "notes": "Completed in blue ballpoint, thirty-one printed digits and fifty written answers, all agreeing with the unique solution. Photographed over a shadow that crosses the third and sixth rows and takes most of the contrast out of them.\n\nOne of the set sent in by another reader, and one of the four the gate used to refuse for size. Their grids come to between 681 and 696 pixels, under the 700 the gate asked for until it was measured: shrinking every labelled photograph until its grid is a given size and reading it again shows printed digits perfect down to 360 and handwriting to 440, so the old number was turning away pages the reader reads. The label does not depend on the resolution: the complete grid was checked to be a valid solution and the printed digits to have exactly one, which is the page."
+}
