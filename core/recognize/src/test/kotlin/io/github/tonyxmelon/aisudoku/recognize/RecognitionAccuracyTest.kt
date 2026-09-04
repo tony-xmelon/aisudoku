@@ -20,50 +20,26 @@ class RecognitionAccuracyTest {
 
     private companion object {
         /**
-         * The pages where the triage cannot tell the writing from the print.
+         * The pages whose writing is the size of their print, and what that still costs.
          *
-         * Everything downstream rests on finding the printed digits first, and that rests
-         * on them being the one population on the page that shares a font, a colour and a
-         * size. On these five the reader wrote at the size of the print, so the size half
-         * of that is simply not true: their handwriting sits at 1.02 to 1.12 of the
-         * printed height where the print itself sits at 0.98 to 1.01. The printed core
-         * then swallows the answers, and a finished page comes out claiming seventy-odd
-         * givens and no puzzle - which is why some of them are refused outright.
+         * Everything downstream rests on finding the printed digits first, and that rested
+         * entirely on size: the print is one population sharing a font, a colour and a
+         * size, and the writing was always taller. On these nine it is not. Their
+         * handwriting sits at 1.02 to 1.12 of the printed height where the print sits at
+         * 0.98 to 1.01, so the printed band swallowed the answers and a finished page came
+         * out claiming seventy-odd givens and no puzzle. It cost 220 cells of 729.
          *
-         * An attempt at fixing it was made and withdrawn, and what it established is
-         * worth more than the attempt was.
+         * It now costs 77. What separates them is ink - contrast against the paper of the
+         * cell itself, times stroke width, both as fractions of the print's own - and it
+         * is applied only to a page that has already shown the fault by finding more
+         * printed digits than any sudoku has. Sorting every page that way costs printed
+         * digits on pages where nothing was wrong, and lost three of them outright.
          *
-         * Stroke width does NOT separate them per cell, which an earlier note here
-         * claimed: the medians do - print at 1.00 of the core against ballpoint at 0.70 -
-         * but on every page the thinnest twentieth of the print is thinner than the
-         * thickest twentieth of the writing, because a printed 1 is as thin for its
-         * height as any pen stroke.
-         *
-         * What does separate them is ink: contrast against the paper of the cell itself,
-         * times stroke width, both as fractions of the print's own. Against the core the
-         * reader actually selects, a floor of 0.45 leaves 51 of the 115 confusions and
-         * costs exactly one printed digit.
-         *
-         * The blocker is not the discriminator but the shape of the bands. Printed runs
-         * to 1.09 of the core height and an answer starts at 1.10, so a cell refused as
-         * print does not become an answer - it falls through to a mark, and the error
-         * changes shape instead of going away. Opening the answer branch to any
-         * digit-sized ink that is not print takes these pages from 122 wrong to 71, and
-         * costs a phantom answer on the two-line-candidate page, where a mark written low
-         * and at digit size is then read as something the user wrote.
-         *
-         * So the mark/answer boundary has to be re-derived in the same change, and it
-         * cannot rest on size either. That is the next attempt, and it now has numbers to
-         * beat: 71 on the five pages it was measured over, without losing the viber page
-         * or that mark. Nine pages carry the fault now, and the count below moved with
-         * them - from 122 over five to 220 over nine - so the figure to beat scales with
-         * it rather than being a constant.
-         *
-         * The pages themselves are listed in [CorpusLabels.sameSizeHandwriting]. They are
-         * not skipped here: their digits are still scored, and this count - what the
-         * collision costs today, measured - is a ceiling rather than a target.
+         * What is left is 77 cells on nine pages, and they are the ones whose ink is
+         * genuinely ambiguous: a pen bearing down as hard as the press did. The count is a
+         * ceiling rather than a target.
          */
-        const val SAME_SIZE_HANDWRITING_MISSORTS = 220
+        const val SAME_SIZE_HANDWRITING_MISSORTS = 77
     }
 
     private fun setUp() {

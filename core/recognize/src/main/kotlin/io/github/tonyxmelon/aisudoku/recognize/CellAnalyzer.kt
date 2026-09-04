@@ -56,6 +56,14 @@ class CellInk(
      * when the biggest blob is also the darkest, which is the ordinary case.
      */
     val outshoneBy: Double,
+    /**
+     * How many other pieces of ink of a comparable size share the cell.
+     *
+     * Candidate marks are written in groups - that is what makes them candidates - while
+     * an answer is usually the only thing in its square: 92% of the corpus's answers have
+     * nothing else beside them, against 15% of the squares that hold only marks.
+     */
+    val company: Int,
 )
 
 /**
@@ -115,6 +123,7 @@ object CellAnalyzer {
             blob = largest,
             normalised = normalise(gray, largest, cell),
             outshoneBy = largest.darkness - darkest,
+            company = blobs.count { it !== largest && it.heightRatio >= largest.heightRatio / 2 },
         )
     }
 

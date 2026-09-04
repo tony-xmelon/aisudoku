@@ -88,8 +88,8 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
                 "Could not find the printed digits in that photo.", emptySet(),
             )
 
-        val readings = ink.mapIndexed { index, cell ->
-            val kind = if (cell == null) Ink.NONE else classify(cell, core)
+        fun readAll(sortByInk: Boolean) = ink.mapIndexed { index, cell ->
+            val kind = if (cell == null) Ink.NONE else classify(cell, core, sortByInk)
             CellReading(
                 index = index,
                 ink = kind,
@@ -98,6 +98,20 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
                 heightRatio = cell?.blob?.heightRatio ?: 0.0,
                 darkness = cell?.blob?.darkness ?: 255.0,
             )
+        }
+
+        // Size first, because on a page where the writing is taller than the print it is
+        // both the cheapest test and the surest. When the writer works at the size of the
+        // print it is neither, and the page says so out loud: the printed band fills with
+        // answers and the puzzle comes out with seventy-odd givens, which no sudoku has.
+        // Only then is it worth separating them by ink, which is a finer measure and a
+        // riskier one - it costs printed digits on pages where nothing was wrong.
+        val readings = readAll(sortByInk = false).let { first ->
+            if (first.count { it.ink == Ink.PRINTED } > PLAUSIBLE_GIVENS) {
+                readAll(sortByInk = true)
+            } else {
+                first
+            }
         }
 
         val printed = readings.filter { it.ink == Ink.PRINTED }
@@ -183,19 +197,52 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
      * middle of it. Measured, no mark reaching digit size sits lower than 0.14 of a cell
      * above centre, no printed digit higher than 0.15, and no answer higher than 0.10.
      */
-    internal fun classify(ink: CellInk, core: PrintedCore): Ink {
+    internal fun classify(ink: CellInk, core: PrintedCore, sortByInk: Boolean = false): Ink {
         val blob = ink.blob
         val relative = blob.heightRatio / core.height
         return when {
-            relative in PRINTED_MIN..PRINTED_MAX && blob.verticalOffset >= PRINTED_TOP_LIMIT ->
-                Ink.PRINTED
+            relative in PRINTED_MIN..PRINTED_MAX && blob.verticalOffset >= PRINTED_TOP_LIMIT &&
+                (!sortByInk || inkOf(blob, core) >= PRINT_INK) -> Ink.PRINTED
 
-            relative >= ANSWER_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT ->
+            relative >= PRINTED_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT &&
+                !isPencilledMark(ink, core) ->
                 if (isResidue(ink)) Ink.MARK else Ink.ANSWER
 
             else -> Ink.MARK
         }
     }
+
+    /**
+     * How much ink a blob carries, against the print of this same photograph.
+     *
+     * Its contrast with the paper beside it, times its stroke width, both as fractions of
+     * the print's own. Contrast is measured against the cell rather than the page so a
+     * crease or a shadow moves ink and background together and leaves this alone, and
+     * everything is relative to the print so neither the exposure, the paper nor the pen
+     * has to be assumed.
+     *
+     * Measured over the corpus this orders the three populations where size does not:
+     * print runs 0.65 to 1.28, answers 0.21 to 0.68, marks 0.05 to 0.36. They overlap at
+     * the edges, which is why size still does the first cut and this decides within it.
+     */
+    private fun inkOf(blob: Blob, core: PrintedCore): Double {
+        if (core.contrast <= 0.0 || core.strokeWidth <= 0.0) return 1.0
+        return (blob.contrast / core.contrast) * (blob.strokeWidth / core.strokeWidth)
+    }
+
+    /**
+     * Whether digit-sized ink is a pencilled candidate rather than an answer.
+     *
+     * Faint alone will not do: the faintest real answers in the corpus carry less ink
+     * than the marks do, and cutting on ink alone costs twenty-four of them to catch
+     * four marks. What marks have that those answers do not is company. They are written
+     * in groups, because a group is what a candidate list is, while an answer stands
+     * alone in its square in nine cases out of ten.
+     *
+     * Both together cost four answers and catch every digit-sized mark in the corpus.
+     */
+    private fun isPencilledMark(ink: CellInk, core: PrintedCore): Boolean =
+        inkOf(ink.blob, core) < MARK_INK && ink.company >= 2
 
     /**
      * Whether digit-sized ink is what is left of an erased digit rather than an answer.
@@ -319,6 +366,15 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
         /** The proven minimum number of givens for a puzzle with one solution. */
         private const val MIN_GIVENS = 17
 
+        /**
+         * More printed digits than this and the printed band has caught something else.
+         *
+         * A published sudoku carries between seventeen and forty; the corpus runs 23 to
+         * 31. Seventy is not a hard puzzle, it is a page whose writing is the size of its
+         * print, and it is the signal to sort that page by ink instead.
+         */
+        private const val PLAUSIBLE_GIVENS = 45
+
         /** How much agreement on ink counts next to agreement on size. */
         private const val DARKNESS_SPREAD_WEIGHT = 0.5
 
@@ -346,6 +402,22 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
          */
         private const val PRINTED_TOP_LIMIT = -0.18
         private const val ANSWER_TOP_LIMIT = -0.12
+
+        /**
+         * How much of the print's ink a blob must carry to be counted as print.
+         *
+         * Size alone put the answers of nine corpus pages into the printed band, because
+         * their writer works at the size of the print. See [inkOf].
+         */
+        private const val PRINT_INK = 0.55
+
+        /**
+         * And below this it is a pencilled mark rather than an answer.
+         *
+         * The four digit-sized marks in the corpus carry 0.11 to 0.19 of the print's ink;
+         * the faintest real answer carries 0.21.
+         */
+        private const val MARK_INK = 0.20
 
         /**
          * How faint digit-sized ink must be, in grey levels against its own cell's

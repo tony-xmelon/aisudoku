@@ -20,12 +20,12 @@ object CorpusLabels {
     /**
      * Pages whose handwriting is the size of the print, which the triage cannot sort.
      *
-     * Finding the printed digits first rests on their being the one population that
-     * shares a font, a colour and a size. On these five the reader wrote at the size of
-     * the print, so the printed core swallows the answers and a finished page comes out
-     * claiming seventy-odd givens and no puzzle. The cause and the measured cost are set
-     * out in [RecognitionAccuracyTest]; they are named here because every test that walks
-     * the corpus meets them.
+     * Finding the printed digits first rested on their being the one population that
+     * shares a font, a colour and a size. On these nine the reader wrote at the size of
+     * the print, so the printed band swallowed the answers. Sorting them by ink as well
+     * as by size has taken the cost from 220 cells to 77; the cause and what is left are
+     * set out in [RecognitionAccuracyTest]. They are named here because every test that
+     * walks the corpus meets them.
      *
      * They stay in the corpus. A page the reader cannot sort is the reason to keep it,
      * and their digits are still scored by the classifier - which reads them perfectly:

@@ -46,8 +46,11 @@ class BlobStatsDumpTest {
                     .also { it.put(0, 0, cell.pixels) }
                 val others = CellAnalyzer.findBlobs(mat, cell).filter { it.area >= 12 }
                 val darkest = others.minOfOrNull { it.darkness } ?: blob.darkness
+                // How many other pieces of ink in the square are a serious size beside
+                // the biggest. Candidate marks come in groups; an answer is usually alone.
+                val company = others.count { it !== blob && it.heightRatio >= blob.heightRatio * 0.5 }
                 println(
-                    "%s\tr%dc%d\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.1f\t%d\t%.1f\t%.1f\t%.3f\t%.3f\t%.3f".format(
+                    "%s\tr%dc%d\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.1f\t%d\t%.1f\t%.1f\t%.3f\t%.3f\t%.3f\t%d".format(
                         file.name.removeSuffix(".jpg"),
                         index / 9 + 1, index % 9 + 1,
                         truth[index].source,
@@ -64,6 +67,7 @@ class BlobStatsDumpTest {
                         // the ink score the reader itself would compute, against the
                         // core it itself selected
                         (blob.contrast / core.contrast) * (blob.strokeWidth / core.strokeWidth),
+                        company,
                     )
                 )
             }

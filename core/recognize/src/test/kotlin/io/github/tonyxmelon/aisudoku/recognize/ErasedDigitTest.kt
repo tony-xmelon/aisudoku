@@ -35,6 +35,9 @@ class ErasedDigitTest {
         ),
         normalised = FloatArray(28 * 28),
         outshoneBy = outshoneBy,
+        // Alone in its square, which is the ordinary case for an answer and keeps these
+        // about the erasure rule rather than the one that spots a candidate list.
+        company = 0,
     )
 
     @Test
