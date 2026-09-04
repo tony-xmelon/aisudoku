@@ -551,7 +551,18 @@ def main():
         print("A model that has never seen the photograph it is scored on.\n")
         total_right = total = tta_right = 0
         lopo_wrong = []
+        # --only <text> holds out just the photographs whose name contains <text>. A
+        # full round is twenty-one trainings and the better part of an hour, which is too
+        # slow to compare two settings against each other; four of the hardest pages is a
+        # few minutes and answers the same question well enough to decide what deserves
+        # the full round.
+        only = None
+        if "--only" in sys.argv:
+            only = sys.argv[sys.argv.index("--only") + 1]
+            print("(only photographs matching %r)" % only)
         for stem in sorted(set(photos)):
+            if only is not None and only not in stem:
+                continue
             held = np.array([p == stem for p in photos])
             keep = ~held
             ax, ay = amplify(xc[keep][:, None], yc[keep], CORPUS_TIMES)
@@ -629,6 +640,9 @@ def main():
 
 #: How many augmented copies of each real corpus cell to train on. A hundred or so is
 #: what it takes for ninety-odd samples to weigh anything against sixty thousand.
+#:
+#: Doubling it to 240 was measured over the three hardest pages and moved them by one
+#: cell in 151, which is inside the spread between seeds, for twice the training time.
 CORPUS_TIMES = 120
 
 if __name__ == "__main__":
