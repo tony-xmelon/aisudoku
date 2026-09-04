@@ -23,6 +23,15 @@ data class Blob(
     /** Mean darkness of the blob's pixels, 0 (black) to 255 (white). */
     val darkness: Double,
     /**
+     * How far the blob stands out from the paper of its own cell, in grey levels.
+     *
+     * Measured against the paper beside it rather than against the page, so a crease or
+     * a shadow across the sheet moves the blob and its background together and leaves
+     * this alone. It is the second of the three things printed digits share - colour -
+     * put in a form that survives a photograph taken on a bent page.
+     */
+    val contrast: Double,
+    /**
      * Mean stroke thickness in pixels: ink area over the longer side.
      *
      * Printed digits are set in one weight, so this barely varies among them, while a
@@ -42,14 +51,6 @@ data class Blob(
 class CellInk(
     val blob: Blob,
     val normalised: FloatArray,
-    /**
-     * How far the blob stands out from the paper of its own cell, in grey levels.
-     *
-     * Measured against the cell's own paper rather than against the print, so that it
-     * does not move with the exposure of the photograph: a lightly written answer on a
-     * bright page and the same answer on a dark one have much the same contrast.
-     */
-    val contrast: Double,
     /**
      * How much darker the darkest other blob in the same cell is, in grey levels; zero
      * when the biggest blob is also the darkest, which is the ordinary case.
@@ -108,20 +109,20 @@ object CellAnalyzer {
         val blobs = findBlobs(gray, cell)
         val largest = blobs.maxByOrNull { it.area } ?: return@map null
 
-        // The median of the cell is its paper: ink is the minority of any square, even a
-        // crowded one.
-        val paper = cell.pixels.map { it.toInt() and 0xFF }.sorted()[cell.pixels.size / 2]
         val darkest = blobs.minOf { it.darkness }
 
         CellInk(
             blob = largest,
             normalised = normalise(gray, largest, cell),
-            contrast = paper - largest.darkness,
             outshoneBy = largest.darkness - darkest,
         )
     }
 
     internal fun findBlobs(gray: Mat, cell: GrayImage): List<Blob> {
+        // The median of the cell is its paper: ink is the minority of any square, even a
+        // crowded one.
+        val paper = cell.pixels.map { it.toInt() and 0xFF }.sorted()[cell.pixels.size / 2]
+
         val grayF = Mat()
         gray.convertTo(grayF, CvType.CV_32F)
 
@@ -161,13 +162,15 @@ object CellAnalyzer {
                     (height >= LINE_SPAN * cell.height && width <= LINE_THICKNESS * cell.width)
             if (lineLike) continue
 
+            val darkness = meanDarkness(cell, labels, label, left, top, width, height)
             out += Blob(
                 left = left, top = top, width = width, height = height, area = area,
                 aspect = width.toDouble() / height,
                 heightRatio = height.toDouble() / cell.height,
                 strokeWidth = area.toDouble() / maxOf(width, height),
                 verticalOffset = ((top + height / 2.0) - cell.height / 2.0) / cell.height,
-                darkness = meanDarkness(cell, labels, label, left, top, width, height),
+                darkness = darkness,
+                contrast = paper - darkness,
                 maskLabel = label,
             )
         }

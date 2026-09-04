@@ -30,13 +30,31 @@ class RecognitionAccuracyTest {
          * then swallows the answers, and a finished page comes out claiming seventy-odd
          * givens and no puzzle - which is why some of them are refused outright.
          *
-         * Stroke width does separate them, cleanly, page by page: the print measures
-         * 1.00 to 1.08 of the core and the ballpoint 0.66 to 0.75. It is the third of the
-         * three properties and [Blob.strokeWidth] already measures it. But no single
-         * threshold works across the corpus - requiring 0.80 rescues 90 of the 114
-         * confusions and costs 76 real printed digits - because a printed 1 is as thin
-         * for its height as any pen stroke. It wants a per-page comparison, like the one
-         * that finds the printed core, and that is a change worth making carefully.
+         * An attempt at fixing it was made and withdrawn, and what it established is
+         * worth more than the attempt was.
+         *
+         * Stroke width does NOT separate them per cell, which an earlier note here
+         * claimed: the medians do - print at 1.00 of the core against ballpoint at 0.70 -
+         * but on every page the thinnest twentieth of the print is thinner than the
+         * thickest twentieth of the writing, because a printed 1 is as thin for its
+         * height as any pen stroke.
+         *
+         * What does separate them is ink: contrast against the paper of the cell itself,
+         * times stroke width, both as fractions of the print's own. Against the core the
+         * reader actually selects, a floor of 0.45 leaves 51 of the 115 confusions and
+         * costs exactly one printed digit.
+         *
+         * The blocker is not the discriminator but the shape of the bands. Printed runs
+         * to 1.09 of the core height and an answer starts at 1.10, so a cell refused as
+         * print does not become an answer - it falls through to a mark, and the error
+         * changes shape instead of going away. Opening the answer branch to any
+         * digit-sized ink that is not print takes these pages from 122 wrong to 71, and
+         * costs a phantom answer on the two-line-candidate page, where a mark written low
+         * and at digit size is then read as something the user wrote.
+         *
+         * So the mark/answer boundary has to be re-derived in the same change, and it
+         * cannot rest on size either. That is the next attempt, and it now has numbers to
+         * beat: 71 on these pages, without losing the viber page or that mark.
          *
          * The pages themselves are listed in [CorpusLabels.sameSizeHandwriting]. They are
          * not skipped here: their digits are still scored, and this count - what the

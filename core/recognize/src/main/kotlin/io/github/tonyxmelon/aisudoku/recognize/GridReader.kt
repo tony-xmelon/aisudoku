@@ -168,6 +168,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
             height = median(window.map { it.heightRatio }),
             darkness = median(window.map { it.darkness }),
             strokeWidth = median(window.map { it.strokeWidth }),
+            contrast = median(window.map { it.contrast }),
         )
     }
 
@@ -218,7 +219,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
      * erasure and loses none of the 180 answers. This sits in the middle of that.
      */
     private fun isResidue(ink: CellInk): Boolean =
-        ink.contrast < RESIDUE_CONTRAST && ink.outshoneBy > RESIDUE_OUTSHONE
+        ink.blob.contrast < RESIDUE_CONTRAST && ink.outshoneBy > RESIDUE_OUTSHONE
 
     private fun assemble(readings: List<CellReading>): Grid {
         var grid = Grid.Empty
@@ -301,6 +302,8 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
         val height: Double,
         val darkness: Double,
         val strokeWidth: Double,
+        /** How far the print stands out from its own paper. See [Blob.contrast]. */
+        val contrast: Double = 1.0,
     )
 
     companion object {

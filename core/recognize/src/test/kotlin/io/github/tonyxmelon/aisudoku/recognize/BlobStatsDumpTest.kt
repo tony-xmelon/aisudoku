@@ -47,7 +47,7 @@ class BlobStatsDumpTest {
                 val others = CellAnalyzer.findBlobs(mat, cell).filter { it.area >= 12 }
                 val darkest = others.minOfOrNull { it.darkness } ?: blob.darkness
                 println(
-                    "%s\tr%dc%d\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.1f\t%d\t%.1f\t%.1f\t%.3f\t%.3f".format(
+                    "%s\tr%dc%d\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.1f\t%d\t%.1f\t%.1f\t%.3f\t%.3f\t%.3f".format(
                         file.name.removeSuffix(".jpg"),
                         index / 9 + 1, index % 9 + 1,
                         truth[index].source,
@@ -61,6 +61,9 @@ class BlobStatsDumpTest {
                         blob.darkness - darkest,
                         blob.aspect,
                         blob.heightRatio,
+                        // the ink score the reader itself would compute, against the
+                        // core it itself selected
+                        (blob.contrast / core.contrast) * (blob.strokeWidth / core.strokeWidth),
                     )
                 )
             }

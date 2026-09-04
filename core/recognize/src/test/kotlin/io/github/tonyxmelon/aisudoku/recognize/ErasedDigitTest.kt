@@ -18,7 +18,8 @@ class ErasedDigitTest {
     private val reader = GridReader()
 
     /** The printed digits of a photograph: the yardstick everything is measured against. */
-    private val core = GridReader.PrintedCore(height = 0.50, darkness = 53.0, strokeWidth = 4.0)
+    private val core =
+        GridReader.PrintedCore(height = 0.50, darkness = 53.0, strokeWidth = 4.0, contrast = 140.0)
 
     /** Digit-sized and sitting in the middle of the cell, as an answer does. */
     private fun answerShaped(contrast: Double, outshoneBy: Double) = CellInk(
@@ -28,11 +29,11 @@ class ErasedDigitTest {
             heightRatio = 0.60,          // 1.20 of the printed height
             verticalOffset = 0.05,       // just below centre
             darkness = 120.0,
+            contrast = contrast,
             strokeWidth = 3.0,
             maskLabel = 1,
         ),
         normalised = FloatArray(28 * 28),
-        contrast = contrast,
         outshoneBy = outshoneBy,
     )
 
