@@ -96,6 +96,14 @@ object CellAnalyzer {
      * A peak one step wide on 648 cells is not a law of nature. It is the measured best,
      * and the neighbours are one cell worse rather than a cliff, so it is a reasonable
      * place to stand until more finished grids say otherwise.
+     *
+     * It has since been asked to stretch and will not. A photograph of a screen, out of
+     * focus, whose digits are light blue on white, leaves about thirty of its cells with
+     * no ink found at all - and lowering this to reach them makes everything worse rather
+     * than better, because what it reaches first is not the faint digits but the noise:
+     * over the whole corpus, four sorts 1884 cells of 2025 and reads 695 printed digits,
+     * three sorts 1882 and reads 685, two sorts 1868 and reads 676. Whatever will find
+     * those cells, it is not a lower bar.
      */
     private const val INK_MARGIN = 4.0
 

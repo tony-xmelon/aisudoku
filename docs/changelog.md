@@ -8,6 +8,44 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+ONLY LOSING THE GRID STOPS THE APP NOW.
+The same brittleness at three stages in a row, each one throwing away a grid it had
+already recognised.
+
+The rule Tony asked for is that nothing but failing to find the grid should stop the
+pipeline - whatever is read or misread can be corrected on the main screen. Applying
+it to the advertisement photograph turned up the same shape of mistake three times.
+
+The reader treated an unsolvable puzzle as an unreadable one. Fixed last round.
+
+The score is the weakest of the twenty places a grid line must appear, which is strict
+on purpose and has a consequence that is not: one line behind a thumb, a fold or a
+highlight takes the whole score down with it. Nineteen lines present, one covered,
+0.22 against the 0.35 needed - and 0.22 again cropped to the screen alone, so it was
+the picture and not the clutter round it. One line an axis may now be missing, and only
+as the last question asked. Not for ranking: relaxing it there was tried and cost a
+corpus page, because a worse quad with no single terrible line outranks the right one
+and the grid that comes back cannot be fitted. Two lines were tried too, and buy
+nothing - 0.45 against 0.46 - while lowering the bar for everything.
+
+Then the line fitter did it again one stage later: all ten lines had to be found or the
+fit failed outright, so the photograph was lost after the locator had recognised it. A
+grid is regular, so a rule nobody can see is still at a position anybody can compute.
+Up to two an axis are now put where the grid says they must be.
+
+The photograph is in the corpus and it is not read well: the grid is found at 0.45 and
+straightened, most of the puzzle comes back, and about thirty of its squares hold ink
+too washed out to find at all - not misread, never found. Retraining on it took its
+printed digits from 671 of 697 to 695, and handwriting across the whole corpus to
+753 of 753. Reaching the missing thirty by lowering the ink threshold was measured and
+makes everything worse, because what a lower bar reaches first is noise rather than
+faint digits: four sorts 1884 cells of 2025, three sorts 1882, two sorts 1868.
+
+Its cells are counted apart from the collision rather than added to it. Two different
+faults summed into one number is how the collision came to be blamed for a third of the
+cells it had nothing to do with, and once was enough.
+
+
 A PUZZLE THAT CANNOT BE SOLVED IS STILL A PUZZLE THAT WAS READ.
 One rule, and the photograph that made it obvious.
 

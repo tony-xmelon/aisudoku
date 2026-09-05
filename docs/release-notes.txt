@@ -1,4 +1,4 @@
-Seven things this build does that the last one would not.
+Eight things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -101,6 +101,19 @@ It now stops only when it genuinely cannot see a puzzle. Anything it has read is
 shown, with the squares it is unsure of marked, and you can see for yourself what
 it made of the page. One of the test photos that used to come back as nothing now
 comes back as a grid.
+
+A PUZZLE WITH SOMETHING ACROSS IT IS STILL FOUND
+
+The app checked that all twenty grid lines were there, and treated any one of them
+being hidden as proof there was no grid. A thumb on a corner, a crease, a
+reflection on a screen - nineteen lines perfect and the twentieth covered, and it
+told you it could see nothing. It also insisted on finding all twenty again before
+it would cut the puzzle into squares.
+
+One line each way may now be hidden. A grid is regular, so a rule you cannot see is
+still somewhere you can work out. The photo that prompted this - a sudoku
+advertisement on a phone screen, out of focus, with a shadow across one corner -
+now scans, where before the app said there was no grid in it at all.
 
 THE READER
 

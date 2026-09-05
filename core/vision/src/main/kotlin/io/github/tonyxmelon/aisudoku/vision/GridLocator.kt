@@ -54,6 +54,15 @@ object GridLocator {
     /** And how much larger to try them. Beyond these the quad takes in the page around it. */
     private val RESCUE_GROWTHS = listOf(1.02, 1.04)
 
+    /**
+     * How many of the ten lines on an axis may be hidden, on the very last attempt.
+     *
+     * One, because one is what an occlusion costs and two starts forgiving grids that are
+     * not there. Measured on the photograph this exists for, one line takes it from 0.22
+     * to 0.45 and two takes it to 0.46, so the second buys nothing and only lowers the bar.
+     */
+    private const val OBSCURED_LINES_ALLOWED = 1
+
     fun locate(image: GrayImage): GridLocation {
         // Each working size in turn, stopping at the first that finds a grid. A grid that
         // fills the frame is found at the smallest and cheapest; one that takes a sixth of
@@ -85,6 +94,12 @@ object GridLocator {
             return GridLocation.Found(
                 cells.quad, cells.score, cells.straightened(image.toMat()).toGrayImage(),
             )
+        }
+
+        val obscured = askAgainForAnObscuredGrid(image)
+        if (obscured != null) {
+            val rectified = rectify(image.toMat(), obscured.first, RECTIFIED_SIZE.toDouble())
+            return GridLocation.Found(obscured.first, obscured.second, rectified.toGrayImage())
         }
         return nearest ?: GridLocation.NoGrid(0.0, 0)
     }
@@ -190,6 +205,40 @@ object GridLocator {
             if (curved != null && curved >= MIN_GRID_SCORE) {
                 return FromCells(quad, curved, lattice, curved = true)
             }
+        }
+        return null
+    }
+
+    /**
+     * The last question asked of a photograph: is this a grid with something across it?
+     *
+     * The score is the weakest of the twenty lines a grid must have, which is strict on
+     * purpose and has one consequence that is not intended - a single line hidden behind
+     * a thumb, a fold, or a highlight on a screen takes the whole score down with it. The
+     * photograph that showed this is an advertisement on a phone screen with a tan overlay
+     * across the lower left of the puzzle: nineteen lines present, one covered, 0.22
+     * against the 0.35 it needs, and 0.22 again cropped to the screen alone. A person sees
+     * that grid immediately.
+     *
+     * So one line an axis may be missing, and only here. Not for choosing between
+     * candidates, which was tried and cost a corpus page: with a line forgiven, a worse
+     * quad that has no single terrible line outranks the right one, and the grid that
+     * comes back cannot be fitted. Ranking stays strict; this only decides whether to
+     * accept something nothing else would, after the outlines, the growing and the cells
+     * have all come up empty.
+     */
+    private fun askAgainForAnObscuredGrid(image: GrayImage): Pair<Quad, Double>? {
+        val full = image.toMat()
+        for (workingEdge in QuadDetector.workingEdges()) {
+            val best = QuadDetector.detect(image, workingEdge)
+                .map { quad ->
+                    quad to GridScorer.score(
+                        rectify(full, quad, scoringSize(quad)), OBSCURED_LINES_ALLOWED,
+                    )
+                }
+                .maxByOrNull { it.second }
+                ?.takeIf { it.second >= MIN_GRID_SCORE }
+            if (best != null) return best
         }
         return null
     }

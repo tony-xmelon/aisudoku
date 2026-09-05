@@ -7,8 +7,13 @@ import org.opencv.imgproc.Imgproc
  * Measures how much a rectified image looks like a 9x9 sudoku grid.
  *
  * The score is the weakest of the twenty places a grid line must appear, expressed as a
- * fraction of the strongest line present. A real grid has all twenty; a rectified sheet
- * of paper has the puzzle somewhere inside it and therefore misses several.
+ * fraction of a typical line. A real grid has all twenty; a rectified sheet of paper has
+ * the puzzle somewhere inside it and therefore misses several.
+ *
+ * Being the weakest of twenty is what makes it strict, and also what makes a single
+ * obscured line - a thumb on a corner, a fold, a highlight across a screen - fatal to a
+ * grid whose other nineteen are perfect. [obscuredAllowed] is how that is forgiven, and
+ * it is deliberately not the default.
  *
  * Counting line peaks was tried first and does not work: a thick outer border splits
  * into two peaks and a column of digit strokes can align into a spurious one, so an
@@ -20,14 +25,14 @@ internal object GridScorer {
     /** How far either side of an expected line position to look, as a fraction of a cell. */
     private const val SEARCH_WINDOW_FRACTION = 0.18
 
-    fun score(rectified: Mat): Double {
+    fun score(rectified: Mat, obscuredAllowed: Int = 0): Double {
         val binary = Mat()
         Imgproc.adaptiveThreshold(
             rectified, binary, 255.0,
             Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY_INV, 31, 10.0,
         )
         val (columns, rows) = projections(binary)
-        return minOf(axisScore(columns), axisScore(rows))
+        return minOf(axisScore(columns, obscuredAllowed), axisScore(rows, obscuredAllowed))
     }
 
     /** Ink counts per column and per row of a binarised square image. */
@@ -76,7 +81,7 @@ internal object GridScorer {
      * other, a blank square scores full marks - it has ten equally missing lines - which
      * is exactly what the framing advisor started reporting as a grid.
      */
-    private fun axisScore(profile: DoubleArray): Double {
+    private fun axisScore(profile: DoubleArray, obscuredAllowed: Int): Double {
         val size = profile.size
         val window = (size / 9.0 * SEARCH_WINDOW_FRACTION).toInt().coerceAtLeast(4)
         val page = profile.sorted()[size / 2]
@@ -93,6 +98,15 @@ internal object GridScorer {
 
         // Capped at one: a line inkier than the typical one is not better than a grid
         // line, it is a grid line. Only the missing ones should count against the score.
-        return strengths.minOf { (it / typical).coerceAtMost(1.0) }
+        //
+        // [obscuredAllowed] sets aside that many of the weakest lines before taking the
+        // worst of the rest. At zero this is the plain minimum, which is what every
+        // photograph that reads today is scored by and what ranks one candidate against
+        // another - relaxing it for ranking is not harmless, and cost a corpus page when
+        // it was tried, because a worse quad with no single terrible line outranked the
+        // right one. Above zero it is an accept test of last resort: see
+        // [GridLocator.askAgainForAnObscuredGrid].
+        val ranked = strengths.map { (it / typical).coerceAtMost(1.0) }.sorted()
+        return ranked[obscuredAllowed.coerceIn(0, ranked.size - 1)]
     }
 }

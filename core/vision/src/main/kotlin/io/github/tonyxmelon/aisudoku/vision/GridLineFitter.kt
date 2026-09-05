@@ -60,6 +60,12 @@ object GridLineFitter {
     private const val SEARCH_WINDOW_FRACTION = 0.18
 
     /** Returns null when a line could not be found near one of the expected positions. */
+    /**
+     * How many of the ten lines on one axis may be put where the grid says rather than
+     * found. Two of ten is an occlusion; more than that is not a grid.
+     */
+    private const val MOST_LINES_ASSUMED = 2
+
     fun fit(rectified: GrayImage): CellGeometry? {
         val binary = Mat()
         Imgproc.adaptiveThreshold(
@@ -79,13 +85,29 @@ object GridLineFitter {
 
         val window = (size / 9.0 * SEARCH_WINDOW_FRACTION).toInt().coerceAtLeast(4)
 
+        // A line that cannot be made out is put where the grid says it must be, rather
+        // than failing the whole fit.
+        //
+        // Every one of the ten had to be found, and one hidden line - a thumb on the
+        // corner, a highlight across a screen - lost the photograph after the locator had
+        // already recognised the grid. That is the wrong answer twice over: the grid is
+        // regular, so a rule nobody can see is still at a position everybody can compute,
+        // and a person reading a partly covered puzzle does exactly this without noticing.
+        //
+        // Only a few may be assumed. Beyond that the evidence for this being a grid at all
+        // is gone and the fit should fail, which is what [MOST_LINES_ASSUMED] is for.
+        var assumed = 0
         val lines = (0..9).map { line ->
-            val centre = (line * (size - 1.0) / 9.0).toInt()
+            val nominal = line * (size - 1.0) / 9.0
+            val centre = nominal.toInt()
             val from = (centre - window).coerceAtLeast(0)
             val to = (centre + window).coerceAtMost(size - 1)
 
             val peak = (from..to).maxOf { profile[it] }
-            if (peak < strongest * 0.20) return null
+            if (peak < strongest * 0.20) {
+                assumed++
+                return@map nominal
+            }
 
             // Intensity-weighted centre of everything near the peak, so a line two or
             // three pixels wide resolves to its middle rather than its first pixel.
@@ -98,9 +120,13 @@ object GridLineFitter {
                     weight += profile[i]
                 }
             }
-            if (weight <= 0.0) return null
+            if (weight <= 0.0) {
+                assumed++
+                return@map nominal
+            }
             weighted / weight
         }
+        if (assumed > MOST_LINES_ASSUMED) return null
 
         // Ordering can break if two expected windows lock onto the same thick line.
         if (lines != lines.sorted()) return null
