@@ -92,14 +92,16 @@ rather than by how big it is. Twenty-five of those answers come back.
 
 THE READER
 
-Retrained on twenty-two photographs. The collection has grown from six of your
-pages to twenty-two, and the handwriting it is measured against from 180 digits
-to 650 - newsprint, ballpoint, creases, a sudoku on a laptop screen, and one
-page finished wrongly, which is the only thing that tests Check properly.
+Retrained on twenty-four photographs. The collection has grown from six of your
+pages to twenty-four, and the handwriting it is measured against from 180 digits
+to 753 - newsprint, ballpoint, creases, a curled page, a sudoku on a laptop
+screen, and one page finished wrongly, which is the only thing that tests Check
+properly.
 
 Scored the honest way, with every page read by a model that has never seen it,
-handwriting is 612 of 650 squares. It was 174 of 180 when the collection was half the
-size and all of it was yours.
+handwriting is 709 of 753 squares and print is 651 of 652. It was 174 of 180 when
+the collection was a quarter of the size and all of it was yours; the rate has
+held while the collection tripled and got harder.
 
 Please keep sending photos of anything it gets wrong. Every one of these came
 from a page that failed.

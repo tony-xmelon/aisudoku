@@ -28,7 +28,7 @@ class TriageDumpTest {
         val reader = GridReader()
         println(
             "TRIAGE\tphoto\tcell\tdecided\ttruth\tdigit\trelHeight\tvOffset\tink\t" +
-                "company\tcontrast\tstroke\toutshone"
+                "company\tcontrast\tstroke\toutshone\tread\ttop\tsecond"
         )
         for (file in CorpusFixtures.photos) {
             val truth = CorpusLabels.forPhoto(file.name) ?: continue
@@ -53,7 +53,7 @@ class TriageDumpTest {
                 println(
                     "TRIAGE\t${file.nameWithoutExtension}\t${reading.index}\t${reading.ink}\t" +
                         "${truth[reading.index].source}\t${truth[reading.index].digit ?: 0}\t" +
-                        "%.4f\t%.4f\t%.4f\t%d\t%.2f\t%.2f\t%.2f".format(
+                        "%.4f\t%.4f\t%.4f\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.3f\t%.3f".format(
                             relative,
                             blob?.verticalOffset ?: 0.0,
                             carried,
@@ -61,6 +61,9 @@ class TriageDumpTest {
                             blob?.contrast ?: 0.0,
                             blob?.strokeWidth ?: 0.0,
                             ink?.outshoneBy ?: 0.0,
+                            reading.digit ?: 0,
+                            reading.probabilities?.max() ?: 0f,
+                            reading.probabilities?.sortedDescending()?.getOrNull(1) ?: 0f,
                         )
                 )
             }
