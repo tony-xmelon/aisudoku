@@ -204,7 +204,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
             relative in PRINTED_MIN..PRINTED_MAX && blob.verticalOffset >= PRINTED_TOP_LIMIT &&
                 (!sortByInk || inkOf(blob, core) >= PRINT_INK) -> Ink.PRINTED
 
-            relative >= PRINTED_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT &&
+            relative >= ANSWER_MIN && blob.verticalOffset >= ANSWER_TOP_LIMIT &&
                 !isPencilledMark(ink, core) ->
                 if (isResidue(ink)) Ink.MARK else Ink.ANSWER
 
@@ -242,7 +242,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
      * Both together cost four answers and catch every digit-sized mark in the corpus.
      */
     private fun isPencilledMark(ink: CellInk, core: PrintedCore): Boolean =
-        inkOf(ink.blob, core) < MARK_INK && ink.company >= 2
+        inkOf(ink.blob, core) < MARK_INK && ink.company >= MARK_COMPANY
 
     /**
      * Whether digit-sized ink is what is left of an erased digit rather than an answer.
@@ -391,8 +391,24 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
         private const val PRINTED_MIN = 0.90
         private const val PRINTED_MAX = 1.09
 
-        /** A written answer is at least this much taller than the print. */
-        private const val ANSWER_MIN = 1.10
+        /**
+         * How small a blob may be and still be an answer rather than a candidate mark.
+         *
+         * It was 1.10 - an answer had to be taller than the print - and that is only true
+         * of a reader who writes large. Twenty-eight answers across the newsprint pages
+         * are *smaller* than the print beside them, and every one was being thrown away as
+         * a pencilled mark: forty-seven answers lost in all, which is more than a third of
+         * everything the triage got wrong.
+         *
+         * Dropping it to 0.80 recovers twenty-five of them and costs nothing anywhere
+         * else. Lower is better still on those pages - 0.75 leaves eighteen wrong rather
+         * than twenty-two - and 0.80 is where it stops without breaking a page that reads
+         * correctly today, which is the trade being made and not an optimum. What sets the
+         * real floor is not size at all: [ANSWER_TOP_LIMIT] and [isPencilledMark] are what
+         * separate a mark from an answer, because marks run along the top of the cell and
+         * are pencil while answers sit centred and are pen.
+         */
+        private const val ANSWER_MIN = 0.80
 
         /**
          * How far above the centre of its cell a blob may sit and still be a digit.
@@ -401,7 +417,7 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
          * looser limit because its height band already excludes almost everything.
          */
         private const val PRINTED_TOP_LIMIT = -0.18
-        private const val ANSWER_TOP_LIMIT = -0.12
+        private const val ANSWER_TOP_LIMIT = -0.13
 
         /**
          * How much of the print's ink a blob must carry to be counted as print.
@@ -412,12 +428,18 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
         private const val PRINT_INK = 0.55
 
         /**
-         * And below this it is a pencilled mark rather than an answer.
+         * And below this, in the company of others, it is a pencilled mark.
          *
-         * The four digit-sized marks in the corpus carry 0.11 to 0.19 of the print's ink;
-         * the faintest real answer carries 0.21.
+         * Ink and company together, because neither settles it alone: the faintest real
+         * answers are fainter than some marks. Both had to widen when the size floor came
+         * down, because size is no longer keeping the marks out on its own - a mark is now
+         * caught here or not at all. Three pieces of ink is what a candidate list looks
+         * like, where a written answer sits alone in its square in 581 of 582 cases.
          */
-        private const val MARK_INK = 0.20
+        private const val MARK_INK = 0.32
+
+        /** How many other pieces of ink make a square a candidate list rather than an answer. */
+        private const val MARK_COMPANY = 3
 
         /**
          * How faint digit-sized ink must be, in grey levels against its own cell's

@@ -8,6 +8,48 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+A THIRD OF WHAT THE TRIAGE GOT WRONG WAS NOT THE COLLISION AT ALL.
+Twenty-five cells recovered, and a measured answer to how far the rest can go.
+
+The print/handwriting collision has been the standing explanation for every cell the
+triage sorts wrongly. Counted by kind rather than in one lump, it is not: of 125 wrong
+cells, 74 were handwriting taken for print - the collision proper - and 47 were
+written answers thrown away as pencilled candidate marks. Two faults wearing one
+number, and the second is the easier one.
+
+Its cause is an assumption stated plainly in the code and false on this newsprint: an
+answer had to be taller than the print. Twenty-eight of those 47 answers are *smaller*
+than the print beside them. Size cannot carry that decision, and the measurements say
+it does not have to - marks run along the top of the cell and are pencil, carrying
+0.011 of the print's ink at the median and 0.255 at the ninetieth percentile, where
+answers sit centred and are pen, from 0.22 up. Dropping the size floor from 1.10 to
+0.80 and letting position and ink do the work takes the triage from 1738 of 1863 cells
+to 1763, with nothing on any page that read correctly before now reading wrongly.
+
+0.80 is a trade rather than an optimum, and worth naming as one: 0.75 leaves eighteen
+of these cells wrong instead of twenty-two, and costs one cell on a page that is
+correct today. Where those two meet is where it stopped.
+
+The collision proper is harder, and it is now measured rather than guessed at. Held
+out photograph by photograph, no rule over the six things the reader measures of a
+blob - height, position, ink, contrast, stroke width, company - does better than about
+seventy of the 79 cells on that boundary. A linear rule gets 70, product terms 70, a
+decision tree 71. A small learned function over the same six numbers gets 33. So the
+signal is there and it is not expressible as a threshold, which is the useful finding:
+the next step on the collision is a model, not another constant.
+
+Two things were tried against the collision and did not work, recorded so they are not
+tried again. The puzzle's own logic cannot arbitrate it: a false given is a redundant
+given, so removing givens that uniqueness does not need would find them - except that
+these newspaper puzzles are not minimal. Every one of Tony's ten is; every one of the
+twelve newsprint pages has between 8 and 22 givens that could be removed without
+making the puzzle ambiguous. And matching each digit against a template of the same
+digit elsewhere on the page - print being a font, handwriting not - separates the two
+almost perfectly when the templates are built from the true print, at 7 wrong in the
+whole corpus, and does no better than the existing rule when they are built from what
+the reader currently believes. It is a good idea waiting on a better seed.
+
+
 THE CURLED PAGE READS. THE THING WRONG WITH IT WAS NOT THE CURVE.
 This closes the entry below it, which said the fix was not ready. It is, and the
 reason it was not is worth more than the fix.

@@ -36,18 +36,24 @@ class RecognitionAccuracyTest {
          * printed digits than any sudoku has. Sorting every page that way costs printed
          * digits on pages where nothing was wrong, and lost three of them outright.
          *
-         * What is left is 125 cells on twelve pages, and they are the ones whose ink is
-         * genuinely ambiguous: a pen bearing down as hard as the press did. The count is a
-         * ceiling rather than a target.
+         * What is left is 100 cells on twelve pages. The count is a ceiling rather than a
+         * target, and it has moved for two different reasons, which is worth separating.
          *
-         * It has grown only by pages joining it: 94 on ten, then 109 when an eleventh was
-         * taken in, then 125 when a twelfth was. Each time the new cells were the new
-         * page's own and no cell on a page that sorted correctly before sorted wrongly
-         * after. A page from this one reader costs fifteen or sixteen cells here whatever
-         * else changes, which is worth knowing before reading a movement in this number as
-         * a regression - and equally, a rise without a new page would be one.
+         * It grew by pages joining: 94 on ten, 109 on eleven, 125 on twelve. Each time the
+         * new cells were the new page's own and nothing that sorted correctly before
+         * sorted wrongly after, so a page from this one reader costs fifteen or sixteen
+         * cells here whatever else changes.
+         *
+         * It then fell from 125 to 100, and that was a fault of a different kind. Forty-
+         * seven of those cells were not the print/handwriting collision at all: they were
+         * answers thrown away as pencilled candidate marks for being smaller than the
+         * print. See [GridReader.ANSWER_MIN]. What is left is the collision proper, and
+         * it is a harder thing - measured, no rule over the six things the reader
+         * measures does better than about seventy of these cells, where a small learned
+         * function over the same six does thirty-three. That is the next decision, and it
+         * wants corpus from a second hand before it is taken.
          */
-        const val SAME_SIZE_HANDWRITING_MISSORTS = 125
+        const val SAME_SIZE_HANDWRITING_MISSORTS = 100
     }
 
     private fun setUp() {

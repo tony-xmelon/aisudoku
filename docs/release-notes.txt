@@ -1,4 +1,4 @@
-Five things this build does that the last one would not.
+Six things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -78,6 +78,17 @@ the table - and with nothing there to go on, the app could not work out the shap
 of the page just where it bends most. Keeping those three squares is the whole
 fix. The page now straightens flat and reads, and all twenty-eight of its printed
 digits come out right.
+
+ANSWERS YOU WROTE SMALL ARE NO LONGER THROWN AWAY
+
+The app worked out which digits are yours partly by size, on the assumption that
+you write bigger than the paper prints. On the newsprint pages you often do not -
+sometimes you write smaller - and every one of those answers was being discarded
+as if it were a pencilled note in the margin of the square. Forty-seven of them,
+which was more than a third of everything the app was getting wrong.
+
+It now decides by where the digit sits in its square and what it is written in
+rather than by how big it is. Twenty-five of those answers come back.
 
 THE READER
 
