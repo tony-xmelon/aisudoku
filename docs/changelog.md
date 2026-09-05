@@ -8,6 +8,47 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE CURLED PAGE: WHAT IT ACTUALLY IS, AND WHY THE FIX FOR IT IS NOT HERE.
+No change to what the app does. A measurement, an instrument to repeat it, and a
+correction to something this file said last round.
+
+Last round said that page was beyond reach because no single plane fits its own cells,
+and called that a fact about the sheet of paper. The measurement was right and the
+conclusion was not - a plane is not the only thing that can straighten a picture - so
+this is worth setting down properly rather than leaving as a dead end.
+
+What the average could not say, the map could. The mean residual of the best flat grid
+tells you how badly it fits and never why, and it cannot tell a bending page from two
+or three cells measured badly. Printed as a nine by nine, the answer is immediate. The
+curled page runs 2 pixels at one corner of the grid to 44 at the other in a clean
+gradient with no cell out of step with its neighbours; the other two newsprint pages
+sit at 0 to 5 with three isolated spikes. Curvature is smooth. A broken contour is a
+spike. That is now a test - see LatticeResidualDumpTest - because it is the question
+worth asking first of any page that will not straighten, and it takes a minute.
+
+The map also counts the lattice places no cell reached, and on the curled page that is
+the sharper finding: all eighty-one of its cells are found, and three of them land on
+places already taken, which leaves its top left corner - exactly where the sheet lifts
+- with nothing in it. So the thing to fix there is how a cell is assigned its place in
+the nine by nine, not the straightening.
+
+A curved straightening was built and measured and is not on main; it sits on the
+branch curved-page-surface, with the numbers in its commit message. Briefly: a quartic
+surface through the cells' own corners takes that page from 0.00 to 0.46 against the
+0.35 it needs, and the straightened picture is square over most of its area. It is not
+merged because it does not make the page readable and it makes the model worse. With
+the page in the corpus, the cells exported from that empty corner are grid rules rather
+than digits, labelled with the digits that should have been there; trained on, corpus
+printed accuracy falls from 1.0000 to 0.9969 and handwriting from 0.9985 to 0.9934, and
+every new misread predicts a 1, which is what a vertical rule looks like to a
+classifier. A page whose cells do not extract cannot be a training page.
+
+The page therefore stays out of the corpus for now, and the honest summary of it is:
+found is not read, and what stands between this one and a reading is first its empty
+corner and then the print/handwriting collision - neither of which is the curvature
+that got the blame.
+
+
 A PUZZLE WHOSE BORDER IS PRINTED INTO THE PAGE BESIDE IT NOW SCANS.
 One photograph, and a change to what the locator is allowed to look for.
 
