@@ -8,6 +8,51 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE CURLED PAGE READS. THE THING WRONG WITH IT WAS NOT THE CURVE.
+This closes the entry below it, which said the fix was not ready. It is, and the
+reason it was not is worth more than the fix.
+
+Every cell of a photograph is given a place in the nine by nine, and that was written
+as though a place were not a scarce thing: each cell rounded its position to the
+nearest place on its own, and when two cells rounded onto the same one the second was
+dropped by a single line - `if (!taken.add(place)) continue` - with nothing anywhere
+reporting it. Rounding cannot express this, because the constraint is between cells
+rather than inside one. Now every cell's claim on every place is measured, the nearest
+claim is settled first, and a cell whose place has gone takes the nearest place still
+free instead of disappearing. Where the fit was already good it does exactly what
+rounding did, so nothing else in the corpus moves.
+
+On the curled page it was costing three cells: 81 found, 78 placed, three landed on a
+taken place and vanished - and the places they should have filled were its top left
+corner, which is exactly where the sheet lifts. The surface fitted through the cells
+to follow the bend had no measurement at all over the one corner that needed one. It
+straightened the rest beautifully, scored 0.46 against the 0.35 needed, and produced
+a picture whose corner cells were grid rules rather than digits.
+
+With the cells kept, the same surface scores 0.73 and the page reads. Its twenty-eight
+printed digits are read perfectly and its cells now export as clean digits, so it
+earns its place in training rather than poisoning it: with the corner broken, adding
+this page took corpus printed accuracy from 1.0000 to 0.9969 and handwriting from
+0.9985 to 0.9934, every new misread predicting a 1, which is what a vertical rule
+looks like to a classifier. With it fixed, printed stays at 1.0000 and handwriting
+rises to 0.9987 over a corpus grown to 1405 digits.
+
+Two regressions were caught on the way in, both of the kind that would have gone
+unnoticed. The surface was allowed to win whenever it scored higher, and on one
+newsprint page it scored 0.54, won, and read worse - because the score asks whether
+twenty lines are present, which is the right question for "is this a grid" and a poor
+one for "is this straight enough to cut into cells". The plane is now taken wherever
+it clears the bar and the surface only where it does not. That was still not enough,
+and the deeper fault was structural: the cells were a last resort within one working
+size but not across them, so that page took a mediocre cell answer at a thousand
+pixels and returned before ever reaching the outline at sixteen hundred that scores
+0.52. Every size now gets its chance at an outline before any of them falls back to
+the cells.
+
+The corpus is twenty-four photographs, twenty-three of which read. The collision
+ceiling goes from 109 to 125, and the sixteen are this page's own.
+
+
 THE CURLED PAGE: WHAT IT ACTUALLY IS, AND WHY THE FIX FOR IT IS NOT HERE.
 No change to what the app does. A measurement, an instrument to repeat it, and a
 correction to something this file said last round.

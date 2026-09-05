@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-curled.jpg",
+  "givens": [
+    "...5947..",
+    ".3.....4.",
+    "..4..3.58",
+    "8....91..",
+    "...8.6...",
+    "..92....6",
+    "58.1..3..",
+    ".2.....6.",
+    "..7962..."
+  ],
+  "written": [
+    "618594732",
+    "735628941",
+    "294713658",
+    "862459173",
+    "153876294",
+    "479231586",
+    "586147329",
+    "921385467",
+    "347962815"
+  ],
+  "notes": "The page that is not flat. Two puzzles are printed side by side on it and the sheet is curled between them, so no single plane fits this grid's own cells: the best homography through them leaves them 17 pixels out on average and 44 at worst, on a cell 72 pixels across. What settles it as the page and not the measurement is the shape of the error - a smooth slope from one corner of the grid to the other, with no cell out of step with its neighbours.\n\nThe detector saw two candidates and scored both 0.00. Its border is welded to the second puzzle beside it, so the cells are the way in, as with the welded-border page; but the cells alone are not enough here, because straightening them as though they lay flat leaves the picture visibly sheared. A quartic surface through their corners follows the curl and takes it to 0.46.\n\nIt is in the corpus as a grid that is found and straightened and still does not read. The reading fails for a different reason - twenty-eight printed digits against fifty-three written ones in the same ballpoint at the same size, and the triage puts too many of them in the printed band for the puzzle to be solvable. That is the collision, not the geometry, and this page is the sharpest case of it in the corpus.\n\nMachine-verified like the rest: the complete grid is a valid solution, and the printed digits have exactly one solution, which is that grid. One of the set sent in by another reader."
+}

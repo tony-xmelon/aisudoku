@@ -36,17 +36,18 @@ class RecognitionAccuracyTest {
          * printed digits than any sudoku has. Sorting every page that way costs printed
          * digits on pages where nothing was wrong, and lost three of them outright.
          *
-         * What is left is 109 cells on eleven pages, and they are the ones whose ink is
+         * What is left is 125 cells on twelve pages, and they are the ones whose ink is
          * genuinely ambiguous: a pen bearing down as hard as the press did. The count is a
          * ceiling rather than a target.
          *
-         * It was 94 on ten pages until an eleventh joined them, and the fifteen it brought
-         * are its own: no cell on any page that was sorted correctly before is sorted
-         * wrongly now. A page from this reader costs about fifteen cells here whatever else
-         * changes, which is worth knowing before reading a movement in this number as a
-         * regression.
+         * It has grown only by pages joining it: 94 on ten, then 109 when an eleventh was
+         * taken in, then 125 when a twelfth was. Each time the new cells were the new
+         * page's own and no cell on a page that sorted correctly before sorted wrongly
+         * after. A page from this one reader costs fifteen or sixteen cells here whatever
+         * else changes, which is worth knowing before reading a movement in this number as
+         * a regression - and equally, a rise without a new page would be one.
          */
-        const val SAME_SIZE_HANDWRITING_MISSORTS = 109
+        const val SAME_SIZE_HANDWRITING_MISSORTS = 125
     }
 
     private fun setUp() {

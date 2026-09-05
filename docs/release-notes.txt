@@ -1,4 +1,4 @@
-Four things this build does that the last one would not.
+Five things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -65,6 +65,19 @@ takes a different path.
 One photograph from that batch still will not scan, and it is fair to say why:
 its page is curved, and enough that no flat shape fits its own squares. That
 one needs a flatter photograph rather than a cleverer app.
+
+A CREASED PAGE NOW SCANS
+
+The photograph of the curled page - the one the app said it could see no grid on -
+now scans. It was not really the curl that beat it.
+
+The app works out where each square sits in the nine by nine, and when two
+squares landed on the same spot one of them was quietly thrown away. On that page
+three squares went, all in the same corner - the corner where the paper lifts off
+the table - and with nothing there to go on, the app could not work out the shape
+of the page just where it bends most. Keeping those three squares is the whole
+fix. The page now straightens flat and reads, and all twenty-eight of its printed
+digits come out right.
 
 THE READER
 

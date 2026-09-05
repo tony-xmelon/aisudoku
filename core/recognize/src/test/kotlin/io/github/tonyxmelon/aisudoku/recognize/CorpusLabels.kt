@@ -23,7 +23,7 @@ object CorpusLabels {
      * Finding the printed digits first rested on their being the one population that
      * shares a font, a colour and a size. On these ten the reader wrote at the size of
      * the print, so the printed band swallowed the answers. Sorting them by ink as well
-     * as by size has taken the cost from 220 cells to 109 over the eleven; the cause and
+     * as by size has taken the cost from 220 cells to 125 over the twelve; the cause and
      * what is left are set out in [RecognitionAccuracyTest]. They are named here because
      * every test that walks the corpus meets them.
      *
@@ -32,7 +32,7 @@ object CorpusLabels {
      * keep: the tally [RecognitionAccuracyTest] prints for them is measured on every run
      * rather than quoted here, because it moves whenever the model is retrained.
      *
-     * All eleven came from the same reader, which is worth saying plainly: this is one
+     * All twelve came from the same reader, which is worth saying plainly: this is one
      * person's handwriting, not a law about newsprint. What it establishes is that the
      * size assumption fails for at least one real hand, which is enough.
      */
@@ -48,6 +48,7 @@ object CorpusLabels {
         "aisudoku-2026-09-04-newsprint-red-4.jpg",
         "aisudoku-2026-09-04-newsprint-partial.jpg",
         "aisudoku-2026-09-04-newsprint-welded-border.jpg",
+        "aisudoku-2026-09-04-newsprint-curled.jpg",
     )
 
     data class Truth(val digit: Int?, val source: Source)

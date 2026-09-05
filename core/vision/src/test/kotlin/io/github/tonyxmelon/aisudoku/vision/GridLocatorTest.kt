@@ -98,6 +98,63 @@ class GridLocatorTest {
         )
     }
 
+    /**
+     * The page that is not flat, which no plane can straighten.
+     *
+     * Named for the same reason as the one above: what matters is not that a grid comes
+     * back but that the flat answer is genuinely unavailable here, so that if a plane ever
+     * started working on this page it would mean it had begun fitting something that is
+     * not the grid. Both the quad traced round it and the quad its own cells imply are
+     * checked, because the second is the one that nearly works.
+     */
+    @Test
+    fun `straightens a page that no plane fits`() {
+        CorpusFixtures.requireCorpus()
+        OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }
+
+        val image = CorpusFixtures.photo("curled")
+        val full = image.toMat()
+        val flat = QuadDetector.workingEdges().flatMap { edge ->
+            QuadDetector.detect(image, edge).map { GridScorer.score(GridLocator.rectify(full, it)) } +
+                CellGrid.lattices(image, edge).map {
+                    GridScorer.score(GridLocator.rectify(full, it.quad()))
+                }
+        }
+        assertTrue(
+            flat.none { it >= GridLocator.MIN_GRID_SCORE },
+            "a flat straightening now works on the page kept to show one cannot: $flat",
+        )
+
+        val located = assertIs<GridLocation.Found>(GridLocator.locate(image))
+        assertTrue(
+            located.gridScore >= GridLocator.MIN_GRID_SCORE,
+            "the surface no longer straightens it: scored ${located.gridScore}",
+        )
+    }
+
+    /**
+     * Every cell of that page is given a place of its own.
+     *
+     * The surface can only follow the page where it has cells to follow, so a dropped cell
+     * is not a rounding detail here: three of them used to round onto places already taken
+     * and vanish, leaving the corner where the sheet lifts empty, and the straightening
+     * that came out of it scored 0.46 and could not be read. This is the cheap check that
+     * they are all still there.
+     */
+    @Test
+    fun `every cell of the curled page is given a place of its own`() {
+        CorpusFixtures.requireCorpus()
+        OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }
+
+        val lattice = CellGrid.lattices(CorpusFixtures.photo("curled"), 1600.0)
+            .maxByOrNull { it.centres.size }
+        assertTrue(lattice != null, "no cell cluster found on the curled page")
+        val placed = lattice.places.count { it != null }
+        assertEquals(81, lattice.centres.size, "expected the whole grid to be found")
+        assertEquals(81, placed, "cells were dropped for want of a free place")
+        assertEquals(81, lattice.places.filterNotNull().distinct().size, "two cells share a place")
+    }
+
     @Test
     fun `reports no grid rather than inventing one`() {
         OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }

@@ -72,6 +72,20 @@ object GridLocator {
                     }
             }
         }
+
+        // Every working size gets its chance at an outline before any of them falls back to
+        // the cells. Asking the cells inside the loop instead makes them a last resort only
+        // within one size, which is not the same thing: on one newsprint page the cells
+        // answer at a thousand pixels and the answer is worse than the outline that would
+        // have been found at sixteen hundred, and because the loop returns on the first
+        // success the better answer is never reached. The cells are there for a photograph
+        // no outline fits at any size.
+        for (workingEdge in QuadDetector.workingEdges()) {
+            val cells = askTheCells(image, image.toMat(), workingEdge) ?: continue
+            return GridLocation.Found(
+                cells.quad, cells.score, cells.straightened(image.toMat()).toGrayImage(),
+            )
+        }
         return nearest ?: GridLocation.NoGrid(0.0, 0)
     }
 
@@ -112,7 +126,6 @@ object GridLocator {
         // [CellGrid] for why the cells can be there when the border is not.
         val best = winner?.takeIf { it.second >= MIN_GRID_SCORE }
             ?: rescueByGrowing(full, scored)
-            ?: askTheCells(image, full, workingEdge)
             ?: return GridLocation.NoGrid(
                 winner?.second ?: 0.0, candidates.size, winner?.first,
             )
@@ -152,12 +165,46 @@ object GridLocator {
      * Scored on the same scale as everything else and held to the same threshold, so this
      * can only ever add an answer where there was none - it cannot outvote an outline that
      * already scored.
+     *
+     * The plane first, and the surface only where the plane will not do - the same order,
+     * and for the same reason, as outlines before cells.
+     *
+     * Taking whichever of the two scored higher was tried and is wrong, because the score
+     * is not what it would be being used for. It measures whether twenty lines are present,
+     * which is the right question for "is this a grid" and a poor one for "is this
+     * straightened well enough to cut into cells". On one newsprint page the surface scores
+     * 0.54 against the plane's own, wins on that, and reads worse: the page was flat, the
+     * plane had it right, and the surface bought a better score with a worse rectification.
+     * So the surface is only reached when the plane has not cleared the bar at all.
      */
-    private fun askTheCells(image: GrayImage, full: Mat, workingEdge: Double): Pair<Quad, Double>? =
-        CellGrid.detect(image, workingEdge)
-            .map { quad -> quad to GridScorer.score(rectify(full, quad, scoringSize(quad))) }
-            .maxByOrNull { it.second }
-            ?.takeIf { it.second >= MIN_GRID_SCORE }
+    private fun askTheCells(image: GrayImage, full: Mat, workingEdge: Double): FromCells? {
+        for (lattice in CellGrid.lattices(image, workingEdge)) {
+            val quad = lattice.quad()
+            val size = scoringSize(quad)
+            val flat = GridScorer.score(rectify(full, quad, size))
+            if (flat >= MIN_GRID_SCORE) return FromCells(quad, flat, lattice, curved = false)
+        }
+        for (lattice in CellGrid.lattices(image, workingEdge)) {
+            val quad = lattice.quad()
+            val curved = lattice.flatten(full, scoringSize(quad))?.let { GridScorer.score(it) }
+            if (curved != null && curved >= MIN_GRID_SCORE) {
+                return FromCells(quad, curved, lattice, curved = true)
+            }
+        }
+        return null
+    }
+
+    /** A grid the cells found, and the straightening that scored best on it. */
+    private class FromCells(
+        val quad: Quad,
+        val score: Double,
+        private val lattice: CellGrid.Lattice,
+        private val curved: Boolean,
+    ) {
+        fun straightened(full: Mat): Mat =
+            (if (curved) lattice.flatten(full, RECTIFIED_SIZE.toDouble()) else null)
+                ?: rectify(full, quad, RECTIFIED_SIZE.toDouble())
+    }
 
     /** The same quad, larger about its own centre. */
     private fun grown(quad: Quad, by: Double): Quad {
