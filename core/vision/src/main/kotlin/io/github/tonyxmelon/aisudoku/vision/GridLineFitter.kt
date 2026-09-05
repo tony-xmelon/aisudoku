@@ -23,6 +23,22 @@ data class CellGeometry(
         require(horizontalLines.size == 10) { "expected 10 horizontal lines, got ${horizontalLines.size}" }
     }
 
+    companion object {
+        /**
+         * Even ninths of the rectified square, for a grid whose rules cannot be measured.
+         *
+         * The fitted lines are better than this and are used wherever they can be had -
+         * paper is not flat, and dividing by nine leaves cells progressively out of place
+         * towards the edges. But a grid that has been found and straightened and then
+         * cannot be measured is still a grid, and cutting it into ninths reads most of it.
+         * The alternative was to throw the photograph away at the last step.
+         */
+        fun evenNinths(side: Int): CellGeometry {
+            val lines = (0..9).map { it * side / 9.0 }
+            return CellGeometry(lines, lines)
+        }
+    }
+
     /**
      * Bounds of cell [index] (row-major), inset so the printed lines themselves are
      * excluded. Ink that touches a grid line would otherwise be mistaken for a digit.

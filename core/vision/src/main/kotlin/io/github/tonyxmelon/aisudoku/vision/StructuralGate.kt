@@ -41,6 +41,13 @@ sealed interface GateVerdict {
         val geometry: CellGeometry,
         val cells: List<GrayImage>,
         val quality: ImageQuality,
+        /**
+         * What was wrong with the framing, when something was, and nothing was done about
+         * it. Worth repeating to the user beside a poor reading - "the grid was small" is
+         * the likeliest explanation for a page full of wrong digits - and never a reason
+         * to refuse the photograph.
+         */
+        val complaint: RejectionReason? = null,
     ) : GateVerdict
 
     data class Rejected(val reason: RejectionReason) : GateVerdict
@@ -49,10 +56,20 @@ sealed interface GateVerdict {
 /**
  * Decides whether a captured photograph can be processed at all.
  *
- * This is deliberately the *only* proxy check that may reject on its own. Everything
- * softer - blur, uneven lighting, a marginal-looking read - is left to the certainty
- * verdict once recognition has actually run, because image metrics reject usable
- * photographs and pass unusable ones. See spec section 4.2.
+ * It used to reject on any of half a dozen counts. It now rejects on one: no grid was
+ * found. Everything else it can say - the grid is small, it is tilted, it runs off the
+ * edge - is a remark about the framing and not a verdict on the photograph, and a remark
+ * is no reason to throw away a puzzle that has been located and straightened. What comes
+ * back is read as well as it can be, the complaint travels with it, and the person
+ * looking at the screen decides whether the reading is good enough.
+ *
+ * That is a change of principle worth stating: the app cannot tell a photograph that will
+ * read badly from one that will read fine - image metrics reject usable photographs and
+ * pass unusable ones, which is why blur was never a rejection - so it should not pretend
+ * to. It can tell whether it found a grid. That is the whole of what it now decides.
+ *
+ * The live advice in the viewfinder is untouched and still says all of these things while
+ * the user is aiming, which is when they are worth saying. See [FramingAdvisor].
  */
 object StructuralGate {
 
@@ -108,29 +125,8 @@ object StructuralGate {
         if (located !is GridLocation.Found) return GateVerdict.Rejected(RejectionReason.NoGrid)
 
         val quad = located.quad
-
-        val shortestSide = minOf(quad.topEdge, quad.rightEdge, quad.bottomEdge, quad.leftEdge)
-        if (shortestSide < MIN_GRID_SIDE) return GateVerdict.Rejected(RejectionReason.GridTooSmall)
-
-        val clipped = quad.corners.any {
-            it.x <= EDGE_MARGIN_PIXELS || it.y <= EDGE_MARGIN_PIXELS ||
-                it.x >= image.width - EDGE_MARGIN_PIXELS ||
-                it.y >= image.height - EDGE_MARGIN_PIXELS
-        }
-        if (clipped) return GateVerdict.Rejected(RejectionReason.GridCutOff)
-
-        if (quad.oppositeSideRatio > MAX_OPPOSITE_SIDE_RATIO ||
-            quad.maxCornerAngleDeviation > MAX_CORNER_ANGLE_DEVIATION
-        ) {
-            return GateVerdict.Rejected(RejectionReason.TooSkewed)
-        }
-
-        if (abs(quad.rotationDegrees) > MAX_ROTATION_DEGREES) {
-            return GateVerdict.Rejected(RejectionReason.NotUpright)
-        }
-
         val geometry = GridLineFitter.fit(located.rectified)
-            ?: return GateVerdict.Rejected(RejectionReason.LinesNotFound)
+            ?: CellGeometry.evenNinths(located.rectified.width)
 
         return GateVerdict.Usable(
             quad = quad,
@@ -139,6 +135,29 @@ object StructuralGate {
             geometry = geometry,
             cells = CellExtractor.extract(located.rectified, geometry),
             quality = ImageQuality.of(located.rectified),
+            complaint = complain(quad, image),
         )
+    }
+
+    /** What is wrong with how this was framed, if anything. Advice, not a verdict. */
+    internal fun complain(quad: Quad, image: GrayImage): RejectionReason? {
+        val shortestSide = minOf(quad.topEdge, quad.rightEdge, quad.bottomEdge, quad.leftEdge)
+        if (shortestSide < MIN_GRID_SIDE) return RejectionReason.GridTooSmall
+
+        val clipped = quad.corners.any {
+            it.x <= EDGE_MARGIN_PIXELS || it.y <= EDGE_MARGIN_PIXELS ||
+                it.x >= image.width - EDGE_MARGIN_PIXELS ||
+                it.y >= image.height - EDGE_MARGIN_PIXELS
+        }
+        if (clipped) return RejectionReason.GridCutOff
+
+        if (quad.oppositeSideRatio > MAX_OPPOSITE_SIDE_RATIO ||
+            quad.maxCornerAngleDeviation > MAX_CORNER_ANGLE_DEVIATION
+        ) {
+            return RejectionReason.TooSkewed
+        }
+
+        if (abs(quad.rotationDegrees) > MAX_ROTATION_DEGREES) return RejectionReason.NotUpright
+        return null
     }
 }

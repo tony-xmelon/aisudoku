@@ -8,6 +8,34 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+LOSING THE GRID IS THE ONLY THING THAT STOPS THE APP.
+The rule taken to its end, and one principle worth writing down.
+
+The gate refused on six counts: no grid, the grid too small, the grid running off the
+edge, too skewed, not upright, and the lines not measurable. Five of those are remarks
+about how the photograph was framed, and a remark is no reason to throw away a puzzle
+the app has already located and straightened. They are now carried alongside the
+reading instead - "Move closer, the grid is too small" travels with the digits and sits
+beside them on the screen - and the person looking decides whether the reading is good
+enough, which they can do and the app cannot.
+
+That is the principle. The app cannot tell a photograph that will read badly from one
+that will read fine; image metrics reject usable photographs and pass unusable ones,
+which is why blur was never grounds for refusal. It can tell whether it found a grid.
+That is now the whole of what it decides.
+
+The sixth was not a framing remark but the same brittleness once more: a grid that has
+been found and straightened and then cannot have its rules measured was thrown away at
+the last step. It now falls back to even ninths. Fitted lines are better and are used
+wherever they can be had - paper is not flat, so dividing by nine leaves the outer
+cells progressively out of place - but ninths read most of a grid, and nothing reads
+none of it.
+
+The live advice in the viewfinder is untouched and still says all five things while the
+user is aiming, which is when they are worth saying. What changed is only what happens
+after the shutter.
+
+
 THE PUZZLE SCREEN MEETS THE PUZZLES IT NEVER USED TO SEE.
 Three faults with one cause, and the two features that were missing behind them.
 

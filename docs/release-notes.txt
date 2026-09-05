@@ -1,4 +1,4 @@
-Nine things this build does that the last one would not.
+Ten things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -136,6 +136,23 @@ leaving you to guess.
 THE FOUR BUTTONS
 
 Were half the screen tall. Sorry. They are buttons again.
+
+THE APP ONLY GIVES UP WHEN IT CANNOT FIND THE GRID
+
+It used to turn a photo away for six different reasons: no grid, the grid too
+small, the grid running off the edge, held at too much of an angle, not upright,
+and the lines not clear enough to measure. Five of those are notes about how you
+held the phone, and none of them is a good reason to throw away a puzzle the app
+has already found and straightened.
+
+Now it reads what it found and tells you the note alongside it - "Move closer, the
+grid is too small" appears with the digits rather than instead of them. If the
+reading looks wrong you have the note to explain why, and the photo to correct. And
+if the grid lines cannot be measured, it divides the grid into ninths and reads it
+anyway.
+
+The advice in the camera while you are aiming has not changed, which is when it is
+actually useful.
 
 THE READER
 

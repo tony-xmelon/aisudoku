@@ -25,42 +25,62 @@ class SyntheticRejectTest {
         assertIs<GateVerdict.Usable>(StructuralGate.assess(good()))
     }
 
+    /**
+     * Framing is remarked on, not refused.
+     *
+     * These used to be rejections and are now complaints carried alongside the reading.
+     * Losing the grid is the only thing that stops the app, so what is asserted here is
+     * that the complaint is still *made* - a photograph taken from too far away must still
+     * say so, because "the grid was small" is the likeliest explanation for a page of
+     * wrong digits and the user is owed it.
+     */
     @Test
-    fun `a photo taken from too far away is rejected for size`() {
+    fun `a photo taken from too far away says so without refusing it`() {
         setUp()
-        val verdict = StructuralGate.assess(Degrade.shrink(good(), 0.15))
-        val rejected = assertIs<GateVerdict.Rejected>(verdict)
-        assertTrue(
-            rejected.reason is RejectionReason.GridTooSmall || rejected.reason is RejectionReason.NoGrid,
-            "expected a size or no-grid rejection but got ${rejected.reason}",
-        )
+        when (val verdict = StructuralGate.assess(Degrade.shrink(good(), 0.15))) {
+            is GateVerdict.Rejected -> assertTrue(
+                verdict.reason is RejectionReason.NoGrid,
+                "the only refusal left is losing the grid, but got ${verdict.reason}",
+            )
+
+            is GateVerdict.Usable -> assertTrue(
+                verdict.complaint is RejectionReason.GridTooSmall,
+                "a grid this small should be remarked on, but got ${verdict.complaint}",
+            )
+        }
     }
 
     @Test
-    fun `a grid running out of frame is rejected`() {
+    fun `a grid running out of frame says so without refusing it`() {
         setUp()
         val verdict = StructuralGate.assess(Degrade.cropLeft(good(), 0.30))
-        val rejected = assertIs<GateVerdict.Rejected>(verdict)
+        val complaint = when (verdict) {
+            is GateVerdict.Rejected -> verdict.reason
+            is GateVerdict.Usable -> verdict.complaint
+        }
         assertTrue(
-            rejected.reason is RejectionReason.GridCutOff || rejected.reason is RejectionReason.NoGrid,
-            "expected a framing rejection but got ${rejected.reason}",
+            complaint is RejectionReason.GridCutOff || complaint is RejectionReason.NoGrid,
+            "expected a framing complaint but got $complaint",
         )
     }
 
     @Test
-    fun `a heavily rotated photo is rejected as not upright`() {
+    fun `a heavily rotated photo says so without refusing it`() {
         setUp()
         val verdict = StructuralGate.assess(Degrade.rotate(good(), 35.0))
-        val rejected = assertIs<GateVerdict.Rejected>(verdict)
+        val complaint = when (verdict) {
+            is GateVerdict.Rejected -> verdict.reason
+            is GateVerdict.Usable -> verdict.complaint
+        }
         assertTrue(
-            rejected.reason is RejectionReason.NotUpright ||
-                rejected.reason is RejectionReason.NoGrid ||
+            complaint is RejectionReason.NotUpright ||
+                complaint is RejectionReason.NoGrid ||
                 // Turning a photograph inside a fixed canvas takes the corners of the page
                 // off the edge of it, so a grid that is found at this angle really has been
                 // cut off. That is a better answer than "no grid here" and it only became
                 // available once the detector could see a grid this far over.
-                rejected.reason is RejectionReason.GridCutOff,
-            "expected a rejection about the angle or the edges but got ${rejected.reason}",
+                complaint is RejectionReason.GridCutOff,
+            "expected a complaint about the angle or the edges but got $complaint",
         )
     }
 

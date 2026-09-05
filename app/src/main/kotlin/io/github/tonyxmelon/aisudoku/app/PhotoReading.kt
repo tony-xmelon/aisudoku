@@ -83,6 +83,17 @@ object PhotoReading {
                         reports = readings.map(CellReport::of),
                     )
 
+                // The framing complaint travels with the reading instead of replacing it.
+                // "The grid was small" is the likeliest explanation for a page of wrong
+                // digits, and it is worth saying beside them - but it was never a good
+                // reason to refuse a photograph the app had already straightened.
+                val framing = verdict.complaint?.message
+                fun withFraming(note: String?): String? = when {
+                    framing == null -> note
+                    note == null -> framing
+                    else -> "$framing $note"
+                }
+
                 when (val result = GridReader().read(verdict.cells)) {
                     // Kept for the same reason a photograph the gate turned away is
                     // kept. This path refuses a photograph the gate was happy with -
@@ -94,11 +105,15 @@ object PhotoReading {
                     is ReadResult.Unreadable ->
                         refuse(context, bytes, result.reason, "Digits not read")
 
-                    is ReadResult.Accepted ->
-                        PhotoOutcome.Read(puzzle(result.grid, emptySet(), null, result.readings))
+                    is ReadResult.Accepted -> PhotoOutcome.Read(
+                        puzzle(result.grid, emptySet(), withFraming(null), result.readings)
+                    )
 
                     is ReadResult.NeedsConfirmation -> PhotoOutcome.Read(
-                        puzzle(result.grid, result.uncertainCells, result.reason, result.readings)
+                        puzzle(
+                            result.grid, result.uncertainCells,
+                            withFraming(result.reason), result.readings,
+                        )
                     )
                 }
             }
