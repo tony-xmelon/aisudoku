@@ -1,4 +1,4 @@
-Three things this build does that the last one would not.
+Four things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -43,6 +43,28 @@ When nothing else has worked, it now tries the best few outlines a couple of
 percent larger before giving up. That photograph reads. It costs nothing on a
 photograph that was already going to read, because it only runs after
 everything else has failed.
+
+A PUZZLE PRINTED HARD AGAINST THE COLUMN BESIDE IT NOW SCANS
+
+Every way the app had of finding a puzzle started by tracing round its border.
+On a newspaper page the border often is not there to trace: on one of these
+photographs the puzzle's right-hand rule runs into the black bar down the edge
+of it and its left-hand one into the horoscope, and what the app finds is one
+wide shape that is not a puzzle. It said it could see no grid, on a photograph
+you can read at a glance.
+
+It now looks for the squares instead. A border can be lost to whatever is
+printed next to it; a square cannot, because it is a hole inside the grid, and
+eighty-one holes of the same size packed together is not something else on a
+newspaper page. Where the squares are is enough to work out where the puzzle
+is, and that page now reads, with all thirty-one of its printed digits right.
+
+It runs only after everything else has failed, so nothing that scanned before
+takes a different path.
+
+One photograph from that batch still will not scan, and it is fair to say why:
+its page is curved, and enough that no flat shape fits its own squares. That
+one needs a flatter photograph rather than a cleverer app.
 
 THE READER
 

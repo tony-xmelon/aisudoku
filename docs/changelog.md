@@ -8,6 +8,53 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+A PUZZLE WHOSE BORDER IS PRINTED INTO THE PAGE BESIDE IT NOW SCANS.
+One photograph, and a change to what the locator is allowed to look for.
+
+Every way the app had of finding a grid started from the grid's outline. On newsprint
+the outline is often not there to start from: this page has its right-hand rule
+printed hard against the black bar the paper runs down the edge of the puzzle, and its
+left-hand one against the column of horoscope text, and the threshold welds all three
+into a single shape 898 pixels wide that is neither square nor the grid. The app
+reported no grid, on a photograph a person reads without effort - which was Tony's
+point, and it was the right one.
+
+The cells are the way in. A border can be lost to whatever is printed next to it; a
+cell cannot, because it is a hole inside the grid, and eighty-one holes of much the
+same size packed together is a signature nothing else on a newspaper page has. So when
+nothing traced round the puzzle scores, the cells are found instead, grouped so that a
+second puzzle on the same page becomes a second group, and the corners are solved from
+where those cells are.
+
+Solving them is the part that took the work. Fitting four corners to the outside of
+the cell cloud is the obvious thing and it does not work: four extreme points are four
+measurements, and one cell whose contour broke moves one of them and shears the whole
+rectification. Polygon approximation, the smallest enclosing rectangle and the widest
+inscribed quadrilateral were each tried and each scored 0.00, and the straightened
+pictures they produced were plainly askew. Eighty-one cells are eighty-one
+measurements of one projection: the homography fitted to all of them takes this page
+from 0.00 to 0.40 through the same scorer everything else faces, and its thirty-one
+printed digits then read perfectly.
+
+Two things that sound like improvements made it worse and are recorded so they are not
+tried again. Fitting the homography by RANSAC rather than least squares took another
+of these photographs from 0.48 to 0.00 - RANSAC keeps whichever subset agrees most
+tightly, and on a lattice that is a handful of cells in one corner. Dropping the cells
+that fit worst did the same, for a related reason: the cells furthest off the lattice
+are where the page bends, which is the part of the shape the corners most need.
+
+One of the three photographs that had no grid is still refused, and it is worth saying
+why rather than leaving it open. Its page is curved enough that no single plane fits
+its own cells - the best homography leaves them 9.7 pixels out on average and 30 at
+worst, on a cell 65 pixels across. That is a fact about the sheet of paper, not about
+the search, and a flat-page method is not going to reach it.
+
+The page joins the corpus with a machine-verified label, which puts the collision
+ceiling up from 94 cells to 109. All fifteen are its own: no cell on any page that
+sorted correctly before sorts wrongly now. A page from this reader costs about fifteen
+cells there whatever else changes.
+
+
 A PAGE FILLED IN AT THE SIZE OF ITS PRINT NOW SCANS, AND SO DOES ONE PHOTOGRAPHED
 FURTHER BACK.
 Three faults, all of them found by photographs from another reader.

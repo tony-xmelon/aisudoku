@@ -104,10 +104,18 @@ object GridLocator {
         val scored = candidates.map { quad -> quad to GridScorer.score(rectify(full, quad, scoringSize(quad))) }
 
         val winner = scored.maxByOrNull { it.second }
-            ?: return GridLocation.NoGrid(bestScore = 0.0, candidatesConsidered = 0)
 
-        val best = if (winner.second >= MIN_GRID_SCORE) winner else rescueByGrowing(full, scored)
-            ?: return GridLocation.NoGrid(winner.second, candidates.size, winner.first)
+        // The outline first, then the same outlines grown a little, and only then the
+        // cells. In that order because the first two are what every photograph that reads
+        // today takes, and asking the cells costs another pass over the contours - so it
+        // is worth paying for exactly when there is otherwise no answer at all. See
+        // [CellGrid] for why the cells can be there when the border is not.
+        val best = winner?.takeIf { it.second >= MIN_GRID_SCORE }
+            ?: rescueByGrowing(full, scored)
+            ?: askTheCells(image, full, workingEdge)
+            ?: return GridLocation.NoGrid(
+                winner?.second ?: 0.0, candidates.size, winner?.first,
+            )
 
         val rectified = rectify(full, best.first, RECTIFIED_SIZE.toDouble())
         return GridLocation.Found(best.first, best.second, rectified.toGrayImage())
@@ -137,6 +145,19 @@ object GridLocator {
             .map { quad -> quad to GridScorer.score(rectify(full, quad, scoringSize(quad))) }
         return attempts.maxByOrNull { it.second }?.takeIf { it.second >= MIN_GRID_SCORE }
     }
+
+    /**
+     * The grid as its cells describe it, when nothing traced round it was a grid.
+     *
+     * Scored on the same scale as everything else and held to the same threshold, so this
+     * can only ever add an answer where there was none - it cannot outvote an outline that
+     * already scored.
+     */
+    private fun askTheCells(image: GrayImage, full: Mat, workingEdge: Double): Pair<Quad, Double>? =
+        CellGrid.detect(image, workingEdge)
+            .map { quad -> quad to GridScorer.score(rectify(full, quad, scoringSize(quad))) }
+            .maxByOrNull { it.second }
+            ?.takeIf { it.second >= MIN_GRID_SCORE }
 
     /** The same quad, larger about its own centre. */
     private fun grown(quad: Quad, by: Double): Quad {

@@ -36,11 +36,17 @@ class RecognitionAccuracyTest {
          * printed digits than any sudoku has. Sorting every page that way costs printed
          * digits on pages where nothing was wrong, and lost three of them outright.
          *
-         * What is left is 94 cells on ten pages, and they are the ones whose ink is
+         * What is left is 109 cells on eleven pages, and they are the ones whose ink is
          * genuinely ambiguous: a pen bearing down as hard as the press did. The count is a
          * ceiling rather than a target.
+         *
+         * It was 94 on ten pages until an eleventh joined them, and the fifteen it brought
+         * are its own: no cell on any page that was sorted correctly before is sorted
+         * wrongly now. A page from this reader costs about fifteen cells here whatever else
+         * changes, which is worth knowing before reading a movement in this number as a
+         * regression.
          */
-        const val SAME_SIZE_HANDWRITING_MISSORTS = 94
+        const val SAME_SIZE_HANDWRITING_MISSORTS = 109
     }
 
     private fun setUp() {
@@ -114,6 +120,8 @@ class RecognitionAccuracyTest {
         var handRight = 0
         var handTotal = 0
         val misreads = mutableMapOf<String, Int>()
+        var collidingRight = 0
+        var collidingTotal = 0
 
         for (file in CorpusFixtures.photos) {
             val truth = CorpusLabels.forPhoto(file.name) ?: continue
@@ -133,9 +141,16 @@ class RecognitionAccuracyTest {
                     val key = "$expected->$predicted"
                     misreads[key] = (misreads[key] ?: 0) + 1
                 }
+                // Separately for the pages the triage cannot sort, because that is the
+                // claim they are kept for: the sorting defeats it, the reading does not.
+                if (file.name in CorpusLabels.sameSizeHandwriting) {
+                    collidingTotal++
+                    if (correct) collidingRight++
+                }
             }
         }
         println("classifier: printed $printedRight/$printedTotal, handwriting $handRight/$handTotal")
+        println("on the pages the triage cannot sort: $collidingRight/$collidingTotal digits read")
         println("misreads: " + misreads.entries.sortedByDescending { it.value }.joinToString())
 
         // Anything less than perfect on printed digits means Kotlin inference has

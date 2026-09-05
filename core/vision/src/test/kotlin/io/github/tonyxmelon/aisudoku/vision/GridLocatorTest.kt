@@ -67,6 +67,37 @@ class GridLocatorTest {
         )
     }
 
+    /**
+     * The page whose border cannot be traced at all, found by its cells instead.
+     *
+     * Named rather than left to the sweep above, because what makes it worth keeping is
+     * not that a grid is found but *how*: every shape traced round this puzzle scores
+     * 0.00, and if a change ever made the outline work here it would mean the outline had
+     * started matching something it should not. The two halves are asserted separately so
+     * that a regression says which one moved.
+     */
+    @Test
+    fun `finds a grid by its cells when no outline round it is one`() {
+        CorpusFixtures.requireCorpus()
+        OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }
+
+        val image = CorpusFixtures.photo("welded-border")
+        val full = image.toMat()
+        val fromOutlines = QuadDetector.workingEdges().flatMap { edge ->
+            QuadDetector.detect(image, edge).map { GridScorer.score(GridLocator.rectify(full, it)) }
+        }
+        assertTrue(
+            fromOutlines.none { it >= GridLocator.MIN_GRID_SCORE },
+            "an outline now scores here, which this page is kept to show cannot happen: $fromOutlines",
+        )
+
+        val located = assertIs<GridLocation.Found>(GridLocator.locate(image))
+        assertTrue(
+            located.gridScore >= GridLocator.MIN_GRID_SCORE,
+            "the cells no longer find it: scored ${located.gridScore}",
+        )
+    }
+
     @Test
     fun `reports no grid rather than inventing one`() {
         OpenCvNatives.ensureLoaded { nu.pattern.OpenCV.loadShared() }

@@ -1,0 +1,26 @@
+{
+  "photo": "aisudoku-2026-09-04-newsprint-welded-border.jpg",
+  "givens": [
+    ".9.1.....",
+    "..8...4..",
+    "67.985.3.",
+    "38.29...7",
+    "....4....",
+    "7...31.86",
+    ".5.768.92",
+    "..6...7..",
+    ".....2.5."
+  ],
+  "written": [
+    "293174865",
+    "518623479",
+    "674985231",
+    "385296147",
+    "169847523",
+    "742531986",
+    "451768392",
+    "826359714",
+    "937412658"
+  ],
+  "notes": "The page that shows a grid can be perfectly readable and still have no findable border. Its right-hand rule is printed hard against the black bar the paper runs down the edge of the puzzle, and its left-hand one against the column of horoscope text; the threshold welds all three into one shape 898 pixels wide that is not square and is not the grid. The detector reported two candidates, best score 0.00, on a photograph a person reads without effort.\n\nIt is in the corpus because it is the page that forced the locator to stop needing an outline. Its eighty-one cells are perfectly clear - a border can be lost to whatever is printed beside it, a cell cannot, because it is a hole inside the grid - and solving the corners from where those cells are takes it from 0.00 to 0.40 through the ordinary scorer. See CellGrid.\n\nThirty-one printed digits and fifty written answers, all in the same ballpoint at very nearly the size of the print, on creased newsprint photographed at an angle. Machine-verified like the rest: the complete grid is a valid solution, and the printed digits have exactly one solution, which is that grid. One of the set sent in by another reader."
+}
