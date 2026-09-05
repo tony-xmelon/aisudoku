@@ -125,8 +125,12 @@ class PuzzleLogicTest {
         assertEquals(Tone.GOOD, done.tone)
         assertTrue(done.text.contains("every answer is right"), done.text)
 
+        // Both broken cases now say what to do as well as what is wrong. They are the two
+        // with no tutor route, so without a next step the screen says nothing at all.
         val broken = Grid.Empty.with(0, Cell.given(5)).with(1, Cell.given(5))
-        assertTrue(assertNotNull(PuzzleLogic.status(broken)).text.contains("not make a solvable puzzle"))
+        val cannot = assertNotNull(PuzzleLogic.status(broken))
+        assertTrue(cannot.text.contains("do not make a puzzle"), cannot.text)
+        assertTrue(cannot.text.contains("Press Solve"), cannot.text)
     }
 
     /**
@@ -179,7 +183,9 @@ class PuzzleLogicTest {
             "...419..5",
             "....8..79",
         )
-        assertTrue(assertNotNull(PuzzleLogic.status(ambiguous)).text.contains("More than one solution"))
+        val many = assertNotNull(PuzzleLogic.status(ambiguous))
+        assertTrue(many.text.contains("More than one answer"), many.text)
+        assertTrue(many.text.contains("Press Solve"), many.text)
     }
 
     /**

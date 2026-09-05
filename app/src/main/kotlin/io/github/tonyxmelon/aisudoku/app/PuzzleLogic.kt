@@ -9,6 +9,7 @@ import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.solver.Deduction
 import io.github.tonyxmelon.aisudoku.solver.ExplainedHintEngine
 import io.github.tonyxmelon.aisudoku.solver.Hint
+import io.github.tonyxmelon.aisudoku.solver.MinimalFix
 import io.github.tonyxmelon.aisudoku.solver.RevealHintEngine
 import io.github.tonyxmelon.aisudoku.solver.SolveResult
 import io.github.tonyxmelon.aisudoku.solver.Solver
@@ -142,6 +143,15 @@ object PuzzleLogic {
      * square, then the digit. Each press of Hint goes down one tread, and most of the
      * time the user has what they needed before the bottom.
      */
+    /**
+     * How many answers an ambiguous puzzle will offer before it stops counting.
+     *
+     * A puzzle missing one digit has a handful; the advertisement that prompted all this
+     * has more than anyone would page through. Six is enough to make the point that there
+     * is more than one and few enough to enumerate while somebody waits.
+     */
+    const val MOST_ANSWERS_OFFERED = 6
+
     const val HINT_DEPTHS = 4
 
     /** Which layer is showing, and how far its hint has been pushed. */
@@ -175,6 +185,25 @@ object PuzzleLogic {
     }
 
     /** True when there is still something to hint at. Drives whether the button is live. */
+    /**
+     * Whether pressing Solve should step to the next answer rather than toggle the layer.
+     *
+     * Returns the answer to show next, or null to let the press mean what it always means.
+     * Kept here rather than in the state so it can be reasoned about without a photograph -
+     * the state carries a Bitmap, which a unit test on a desktop cannot make.
+     */
+    fun steppedAnswer(
+        showing: OverlayMode,
+        pressed: OverlayMode,
+        answerShown: Int,
+        answerCount: Int,
+    ): Int? =
+        if (pressed == OverlayMode.SOLUTION && showing == OverlayMode.SOLUTION && answerCount > 1) {
+            answerShown + 1
+        } else {
+            null
+        }
+
     fun canHint(grid: Grid, style: HintStyle): Boolean = hint(grid, style) != null
 
     fun overlay(
@@ -186,6 +215,8 @@ object PuzzleLogic {
         lessonStep: Int = 0,
         /** Squares the user typed in, which appear on no photograph. */
         entered: Set<Int> = emptySet(),
+        /** Which answer to show, when the puzzle has more than one. */
+        answerShown: Int = 0,
     ): Overlay {
         val digits = mutableMapOf<Int, OverlayDigit>()
         var evidence = emptySet<Int>()
@@ -197,11 +228,41 @@ object PuzzleLogic {
 
             // Every cell that is not printed, so a finished puzzle shows the whole answer
             // rather than the handful of cells recognition happened to miss.
-            OverlayMode.SOLUTION -> (Solver.solve(grid) as? SolveResult.Unique)?.let { solved ->
-                for (i in 0 until 81) {
+            //
+            // All three outcomes draw something. Showing nothing when a puzzle has no
+            // single answer is how Solve came to look like a button that did nothing: the
+            // one case where the user most needs to be told is the one where they were
+            // told least.
+            OverlayMode.SOLUTION -> when (val solved = Solver.solve(grid)) {
+                is SolveResult.Unique -> for (i in 0 until 81) {
                     if (grid[i].source != CellSource.GIVEN) {
                         digits[i] = OverlayDigit(solved.solution[i].digit!!, OverlayRole.SOLUTION)
                     }
+                }
+
+                // One of them, drawn exactly like the answer to a proper puzzle, with the
+                // squares that differ between answers marked so it is clear which parts
+                // are chosen rather than deduced.
+                is SolveResult.Multiple -> {
+                    val answers = Solver.solutions(grid, MOST_ANSWERS_OFFERED)
+                    val chosen = answers.getOrNull(answerShown.mod(answers.size.coerceAtLeast(1)))
+                    if (chosen != null) {
+                        for (i in 0 until 81) {
+                            if (grid[i].source != CellSource.GIVEN) {
+                                digits[i] = OverlayDigit(chosen[i].digit!!, OverlayRole.SOLUTION)
+                            }
+                        }
+                        evidence = solved.ambiguousCells
+                    }
+                }
+
+                // Nothing can be drawn in the squares, so what is drawn is the diagnosis:
+                // the fewest printed digits that have to be wrong for this to be a puzzle
+                // at all. Those are the squares to look at, and they are marked as
+                // evidence because that is what they are - the reason it will not solve.
+                is SolveResult.None -> {
+                    evidence = MinimalFix.find(grid).orEmpty()
+                    focus = evidence.minOrNull()
                 }
             }
 
@@ -353,11 +414,21 @@ object PuzzleLogic {
             }
         }
 
-        is SolveResult.None ->
-            Status("These printed digits do not make a solvable puzzle.", Tone.BAD)
+        // Both of these say what to do about it as well as what is wrong. They are also
+        // the two cases with no tutor: the tutor walks a route to *the* answer, and
+        // neither of these has one - so the drawer is simply absent, and without a word
+        // here the screen looks broken rather than informative.
+        is SolveResult.None -> Status(
+            "These digits do not make a puzzle, so one was misread. " +
+                "Press Solve to see which squares to fix.",
+            Tone.BAD,
+        )
 
-        is SolveResult.Multiple ->
-            Status("More than one solution, so a printed digit was missed.", Tone.BAD)
+        is SolveResult.Multiple -> Status(
+            "More than one answer, so a printed digit was missed. " +
+                "Press Solve to see the answers and where they differ.",
+            Tone.BAD,
+        )
     }
 
     /**
@@ -509,11 +580,40 @@ object PuzzleLogic {
         lessonStep: Int = 0,
         /** Which technique is being browsed, when the tutor is not on its own route. */
         technique: String? = null,
+        /** Which answer is being shown, when the puzzle has more than one. */
+        answerShown: Int = 0,
     ): Guidance? = when (mode) {
         OverlayMode.NONE -> null
 
         OverlayMode.SOLUTION -> Guidance(
-            "Blue digits are the solution. Tap any square to correct what was read."
+            when (val solved = Solver.solve(grid)) {
+                is SolveResult.Unique ->
+                    "Blue digits are the solution. Tap any square to correct what was read."
+
+                is SolveResult.Multiple -> {
+                    val many = Solver.solutions(grid, MOST_ANSWERS_OFFERED).size
+                    val nth = answerShown.mod(many.coerceAtLeast(1)) + 1
+                    val count = if (many < MOST_ANSWERS_OFFERED) "$many" else "at least $many"
+                    "This puzzle has more than one answer, so a printed digit was probably " +
+                        "missed. Showing answer $nth of $count - press Solve again for the " +
+                        "next. The ringed squares are the ones the answers disagree about."
+                }
+
+                is SolveResult.None -> when (val fix = MinimalFix.find(grid)) {
+                    null ->
+                        "These digits cannot make a puzzle, and too much is wrong to say " +
+                            "which. Tap any square to correct what was read, or take the " +
+                            "photograph again."
+
+                    else -> if (fix.size == 1) {
+                        "These digits cannot make a puzzle. Changing the one ringed square " +
+                            "would fix it - tap it to correct what was read."
+                    } else {
+                        "These digits cannot make a puzzle. Changing the ${fix.size} ringed " +
+                            "squares would fix it - tap one to correct what was read."
+                    }
+                }
+            }
         )
 
         OverlayMode.READING -> Guidance(

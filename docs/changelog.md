@@ -8,6 +8,43 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+THE PUZZLE SCREEN MEETS THE PUZZLES IT NEVER USED TO SEE.
+Three faults with one cause, and the two features that were missing behind them.
+
+Letting an unsolvable puzzle through to the screen sent it something it had never been
+given before. Every one of Tony's complaints follows from that, except the first, which
+is mine.
+
+The four buttons stood half the screen tall. A pill draws its hint fill inside the
+button, in a box that fills the height it is given - and a button is given whatever its
+parent allows, which in that row is the rest of the screen. Filling a bounded height is
+what was meant. The pill is now 40dp and the box fills that.
+
+Solve did nothing, because it drew the answer only when there was exactly one:
+`Solver.solve(grid) as? SolveResult.Unique`. The one case where a person most needs to
+be told something was the case where they were told least. All three outcomes now draw.
+
+With more than one answer it shows one of them, exactly as it shows the answer to a
+proper puzzle, and rings the squares the answers disagree about - which are precisely
+the ones a missed printed digit would have settled. Pressing Solve again steps to the
+next rather than putting the layer away, up to six, because there is nowhere on that
+screen to put a pair of arrows worth the room and the button is already under the thumb.
+
+With no answer at all it names the squares to fix. "No solution" is true and useless;
+the useful answer is which digits were misread. [MinimalFix] looks for the smallest set
+of givens that, taken away, leaves a puzzle that solves - one first, then pairs, trying
+squares that already clash with another before the rest. Removing rather than changing
+is the same question asked more cheaply: if the rest solves without it, the solution
+says what belongs there. It stops at two, because three is hundreds of thousands of
+solves on a phone while somebody waits, and a page needing three is one to photograph
+again.
+
+The tutor drawer is absent on both, and that is correct rather than broken - the tutor
+walks a route to *the* answer and neither has one. What was wrong is that nothing said
+so. Both status lines now say what to do rather than only what is wrong, and both point
+at Solve.
+
+
 ONLY LOSING THE GRID STOPS THE APP NOW.
 The same brittleness at three stages in a row, each one throwing away a grid it had
 already recognised.

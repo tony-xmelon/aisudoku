@@ -67,6 +67,9 @@ internal fun HintButton(
     }
 }
 
+/** How tall a pill stands. Material's own button height, stated because it has to be. */
+private val PILL_HEIGHT = 40.dp
+
 /**
  * One of the five. The selected one is filled, so which is on can be seen without reading.
  *
@@ -114,11 +117,17 @@ private fun Pill(
 
     // No content padding: the box above is the padding, and it has to reach the edges of
     // the pill for the shading to fill it.
+    //
+    // And the height is set here rather than left to the button. The box inside fills the
+    // height it is given, and a button is given whatever its parent will allow - which in
+    // the row these sit in is the whole of the rest of the screen. They grew to half of it.
+    // Filling a bounded height is what was meant; filling an unbounded one is what it said.
+    val sized = modifier.height(PILL_HEIGHT)
     if (selected) {
-        Button(onClick, modifier, enabled, contentPadding = PaddingValues(0.dp), content = content)
+        Button(onClick, sized, enabled, contentPadding = PaddingValues(0.dp), content = content)
     } else {
         OutlinedButton(
-            onClick, modifier, enabled, contentPadding = PaddingValues(0.dp), content = content,
+            onClick, sized, enabled, contentPadding = PaddingValues(0.dp), content = content,
         )
     }
 }

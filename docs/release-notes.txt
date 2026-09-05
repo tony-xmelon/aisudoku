@@ -1,4 +1,4 @@
-Eight things this build does that the last one would not.
+Nine things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -114,6 +114,28 @@ One line each way may now be hidden. A grid is regular, so a rule you cannot see
 still somewhere you can work out. The photo that prompted this - a sudoku
 advertisement on a phone screen, out of focus, with a shadow across one corner -
 now scans, where before the app said there was no grid in it at all.
+
+SOLVE WORKS ON PUZZLES THAT DO NOT SOLVE
+
+Now that a photo gets through to the puzzle screen even when what it read is not a
+proper puzzle, the screen had to have something to say about that. It did not, and
+Solve looked like a button that did nothing.
+
+If the puzzle has more than one answer - which means a printed digit was missed -
+Solve now shows you one of them and rings the squares the answers disagree about.
+Press it again for the next answer.
+
+If it has no answer at all, some digit was misread. Solve now rings the fewest
+squares that would fix it, so you can tap one and correct it rather than starting
+over.
+
+There is no tutor drawer on either, and that is not a fault: the tutor walks you to
+the answer, and these do not have one. The line at the top now says so instead of
+leaving you to guess.
+
+THE FOUR BUTTONS
+
+Were half the screen tall. Sorry. They are buttons again.
 
 THE READER
 

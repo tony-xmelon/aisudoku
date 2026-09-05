@@ -7,6 +7,8 @@ import io.github.tonyxmelon.aisudoku.model.Grid
 import io.github.tonyxmelon.aisudoku.solver.Chain
 import io.github.tonyxmelon.aisudoku.solver.Hint
 import io.github.tonyxmelon.aisudoku.solver.RouteStyle
+import io.github.tonyxmelon.aisudoku.solver.SolveResult
+import io.github.tonyxmelon.aisudoku.solver.Solver
 import io.github.tonyxmelon.aisudoku.solver.TechniqueSolver
 import io.github.tonyxmelon.aisudoku.solver.Techniques
 import io.github.tonyxmelon.aisudoku.solver.Walkthrough
@@ -78,6 +80,15 @@ data class PuzzleState(
      * screen at all.
      */
     val entered: Set<Int> = emptySet(),
+    /**
+     * Which answer is being shown, when the puzzle has more than one.
+     *
+     * Pressing Solve again steps to the next rather than putting the layer away, which is
+     * the whole of the browsing: there is nowhere on this screen to put a pair of arrows
+     * that would be worth the room, and the button the user just pressed is already under
+     * their thumb.
+     */
+    val answerShown: Int = 0,
 ) {
     // Computed once per state rather than once per read. Every one of these runs the
     // solver, and Compose asks for them again on every recomposition - including one per
@@ -93,6 +104,7 @@ data class PuzzleState(
     val guidance: Guidance? by lazy {
         PuzzleLogic.guidance(
             grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep, tutorTechnique,
+            answerShown,
         )
     }
 
@@ -136,7 +148,18 @@ data class PuzzleState(
     val findingCounts: Map<String, Int> by lazy { TechniqueSolver.findingCounts(grid) }
 
     private val computed: Overlay by lazy {
-        PuzzleLogic.overlay(grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep, entered)
+        PuzzleLogic.overlay(
+            grid, overlay, hintStyle, hintDepth, walkthrough, lessonStep, entered, answerShown,
+        )
+    }
+
+    /** How many answers this puzzle has, capped. One is the ordinary case. */
+    val answerCount: Int by lazy {
+        when (Solver.solve(grid)) {
+            is SolveResult.Unique -> 1
+            is SolveResult.None -> 0
+            is SolveResult.Multiple -> Solver.solutions(grid, PuzzleLogic.MOST_ANSWERS_OFFERED).size
+        }
     }
 
     fun overlayDigits(): Map<Int, OverlayDigit> = computed.digits
@@ -158,6 +181,12 @@ data class PuzzleState(
      * layer's second press does.
      */
     fun show(mode: OverlayMode): PuzzleState {
+        // Solve pressed again on a puzzle with several answers steps through them instead
+        // of putting the layer away. Every other button toggles, and this one would too if
+        // there were only ever one answer to show.
+        PuzzleLogic.steppedAnswer(overlay, mode, answerShown, answerCount)?.let { next ->
+            return copy(answerShown = next, selectedCell = null)
+        }
         val next = PuzzleLogic.press(overlay, mode, hintDepth, hintStyle)
         return copy(
             overlay = next.mode,

@@ -49,11 +49,27 @@ object Solver {
     /** True when the puzzle has exactly one solution. */
     fun hasUniqueSolution(grid: Grid): Boolean = solve(grid) is SolveResult.Unique
 
+    /**
+     * The first [limit] solutions, in the order the search finds them.
+     *
+     * [solve] stops at two because "more than one" is all it needs to report. Showing a
+     * person an ambiguous puzzle is a different job: they are owed an answer they can look
+     * at, and then the others, so this collects as many as asked for. Empty means the
+     * givens contradict.
+     */
+    fun solutions(grid: Grid, limit: Int): List<Grid> {
+        if (limit <= 0) return emptyList()
+        val state = SolverState.from(grid) ?: return emptyList()
+        val found = mutableListOf<Grid>()
+        search(state, found, limit)
+        return found
+    }
+
     /** Depth-first search. Returns true once enough solutions have been collected to stop. */
-    private fun search(state: SolverState, found: MutableList<Grid>): Boolean {
+    private fun search(state: SolverState, found: MutableList<Grid>, limit: Int = 2): Boolean {
         if (state.isSolved) {
             found += state.toGrid()
-            return found.size >= 2
+            return found.size >= limit
         }
 
         val branchCell = mostConstrainedCell(state) ?: return false
@@ -61,7 +77,7 @@ object Solver {
         for (digit in state.candidatesAt(branchCell).digits()) {
             val attempt = state.copy()
             if (attempt.assign(branchCell, digit)) {
-                if (search(attempt, found)) return true
+                if (search(attempt, found, limit)) return true
             }
         }
         return false
