@@ -68,7 +68,11 @@ internal object CellGrid {
     private const val REFITS = 3
 
     /** Candidate grids the cells suggest, at one working size. */
-    fun detect(image: GrayImage, workingEdge: Double): List<Quad> {
+    fun detect(image: GrayImage, workingEdge: Double): List<Quad> =
+        lattices(image, workingEdge).map { it.quad() }
+
+    /** The same, with each cell's place still attached, for measuring what went on. */
+    internal fun lattices(image: GrayImage, workingEdge: Double): List<Lattice> {
         val full = image.toMat()
         val scale = workingEdge / maxOf(full.width(), full.height()).toDouble()
 
@@ -108,7 +112,7 @@ internal object CellGrid {
         if (alike.size < ENOUGH_CELLS) return emptyList()
 
         return group(alike, Math.sqrt(median) * SAME_GRID_SPACING)
-            .mapNotNull { cells -> quadFor(cells, scale) }
+            .mapNotNull { cells -> latticeFor(cells, scale) }
     }
 
     /** Cells split into puzzles: cells within [reach] of one another are the same puzzle. */
@@ -135,8 +139,87 @@ internal object CellGrid {
             .map { group -> group.map { cells[it] } }
     }
 
+    /**
+     * One puzzle's cells, each with its place in the nine by nine, and the grid they imply.
+     *
+     * Kept as a thing in its own right so that a measurement can look at the places rather
+     * than only at the quad they produce. The alternative - a test that works the places
+     * out again for itself - is how the trainer and the reader once came to disagree about
+     * every cell in the corpus, and it is not worth repeating for a diagnostic.
+     */
+    internal class Lattice(
+        val centres: List<Point>,
+        val places: List<Pair<Int, Int>?>,
+        val flat: Mat,
+        val pitch: Double,
+        private val scale: Double,
+    ) {
+        /** Half a cell out from the end cells' centres, every way, is the grid's own edge. */
+        fun quad(): Quad {
+            val edge = MatOfPoint2f()
+            Core.perspectiveTransform(
+                MatOfPoint2f(Point(-0.5, -0.5), Point(8.5, -0.5), Point(8.5, 8.5), Point(-0.5, 8.5)),
+                edge, flat,
+            )
+            return Quad.ordering(edge.toArray().map { Corner(it.x / scale, it.y / scale) })
+        }
+    }
+
+    /**
+     * How far from a place a cell may sit and still be allowed to claim it, in cells.
+     *
+     * Half a cell is the point at which a cell is nearer its neighbour's place than its
+     * own, so anything beyond that is not a claim on this place but a sign the fit is
+     * wrong. A little over half leaves room for a page that bends without letting a stray
+     * blob two cells away take a place from the cell that belongs in it.
+     */
+    private const val CLAIM_WITHIN = 0.7
+
+    /**
+     * Each cell given its own place in the nine by nine, nearest claim settled first.
+     *
+     * A place is a scarce thing and this used to be written as though it were not: every
+     * cell rounded its position to the nearest place independently, and when two cells
+     * rounded to the same one the second was quietly dropped. Nothing reported it. On the
+     * curled newsprint page all eighty-one cells are found and three of them round onto
+     * places already taken, so three real cells vanish and three places - its top left
+     * corner, which is exactly where the sheet lifts - are left with nothing in them. The
+     * surface fitted through the cells then has no measurement over the very corner that
+     * needs one.
+     *
+     * Rounding cannot express the constraint, because the constraint is between cells.
+     * Every cell's claim on every place is measured, the closest claim is settled first,
+     * and a cell whose place has gone takes the nearest place still free rather than
+     * disappearing. Where the fit is good this gives exactly what rounding gave - the
+     * nearest place is free and it is taken - and it only differs where rounding was
+     * losing cells.
+     */
+    private fun claimPlaces(atLattice: List<Point>): List<Pair<Int, Int>?> {
+        val claims = mutableListOf<Triple<Double, Int, Int>>()
+        for (i in atLattice.indices) {
+            for (row in 0..8) {
+                for (column in 0..8) {
+                    val away = Math.hypot(atLattice[i].x - column, atLattice[i].y - row)
+                    if (away <= CLAIM_WITHIN) claims += Triple(away, i, row * 9 + column)
+                }
+            }
+        }
+        claims.sortBy { it.first }
+
+        val out = arrayOfNulls<Pair<Int, Int>>(atLattice.size)
+        val taken = mutableSetOf<Int>()
+        val settled = mutableSetOf<Int>()
+        for ((_, cell, place) in claims) {
+            if (cell in settled || place in taken) continue
+            settled += cell
+            taken += place
+            out[cell] = (place % 9) to (place / 9)
+        }
+        return out.toList()
+    }
+
     /** The grid these cells belong to, solved as a homography from the nine by nine. */
-    private fun quadFor(cells: List<Rect>, scale: Double): Quad? {
+    private fun latticeFor(cells: List<Rect>, scale: Double): Lattice? {
         val centres = cells.map { Point(it.x + it.width / 2.0, it.y + it.height / 2.0) }
 
         // The cloud's own two directions, the flatter one taken as the rows.
@@ -156,7 +239,9 @@ internal object CellGrid {
 
         val alongRow = centres.map { it.x * across.first + it.y * across.second }
         val downColumn = centres.map { it.x * down.first + it.y * down.second }
-        var places = centres.indices.map { place(alongRow, it) to place(downColumn, it) }
+        var places = claimPlaces(
+            centres.indices.map { Point(spread(alongRow, it), spread(downColumn, it)) }
+        )
 
         var fitted: Mat? = null
 
@@ -168,11 +253,8 @@ internal object CellGrid {
         repeat(REFITS) {
             val lattice = mutableListOf<Point>()
             val onPage = mutableListOf<Point>()
-            val taken = mutableSetOf<Int>()
             for (i in centres.indices) {
-                val (column, row) = places[i]
-                if (column !in 0..8 || row !in 0..8) continue
-                if (!taken.add(row * 9 + column)) continue
+                val (column, row) = places[i] ?: continue
                 lattice += Point(column.toDouble(), row.toDouble())
                 onPage += centres[i]
             }
@@ -192,24 +274,22 @@ internal object CellGrid {
 
             val read = MatOfPoint2f()
             Core.perspectiveTransform(MatOfPoint2f(*centres.toTypedArray()), read, fit.inv())
-            places = read.toArray().map { Math.round(it.x).toInt() to Math.round(it.y).toInt() }
+            places = claimPlaces(read.toArray().toList())
         }
 
         val solved = fitted ?: return null
+        val pitch = centres.indices.mapNotNull { i ->
+            centres.indices.filter { it != i }
+                .minOfOrNull { Math.hypot(centres[i].x - centres[it].x, centres[i].y - centres[it].y) }
+        }.sorted().let { it.getOrElse(it.size / 2) { 0.0 } }
 
-        // Half a cell out from the end cells' centres, every way, is the grid's own edge.
-        val edge = MatOfPoint2f()
-        Core.perspectiveTransform(
-            MatOfPoint2f(Point(-0.5, -0.5), Point(8.5, -0.5), Point(8.5, 8.5), Point(-0.5, 8.5)),
-            edge, solved,
-        )
-        return Quad.ordering(edge.toArray().map { Corner(it.x / scale, it.y / scale) })
+        return Lattice(centres, places, solved, pitch, scale)
     }
 
-    /** Which of the nine a cell falls in, along one direction. */
-    private fun place(values: List<Double>, of: Int): Int {
+    /** Where a cell falls along one direction, with the cells spread evenly over the nine. */
+    private fun spread(values: List<Double>, of: Int): Double {
         val low = values.min()
         val span = (values.max() - low).coerceAtLeast(1e-6)
-        return Math.round((values[of] - low) / span * 8).toInt()
+        return (values[of] - low) / span * 8
     }
 }
