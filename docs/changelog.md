@@ -8,6 +8,40 @@ by Firebase at 16,384 characters. It used to hold all of this, growing every rou
 one day it went over the limit and the upload failed after a full CI build had already
 run. Keep that file short and put the history here.
 
+A PUZZLE THAT CANNOT BE SOLVED IS STILL A PUZZLE THAT WAS READ.
+One rule, and the photograph that made it obvious.
+
+The reader had come to treat solvability as part of recognition. When the printed
+digits did not make a puzzle with one solution, it tried a few repairs, and if more
+than six cells were still in doubt it reported the whole photograph unreadable. That
+is the wrong thing to say about a page whose digits it has in fact read correctly, and
+it is the wrong thing to do to the person holding the phone, who is shown nothing and
+told nothing about what the app saw.
+
+Tony sent an advertisement - a phone on a car seat showing "Play Sudoku. Only IQ=180
+can solve it.." - whose puzzle nobody can solve, because it has many solutions rather
+than one. Forty-five printed digits in a neat staircase, nine in the first row down to
+one in the last, all perfectly legible. There is nothing useful about answering that
+with "could not read".
+
+So only a failure of recognition stops the pipeline now: no printed digits found, or
+too few of them to be a puzzle. Anything that was read is handed on with the doubtful
+cells attached, and what cannot be solved is still shown. The immediate effect is that
+newsprint-blue-3, the one corpus page that came back as nothing, now comes back as a
+grid - which is also why the collision ceiling rises from 100 to 110, since its cells
+are counted here for the first time. Nothing that was already counted moved.
+
+The advertisement itself is not in the corpus yet, and that is the honest half of this
+entry. Its grid cannot be located: 0.27 against the 0.35 needed, and 0.27 again when
+cropped to the screen alone, so it is the picture rather than the clutter round it -
+thin light rules drawn on a screen, photographed out of focus at an angle, with a tan
+overlay across the lower left that takes the left-hand columns with it. Its
+transcription is committed and verified, in the odd way this page has to be verified:
+no row, column or box repeats a digit, and the staircase is its own check, but there
+is no unique solution to check the givens against because there is no unique solution.
+The photograph goes into the corpus on the day the locator can see it.
+
+
 A THIRD OF WHAT THE TRIAGE GOT WRONG WAS NOT THE COLLISION AT ALL.
 Twenty-five cells recovered, and a measured answer to how far the rest can go.
 

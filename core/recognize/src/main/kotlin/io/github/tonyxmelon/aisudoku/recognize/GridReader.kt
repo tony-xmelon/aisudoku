@@ -330,13 +330,25 @@ class GridReader(private val classifier: DigitClassifier = DigitClassifier.load(
             }
         }
 
-        val reason = "The printed digits do not make a solvable puzzle."
-        val uncertain = weak + suspects.map { it.index }
-        return if (uncertain.size <= CONFIRMABLE_CELLS) {
-            ReadResult.NeedsConfirmation(original, readings, uncertain, reason)
-        } else {
-            ReadResult.Unreadable(reason, uncertain)
-        }
+        // Handed back as read, and never refused for this.
+        //
+        // Being unable to solve a puzzle is not the same as being unable to read one, and
+        // this used to conflate them: when more than six cells were in doubt the whole
+        // photograph came back unreadable, which is the wrong thing to say about a page
+        // whose digits were in fact all read correctly. The corpus now holds an
+        // advertisement promising that only IQ 180 can solve its puzzle, which is true in
+        // the sense that nobody can - it has many solutions rather than one. Its
+        // forty-five digits are legible and every one of them is read right, and there is
+        // nothing useful about answering that with "could not read".
+        //
+        // So the grid goes on with the cells to question attached. Only a failure of
+        // recognition - no printed digits found, or too few to be a puzzle - stops the
+        // pipeline now. What cannot be solved is still shown, and the person looking at it
+        // can see for themselves what the app made of their page.
+        return ReadResult.NeedsConfirmation(
+            original, readings, weak + suspects.map { it.index },
+            "The printed digits do not make a solvable puzzle.",
+        )
     }
 
     /** How unlike the printed core a reading is, in units of the core's own spread. */

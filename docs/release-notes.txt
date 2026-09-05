@@ -1,4 +1,4 @@
-Six things this build does that the last one would not.
+Seven things this build does that the last one would not.
 
 A PAGE YOU FILLED IN AT THE SIZE OF THE PRINT NOW SCANS
 
@@ -89,6 +89,18 @@ which was more than a third of everything the app was getting wrong.
 
 It now decides by where the digit sits in its square and what it is written in
 rather than by how big it is. Twenty-five of those answers come back.
+
+A PUZZLE IT CANNOT SOLVE IS STILL SHOWN TO YOU
+
+If the printed digits did not make a proper puzzle, the app used to give up and
+tell you it could not read the photo - even when it had read every digit on the
+page correctly. That is two different failures wearing one message, and only one
+of them is your problem.
+
+It now stops only when it genuinely cannot see a puzzle. Anything it has read is
+shown, with the squares it is unsure of marked, and you can see for yourself what
+it made of the page. One of the test photos that used to come back as nothing now
+comes back as a grid.
 
 THE READER
 

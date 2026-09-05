@@ -23,7 +23,7 @@ object CorpusLabels {
      * Finding the printed digits first rested on their being the one population that
      * shares a font, a colour and a size. On these ten the reader wrote at the size of
      * the print, so the printed band swallowed the answers. Sorting them by ink as well
-     * as by size has taken the cost from 220 cells to 100 over the twelve; the cause and
+     * as by size has taken the cost from 220 cells to 110 over the twelve; the cause and
      * what is left are set out in [RecognitionAccuracyTest]. They are named here because
      * every test that walks the corpus meets them.
      *

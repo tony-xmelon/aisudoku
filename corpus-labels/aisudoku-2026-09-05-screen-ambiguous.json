@@ -1,0 +1,28 @@
+{
+  "photo": "aisudoku-2026-09-05-screen-ambiguous.jpg",
+  "givens": [
+    "179852463",
+    ".25934718",
+    "..3176952",
+    "...685371",
+    "....13294",
+    ".....9586",
+    "......139",
+    ".......45",
+    "........7"
+  ],
+  "written": [
+    "179852463",
+    ".25934718",
+    "..3176952",
+    "...685371",
+    "....13294",
+    ".....9586",
+    "......139",
+    ".......45",
+    "........7"
+  ],
+  "notes": "A photograph of a phone lying on a car seat, showing a Facebook advertisement - 'Play Sudoku. Only IQ=180 can solve it..' - with a puzzle nobody can solve, because it has many solutions rather than one.\n\nThat is why it is here. Every other page in the corpus is a real puzzle, and the reader had come to treat solvability as part of recognition: a grid whose printed digits did not make one puzzle was reported as unreadable, which is the wrong answer to give about a photograph it has in fact read correctly. This page separates the two. Its forty-five printed digits are perfectly legible and the reader gets all of them right; the puzzle they make is simply not a puzzle.\n\nIt is machine-verified differently from the others, because the usual check cannot run. No row, column or box repeats a digit, and the givens are a staircase - nine in the first row, eight in the second, down to one in the last - which is a strong check on the transcription in its own right. What cannot be verified is a unique solution, because there is not one: the solver finds several.\n\nThe photograph is hard for other reasons worth having. It is a picture of a screen rather than paper, taken at an angle with the phone reflecting the car window, blurred, with a large tan overlay across the lower left of the grid, and the subject phone was lying sideways so the image is stored rotated upright as the camera would have delivered it.",
+  "verification": "consistent, not unique",
+  "held": "The photograph is not in corpus/ yet, because the locator cannot find its grid: 0.27 against the 0.35 it needs, and 0.27 again when cropped to the screen alone, so it is the picture rather than the clutter around it. Thin light rules rendered on a screen, photographed out of focus at an angle, with a tan overlay across the lower left that takes the left-hand columns with it. The transcription is kept because it is the expensive part and it is verified; drop the photograph into corpus/ on the day the locator can see it and this becomes live."
+}
